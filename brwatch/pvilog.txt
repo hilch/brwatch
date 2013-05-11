@@ -1,4 +1,0 @@
-05/11/13 - 12:02:21 : PVI Communication Library  (PviCom.dll)  4.00
- --> OK! 
-05/11/13 - 12:02:21 : POBJ_EVENT_PVI_ARRANGE --> OK! 
-05/11/13 - 12:02:24 : PviDeinitialize --> OK! 
