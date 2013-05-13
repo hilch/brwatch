@@ -49,7 +49,7 @@ static void DeleteDirectory( char *name );
 static int CountToken( char *s, char token );
 static BOOL FindToken( char **source, char* token );
 static int GetIntValue( char **source );
-static void ReplaceChar( char * s, char old, char new );
+static void ReplaceChar( char * s, char old, char n );
 static char *AddPviDatatype( char * t );
 static int GetPviLicenceInfo(void );
 
@@ -875,6 +875,8 @@ static int GetPviLicenceInfo( void ){
 	if( result != 0 ){
 		AddRowToLog( "GetPviLicenceInfo()", result );
 	}
+
+	PviUnlink(LinkId);
 
 	return license.PviWorkState[0];
 }
