@@ -5,3 +5,7 @@ Additionaly it enables to log their values into CSV- Files.
 
 ![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
 ![Screenshot 2](https://github.com/hilch/brwatch/blob/master/screenshot2.PNG)
+
+# PVI
+brwatch needs PVI to run:
+https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI
