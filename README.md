@@ -3,5 +3,5 @@
 brwatch ist a small [B&amp;R](https://www.br-automation.com) PVI- based debugging tool for Microsoft Windows to watch process variables („PV“) on [B&amp;R] PLCs. 
 Additionaly it enables to log their values into CSV- Files.
 
-![Screenshot 1](https://github.com/hilch/brwatch/screenshot1.png)
-![Screenshot 2](https://github.com/hilch/brwatch/screenshot2.png)
+![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
+![Screenshot 2](https://github.com/hilch/brwatch/blob/master/screenshot2.PNG)
