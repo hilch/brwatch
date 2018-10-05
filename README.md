@@ -6,6 +6,13 @@ Additionaly it enables to log their values into CSV- Files.
 ![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
 ![Screenshot 2](https://github.com/hilch/brwatch/blob/master/screenshot2.PNG)
 
+# INA
+brwatch requires **INA** protocol enabled. 
+Currently **ANSL** is not supported.
+
 # PVI
-brwatch needs PVI to run:
-https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI
+brwatch needs [PVI](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
+Beware: if you do not own a PVI license **1TG0500.02** PVI will run for two hours only. After this period one must restart it.
+So do not blame brwatch for it :-)
+
+
