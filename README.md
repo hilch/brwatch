@@ -5,6 +5,7 @@ Additionaly it enables to log their values into CSV- Files.
 
 ![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
 ![Screenshot 2](https://github.com/hilch/brwatch/blob/master/screenshot2.PNG)
+![Video](https://github.com/hilch/brwatch/blob/master/how_to_use.gif)
 
 # INA
 brwatch requires **INA** protocol enabled. 
