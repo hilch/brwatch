@@ -1,0 +1,362 @@
+//
+#include "../include/resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+#include "commctrl.h"
+#include "richedit.h"
+#include "../include/main.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+DLG_ABOUT DIALOGEX 6, 18, 220, 120
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CENTER | DS_CONTEXTHELP |
+    WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "About BRWATCH"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    ICON            IDR_ICO_MAIN,IDR_ICO_MAIN,5,10,21,20,SS_CENTERIMAGE
+    LTEXT           "BRWATCH",IDC_STATIC,20,20,180,10
+    LTEXT           "https://github.com/hilch/brwatch", IDC_STATIC,20,30,180,10
+    LTEXT           "Statisch",IDC_STATIC_PVIVERSION,20,50,180,10
+//    LTEXT           "Version 0.0",IDR_STATIC_VERSION,20,30,180,10
+	LTEXT			"note: parts of this software from www.zlib.net", IDC_STATIC,20,60,180,10
+    LTEXT           "Statisch",IDS_ZLIB1,20,70,185,8
+    PUSHBUTTON      "OK",IDOK,20,90,45,15,BS_FLAT
+END
+
+DLG_WRITE_PVAR DIALOGEX 6, 18, 330, 123
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Dialog"
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           "????",IDR_STATIC_NAME,42,6,236,12
+    EDITTEXT        IDR_EDIT_VALUE,6,54,319,12,ES_AUTOHSCROLL
+    LTEXT           "Name:",IDC_STATIC,6,6,34,11
+    LTEXT           "Task:",IDC_STATIC,6,30,34,11
+    LTEXT           "CPU:",IDC_STATIC,6,42,34,11
+    LTEXT           "Type:",IDC_STATIC,6,18,34,11
+    LTEXT           "??????",IDC_STATIC_TASK,42,30,276,12
+    LTEXT           "?????",IDC_STATIC_CPU,42,42,282,12
+    LTEXT           "??????",IDC_STATIC_VARTYPE,41,18,283,8
+    LTEXT           "Year:",IDC_STATIC,6,72,17,8
+    LTEXT           "Month:",IDC_STATIC,78,72,21,12
+    LTEXT           "Day:",IDC_STATIC,156,72,15,8
+    EDITTEXT        IDC_EDIT_YEAR,24,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MONTH,102,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_DAY,198,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hour:",IDC_STATIC,6,90,17,8
+    LTEXT           "Minute:",IDC_STATIC,78,90,22,8
+    LTEXT           "Milliseconds:",IDC_STATIC,156,90,40,8
+    EDITTEXT        IDC_EDIT_HOUR,24,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MINUTE,102,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MILLISECONDS,198,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "OK",IDOK,274,106,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Apply",ID_APPLY,210,106,50,14,BS_CENTER | BS_FLAT
+END
+
+DLG_LOGGER_CONFIG DIALOGEX 6, 18, 242, 185
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE |
+    WS_CAPTION | WS_SYSMENU
+CAPTION "Logger Configuration"
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    PUSHBUTTON      "OK",IDOK,4,163,45,15,BS_FLAT
+    PUSHBUTTON      "Discard Changes",IDCANCEL,56,163,58,15,BS_FLAT
+    PUSHBUTTON      "...",IDR_BUTTON_FILESELECT,216,16,20,12
+    EDITTEXT        IDR_EDIT_MAXSIZE,120,32,40,12,ES_AUTOHSCROLL | ES_NUMBER,
+                    WS_EX_CLIENTEDGE
+    EDITTEXT        IDR_EDIT_CYCLETIME,120,48,40,12,ES_AUTOHSCROLL |
+                    ES_NUMBER
+    CONTROL         "compress the backup files",IDC_CHECK_ZIP,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,77,168,10
+    EDITTEXT        IDR_EDIT_FILENAME,11,16,200,12,ES_AUTOHSCROLL |
+                    ES_READONLY | NOT WS_TABSTOP
+    GROUPBOX        "Logging File",4004,4,4,236,90
+    LTEXT           "max. filesize (kBytes)",4002,11,32,105,12
+    EDITTEXT        IDR_EDIT_TIMESTAMP_CPU,10,107,224,12,ES_AUTOHSCROLL |
+                    ES_READONLY | NOT WS_TABSTOP
+    GROUPBOX        "CPU to get timestamp from",4006,4,96,236,31
+    LTEXT           "min. cycle time (ms)",4005,11,48,103,12
+    GROUPBOX        "Statistics",4007,4,128,236,31
+    EDITTEXT        IDR_EDIT_OBJECT_COUNT,120,139,44,12,ES_AUTOHSCROLL |
+                    ES_READONLY | NOT WS_TABSTOP
+    LTEXT           "count of logged objects:",4009,8,140,80,8
+    CONTROL         "write only when value change",IDC_CHECK_CHANGED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,62,222,13
+END
+
+DLG_SETTINGS DIALOGEX 0, 0, 480, 175
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
+    WS_SYSMENU
+CAPTION "Settings"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,154,50,14
+    PUSHBUTTON      "Don't save",IDCANCEL,66,154,50,14
+    EDITTEXT        IDC_EDIT1,7,7,466,141,ES_MULTILINE | ES_AUTOVSCROLL |
+                    ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
+END
+
+DLG_AXCONFIG DIALOGEX 0, 0, 304, 185
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
+    WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,164,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,68,164,50,14
+    EDITTEXT        IDC_EDIT1,32,54,37,15,ES_AUTOHSCROLL
+    LTEXT           "Statisch",IDR_STATIC_NAME,96,6,199,14
+    LTEXT           "Axis name:",IDC_STATIC,6,6,44,12
+    LTEXT           "name of data module:",IDC_STATIC,6,18,72,14
+    LTEXT           "Statisch",IDC_STATIC_MODULENAME,96,18,182,13
+END
+
+DLG_ETH_ADAPTERS DIALOGEX 0, 0, 425, 137
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTERMOUSE | WS_POPUP |
+    WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOOLWINDOW
+CAPTION "Available Ethernet Adapters"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,115,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,368,115,50,14
+    CONTROL         "",IDC_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL |
+                    LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER |
+                    WS_TABSTOP,7,7,411,104
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MNU_MAIN MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Load Watch File",            IDM_LOAD_WATCH_FILE
+        MENUITEM "&Save Watch File",            IDM_SAVE_WATCH_FILE
+ /*       MENUITEM "&Open Loggerfile",            ID_LOGGER_OPENLOGGERFILE*/
+        MENUITEM "&Unzip Loggerfile",           IDM_LOGGER_UNZIPLOGGERFILE
+    END
+    POPUP "PVI"
+    BEGIN
+        MENUITEM "PVI-&Objects",                IDM_STATUSPVIOBJEKTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Clear All Objects",          IDM_MNU_REFRESH
+    END
+    POPUP "&Logger"
+    BEGIN
+        MENUITEM "Logger &Configuration",       IDM_LOGGER_CONFIG
+        MENUITEM "Logger &Start",               IDM_LOGGER_START
+    END
+    POPUP "&Options"
+    BEGIN
+        POPUP "&Font"
+        BEGIN
+            MENUITEM "Select &New Font",            IDM_VIEW_SELECT_FONT
+            MENUITEM "Set &Default Font",           IDM_VIEW_SETDEFAULTFONT
+        END
+        MENUITEM "&Settings",                   IDM_OPTIONS_SETTINGS
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&About BRWATCH",              IDM_ABOUT
+    END
+END
+
+IDR_MNU_PLOT MENU
+BEGIN
+    MENUITEM "Trace",                       ID_PLOT_TRACE
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_ICO_MAIN            ICON                    "auge.ico"
+IDR_ICO_PLOT            ICON                    "plot.ico"
+IDR_ICO_PVI             ICON                    "pvi.ico"
+IDR_ICO_TASK            ICON                    "task.ico"
+IDR_ICO_STRUCT          ICON                    "struct.ico"
+IDR_ICO_DEVICE          ICON                    "device.ico"
+IDR_ICO_CPU             ICON                    "cpu.ico"
+IDR_ICO_VARIABLE        ICON                    "variable.ico"
+IDR_ICO_GLOBAL          ICON                    "global.ico"
+IDR_ICO_VARIABLE_I32    ICON                    "i32.ico"
+IDR_ICO_VARIABLE_U32    ICON                    "u32.ico"
+IDR_ICO_ARRAY           ICON                    "array.ico"
+IDR_ICO_VARIABLE_U8     ICON                    "u8.ico"
+IDR_ICO_VARIABLE_I8     ICON                    "i8.ico"
+IDR_ICO_VARIABLE_U16    ICON                    "u16.ico"
+IDR_ICO_VARIABLE_I16    ICON                    "i16.ico"
+IDR_ICO_VARIABLE_BOOL   ICON                    "boolean.ico"
+IDR_ICO_VARIABLE_STRING ICON                    "string.ico"
+IDR_ICO_VARIABLE_REAL   ICON                    "real.ico"
+IDR_ICO_VARIABLE_DATE_AND_TIME ICON                    "daten_and_time.ico"
+IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,0,0,0
+ PRODUCTVERSION 0,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "04070000"
+        BEGIN
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x407, 0
+    END
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE
+BEGIN
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""commctrl.h""\r\n"
+    "#include ""richedit.h""\r\n"
+    "#include ""main.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    DLG_ABOUT, DIALOG
+    BEGIN
+        RIGHTMARGIN, 249
+        BOTTOMMARGIN, 104
+    END
+
+    DLG_WRITE_PVAR, DIALOG
+    BEGIN
+        TOPMARGIN, 4
+    END
+
+    DLG_LOGGER_CONFIG, DIALOG
+    BEGIN
+        BOTTOMMARGIN, 178
+    END
+
+    DLG_SETTINGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 473
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 168
+    END
+
+    DLG_AXCONFIG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 297
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 178
+    END
+
+    DLG_ETH_ADAPTERS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 418
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 129
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DEFAULT_INI
+//
+
+IDR_DEFAULT_INI1        DEFAULT_INI             "default_brwatch.ini"
+#endif    // Deutsch (Deutschland) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

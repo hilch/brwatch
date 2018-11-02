@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="brwatch" />
+		<Option pch_mode="2" />
+		<Option compiler="mingw32" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/brwatch" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="mingw32" />
+				<Compiler>
+					<Add option="-g" />
+					<Add directory="include" />
+				</Compiler>
+				<ResourceCompiler>
+					<Add directory="resources" />
+				</ResourceCompiler>
+				<Linker>
+					<Add directory="libraries" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/brwatch" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="0" />
+				<Option compiler="mingw32" />
+				<Compiler>
+					<Add option="-Os" />
+					<Add option="-std=c99" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add option="-static-libgcc" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="include" />
+		</Compiler>
+		<Linker>
+			<Add library="libraries/PviCom.lib" />
+			<Add library="gdi32" />
+			<Add library="user32" />
+			<Add library="kernel32" />
+			<Add library="comctl32" />
+			<Add library="libraries/libnetapi32.a" />
+			<Add library="libraries/libwsock32.a" />
+			<Add library="libraries/libcomdlg32.a" />
+			<Add library="libraries/libiphlpapi.a" />
+			<Add library="libraries/libz.a" />
+			<Add directory="libraries" />
+		</Linker>
+		<Unit filename="include/PviCom.h" />
+		<Unit filename="include/PviCom_supp.h" />
+		<Unit filename="include/cpusearch.h" />
+		<Unit filename="include/iphlp.h" />
+		<Unit filename="include/logger.h" />
+		<Unit filename="include/main.h" />
+		<Unit filename="include/mylistview.h" />
+		<Unit filename="include/mytreeview.h" />
+		<Unit filename="include/ping.h" />
+		<Unit filename="include/pvi_interface.h" />
+		<Unit filename="include/resource.h" />
+		<Unit filename="include/settings.h" />
+		<Unit filename="include/stringtools.h" />
+		<Unit filename="include/zconf.h" />
+		<Unit filename="include/zip.h" />
+		<Unit filename="include/zlib.h" />
+		<Unit filename="resources/main.rc">
+			<Option compilerVar="WINDRES" />
+		</Unit>
+		<Unit filename="src/cpusearch.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_about.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_axtraceconfig.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_busy.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_settings.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_showpviobjects.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_writepvar.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/iphlp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/logger.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/mylistview.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/mytreeview.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/ping.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/pvi_interface.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/settings.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/stringtools.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/zip.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

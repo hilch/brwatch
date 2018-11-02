@@ -1,0 +1,3 @@
+
+
+void ListEthernetAdapters( void );
