@@ -16,4 +16,13 @@ brwatch needs [PVI](https://www.br-automation.com/en/downloads/#categories=Softw
 Beware: if you do not own a PVI license **1TG0500.02** PVI will run for two hours only. After this period one must restart it.
 So do not blame brwatch for it :-)
 
+# Development
+## Compiler
+   Mingw32 (32-Bit)
+   http://www.mingw.org/
+   
+## IDE
+   Code::Blocks
+   http://www.codeblocks.org/
+   
 
