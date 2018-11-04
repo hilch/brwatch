@@ -13,7 +13,7 @@ brwatch requires **INA** protocol enabled.
 Currently **ANSL** is not supported.
 
 # PVI
-brwatch needs [PVI](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
+brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
 
 Beware: if you do not own a PVI license **1TG0500.02** PVI will run for two hours only. After this period brwatch will stop working and PVI-Manager must be stopped and restarted again. So, do not blame brwatch for that and contact your local B&R office instead.
 
