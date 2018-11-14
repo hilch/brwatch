@@ -1,58 +1,58 @@
 //
-#include "../include/resource.h"
-
-#define APSTUDIO_READONLY_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 2 resource.
-//
-#define APSTUDIO_HIDDEN_SYMBOLS
 #include "windows.h"
-#undef APSTUDIO_HIDDEN_SYMBOLS
 #include "commctrl.h"
 #include "richedit.h"
-#include "../include/main.h"
+#include "../include/resource.h"
 
-/////////////////////////////////////////////////////////////////////////////
-#undef APSTUDIO_READONLY_SYMBOLS
-
-/////////////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
-#ifdef _WIN32
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-#pragma code_page(1252)
-#endif //_WIN32
 
-/////////////////////////////////////////////////////////////////////////////
 //
-// Dialog
+// Dialogs
 //
-
 DLG_ABOUT DIALOGEX 6, 18, 220, 120
 STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CENTER | DS_CONTEXTHELP |
     WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "About BRWATCH"
-FONT 8, "MS Sans Serif", 0, 0, 0x1
+EXSTYLE WS_EX_DLGMODALFRAME
+FONT 10, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     ICON            IDR_ICO_MAIN,IDR_ICO_MAIN,5,10,21,20,SS_CENTERIMAGE
-    LTEXT           "BRWATCH",IDC_STATIC,20,20,180,10
+    LTEXT           "BRWATCHVxxx",IDC_STATIC_VERSION,20,20,180,10
     LTEXT           "https://github.com/hilch/brwatch", IDC_STATIC,20,30,180,10
     LTEXT           "Statisch",IDC_STATIC_PVIVERSION,20,50,180,10
-//    LTEXT           "Version 0.0",IDR_STATIC_VERSION,20,30,180,10
 	LTEXT			"note: parts of this software from www.zlib.net", IDC_STATIC,20,60,180,10
     LTEXT           "Statisch",IDS_ZLIB1,20,70,185,8
-    PUSHBUTTON      "OK",IDOK,20,90,45,15,BS_FLAT
+    PUSHBUTTON      "OK",IDOK,20,100,45,15,BS_FLAT
 END
 
-DLG_WRITE_PVAR DIALOGEX 6, 18, 330, 123
+DLG_WRITE_NUMBERS DIALOGEX 6, 30, 250, 100
 STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
     WS_VISIBLE | WS_CAPTION | WS_SYSMENU
-CAPTION "Dialog"
+CAPTION "Edit Value"
+EXSTYLE WS_EX_DLGMODALFRAME
 FONT 10, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     LTEXT           "????",IDR_STATIC_NAME,42,6,236,12
-    EDITTEXT        IDR_EDIT_VALUE,6,54,319,12,ES_AUTOHSCROLL
+    LTEXT           "Name:",IDC_STATIC,6,6,34,11
+    LTEXT           "Task:",IDC_STATIC,6,30,34,11
+    LTEXT           "CPU:",IDC_STATIC,6,42,34,11
+    LTEXT           "Type:",IDC_STATIC,6,18,34,11
+    LTEXT           "??????",IDC_STATIC_TASK,42,30,276,12
+    LTEXT           "?????",IDC_STATIC_CPU,42,42,240,12
+    LTEXT           "??????",IDC_STATIC_VARTYPE,41,18,240,8
+	EDITTEXT        IDR_EDIT_VALUE,6,54,100,12,ES_AUTOHSCROLL | ES_RIGHT | ES_NUMBER
+    PUSHBUTTON      "OK",IDOK,6,80,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Apply",ID_APPLY,66,80,50,14,BS_CENTER | BS_FLAT
+END
+
+DLG_WRITE_STRINGS DIALOGEX 6, 30, 330, 150
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUP |
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Edit Value"
+EXSTYLE WS_EX_DLGMODALFRAME
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           "????",IDR_STATIC_NAME,42,6,236,12
     LTEXT           "Name:",IDC_STATIC,6,6,34,11
     LTEXT           "Task:",IDC_STATIC,6,30,34,11
     LTEXT           "CPU:",IDC_STATIC,6,42,34,11
@@ -60,26 +60,89 @@ BEGIN
     LTEXT           "??????",IDC_STATIC_TASK,42,30,276,12
     LTEXT           "?????",IDC_STATIC_CPU,42,42,282,12
     LTEXT           "??????",IDC_STATIC_VARTYPE,41,18,283,8
-    LTEXT           "Year:",IDC_STATIC,6,72,17,8
-    LTEXT           "Month:",IDC_STATIC,78,72,21,12
-    LTEXT           "Day:",IDC_STATIC,156,72,15,8
-    EDITTEXT        IDC_EDIT_YEAR,24,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    EDITTEXT        IDC_EDIT_MONTH,102,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    EDITTEXT        IDC_EDIT_DAY,198,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Hour:",IDC_STATIC,6,90,17,8
-    LTEXT           "Minute:",IDC_STATIC,78,90,22,8
-    LTEXT           "Milliseconds:",IDC_STATIC,156,90,40,8
-    EDITTEXT        IDC_EDIT_HOUR,24,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    EDITTEXT        IDC_EDIT_MINUTE,102,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    EDITTEXT        IDC_EDIT_MILLISECONDS,198,90,40,12,ES_AUTOHSCROLL | ES_NUMBER
-    PUSHBUTTON      "OK",IDOK,274,106,50,14,BS_CENTER | BS_FLAT
-    PUSHBUTTON      "Apply",ID_APPLY,210,106,50,14,BS_CENTER | BS_FLAT
+    EDITTEXT        IDR_EDIT_VALUE,6,54,319,60, WS_VSCROLL | WS_HSCROLL | ES_AUTOHSCROLL | ES_MULTILINE
+    PUSHBUTTON      "OK",IDOK,6,130,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Apply",ID_APPLY,66,130,50,14,BS_CENTER | BS_FLAT
 END
+
+
+DLG_WRITE_DATE_AND_TIME DIALOGEX 6, 30, 300, 130
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Edit Value"
+EXSTYLE WS_EX_DLGMODALFRAME
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           "????",IDR_STATIC_NAME,42,6,236,12
+    LTEXT           "Name:",IDC_STATIC,6,6,34,11
+    LTEXT           "Task:",IDC_STATIC,6,30,34,11
+    LTEXT           "CPU:",IDC_STATIC,6,42,34,11
+    LTEXT           "Type:",IDC_STATIC,6,18,34,11
+    LTEXT           "??????",IDC_STATIC_TASK,42,30,276,12
+    LTEXT           "?????",IDC_STATIC_CPU,42,42,282,12
+    LTEXT           "??????",IDC_STATIC_VARTYPE,41,18,283,8
+    LTEXT           "Year:",IDC_STATIC,6,54,17,8
+    LTEXT           "Month:",IDC_STATIC,78,54,21,12
+    LTEXT           "Day:",IDC_STATIC,156,54,15,8
+    EDITTEXT        IDC_EDIT_YEAR,24,54,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MONTH,102,54,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_DAY,198,54,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hour:",IDC_STATIC,6,72,17,8
+    LTEXT           "Minute:",IDC_STATIC,78,72,22,8
+    LTEXT           "Milliseconds:",IDC_STATIC,156,72,40,8
+    EDITTEXT        IDC_EDIT_HOUR,24,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MINUTE,102,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    EDITTEXT        IDC_EDIT_MILLISECONDS,198,72,40,12,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "OK",IDOK,6,105,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Apply",ID_APPLY,66,105,50,14,BS_CENTER | BS_FLAT
+    LTEXT           "????",IDC_STATUS_MESSAGE,6,90,250,12
+END
+
+
+DLG_EDIT_CPU DIALOGEX 6, 30, 250, 100
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Edit CPU"
+EXSTYLE WS_EX_DLGMODALFRAME
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           "CPU:",IDC_STATIC,6,6,34,11
+    LTEXT           "?????",IDC_STATIC_CPU,42,6,240,12
+    LTEXT           "booted by:",IDC_STATIC,6,15,34,11
+    LTEXT           "??????",IDR_STATIC_CPU_STATUS,42,15,276,12
+    PUSHBUTTON      "STOP",IDR_BUTTON_STOP,6,60,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "WARMSTART",IDR_BUTTON_WARMSTART,66,60,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "COLDSTART",IDR_BUTTON_COLDSTART,126,60,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "DIAG",IDR_BUTTON_DIAGNOSIS,186,60,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Cancel",IDCANCEL,6,80,50,14,BS_CENTER | BS_FLAT
+END
+
+
+DLG_EDIT_TASK DIALOGEX 6, 30, 265, 80
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Edit Task"
+EXSTYLE WS_EX_DLGMODALFRAME
+FONT 10, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           "TASK:",IDC_STATIC,6,6,34,11
+    LTEXT           "?????",IDC_STATIC_TASK,42,6,240,12
+    LTEXT           "Status:",IDC_STATIC,6,15,34,11
+    LTEXT           "??????",IDR_STATIC_TASK_STATUS,42,15,276,12
+    PUSHBUTTON      "STOP",IDR_BUTTON_STOP,6,30,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "RESUME",IDR_BUTTON_RESUME,66,30,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "START",IDR_BUTTON_START,126,30,50,14,BS_CENTER | BS_FLAT
+    EDITTEXT        IDR_EDIT_NUMBER_OF_CYCLES,186,30,50,14,ES_RIGHT | ES_NUMBER
+    LTEXT           "Cycles",IDC_STATIC,240,33,34,14
+    PUSHBUTTON      "OK",IDOK,6,60,50,14,BS_CENTER | BS_FLAT
+END
+
 
 DLG_LOGGER_CONFIG DIALOGEX 6, 18, 242, 185
 STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE |
     WS_CAPTION | WS_SYSMENU
 CAPTION "Logger Configuration"
+EXSTYLE WS_EX_DLGMODALFRAME
 FONT 10, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     PUSHBUTTON      "OK",IDOK,4,163,45,15,BS_FLAT
@@ -111,45 +174,15 @@ DLG_SETTINGS DIALOGEX 0, 0, 480, 175
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
     WS_SYSMENU
 CAPTION "Settings"
+EXSTYLE WS_EX_DLGMODALFRAME
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,7,154,50,14
-    PUSHBUTTON      "Don't save",IDCANCEL,66,154,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,66,154,50,14
     EDITTEXT        IDC_EDIT1,7,7,466,141,ES_MULTILINE | ES_AUTOVSCROLL |
                     ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
 END
 
-DLG_AXCONFIG DIALOGEX 0, 0, 304, 185
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
-    WS_SYSMENU
-CAPTION "Dialog"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
-BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,7,164,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,68,164,50,14
-    EDITTEXT        IDC_EDIT1,32,54,37,15,ES_AUTOHSCROLL
-    LTEXT           "Statisch",IDR_STATIC_NAME,96,6,199,14
-    LTEXT           "Axis name:",IDC_STATIC,6,6,44,12
-    LTEXT           "name of data module:",IDC_STATIC,6,18,72,14
-    LTEXT           "Statisch",IDC_STATIC_MODULENAME,96,18,182,13
-END
-
-DLG_ETH_ADAPTERS DIALOGEX 0, 0, 425, 137
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTERMOUSE | WS_POPUP |
-    WS_CAPTION | WS_SYSMENU
-EXSTYLE WS_EX_TOOLWINDOW
-CAPTION "Available Ethernet Adapters"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
-BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,7,115,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,368,115,50,14
-    CONTROL         "",IDC_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL |
-                    LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER |
-                    WS_TABSTOP,7,7,411,104
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
 //
 // Menu
 //
@@ -160,8 +193,9 @@ BEGIN
     BEGIN
         MENUITEM "&Load Watch File",            IDM_LOAD_WATCH_FILE
         MENUITEM "&Save Watch File",            IDM_SAVE_WATCH_FILE
- /*       MENUITEM "&Open Loggerfile",            ID_LOGGER_OPENLOGGERFILE*/
         MENUITEM "&Unzip Loggerfile",           IDM_LOGGER_UNZIPLOGGERFILE
+        MENUITEM SEPARATOR
+        MENUITEM "&Quit",                       IDM_QUIT
     END
     POPUP "PVI"
     BEGIN
@@ -189,15 +223,20 @@ BEGIN
     END
 END
 
-IDR_MNU_PLOT MENU
-BEGIN
-    MENUITEM "Trace",                       ID_PLOT_TRACE
-END
 
-
-/////////////////////////////////////////////////////////////////////////////
 //
-// Icon
+// Strings
+//
+
+
+//
+// DEFAULT_INI
+//
+IDR_DEFAULT_INI1        DEFAULT_INI             "default_brwatch.ini"
+
+
+//
+// Icons
 //
 
 // Icon with lowest ID value placed first to ensure application icon
@@ -221,17 +260,16 @@ IDR_ICO_VARIABLE_I16    ICON                    "i16.ico"
 IDR_ICO_VARIABLE_BOOL   ICON                    "boolean.ico"
 IDR_ICO_VARIABLE_STRING ICON                    "string.ico"
 IDR_ICO_VARIABLE_REAL   ICON                    "real.ico"
-IDR_ICO_VARIABLE_DATE_AND_TIME ICON                    "daten_and_time.ico"
+IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "daten_and_time.ico"
 IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
 
-/////////////////////////////////////////////////////////////////////////////
 //
 // Version
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,0,0,0
- PRODUCTVERSION 0,0,0,0
+ FILEVERSION 1,1,0,0
+ PRODUCTVERSION 1,1,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -246,8 +284,8 @@ BEGIN
     BEGIN
         BLOCK "04070000"
         BEGIN
-            VALUE "FileVersion", "1.0.0.0"
-            VALUE "ProductVersion", "1.0.0.0"
+            VALUE "FileVersion", "1.1.0.0"
+            VALUE "ProductVersion", "1.1.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -257,106 +295,7 @@ BEGIN
 END
 
 
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE
-BEGIN
-    "resource.h\0"
-END
-
-2 TEXTINCLUDE
-BEGIN
-    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
-    "#include ""windows.h""\r\n"
-    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
-    "#include ""commctrl.h""\r\n"
-    "#include ""richedit.h""\r\n"
-    "#include ""main.h""\r\n"
-    "\0"
-END
-
-3 TEXTINCLUDE
-BEGIN
-    "\r\n"
-    "\0"
-END
-
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO
-BEGIN
-    DLG_ABOUT, DIALOG
-    BEGIN
-        RIGHTMARGIN, 249
-        BOTTOMMARGIN, 104
-    END
-
-    DLG_WRITE_PVAR, DIALOG
-    BEGIN
-        TOPMARGIN, 4
-    END
-
-    DLG_LOGGER_CONFIG, DIALOG
-    BEGIN
-        BOTTOMMARGIN, 178
-    END
-
-    DLG_SETTINGS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 473
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 168
-    END
-
-    DLG_AXCONFIG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 297
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 178
-    END
-
-    DLG_ETH_ADAPTERS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 418
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 129
-    END
-END
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DEFAULT_INI
-//
-
-IDR_DEFAULT_INI1        DEFAULT_INI             "default_brwatch.ini"
-#endif    // Deutsch (Deutschland) resources
-/////////////////////////////////////////////////////////////////////////////
 
 
 
-#ifndef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 3 resource.
-//
-
-
-/////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
 

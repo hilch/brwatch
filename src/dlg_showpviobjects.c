@@ -4,19 +4,16 @@
 #include "resource.h"
 
 
-/* globale Variable */
-
 static HWND hWndListView;
-
 /* Prototypen */
-static void InitListView(HWND hlistview);
-static void FillListView(HWND hlistview);
+static void ShowPviObjectsInitListView(HWND hlistview);
+static void ShowPviObjectsFillListView(HWND hlistview);
 LRESULT CALLBACK  ShowPviObjectsDlgProc(HWND, UINT, WPARAM, LPARAM);
 
 
-void ShowPviObjects( void )
+void ShowWindowPviObjects( void )
 {
-    HWND hWndMainWindow = GetMainWindow();
+    HWND hWndMainWindow = MainWindowGetHandle();
     RECT rect;
 
     InitCommonControls();
@@ -26,12 +23,12 @@ void ShowPviObjects( void )
                                  rect.right -640, rect.bottom-480, 640, 480,
                                  hWndMainWindow, 0, (HINSTANCE)((LONG_PTR) GetWindowLongPtr(hWndMainWindow, GWLP_HINSTANCE)), NULL);
     ShowWindow( hWndListView, SW_SHOW  );
-    InitListView(hWndListView);
-    FillListView(hWndListView);
+    ShowPviObjectsInitListView(hWndListView);
+    ShowPviObjectsFillListView(hWndListView);
 }
 
 
-static void InitListView(HWND hlistview)
+static void ShowPviObjectsInitListView(HWND hlistview)
 {
     LVCOLUMN lvcolumn;
 
@@ -64,7 +61,7 @@ static void InitListView(HWND hlistview)
 
 
 
-static void FillListView(HWND hlistview)
+static void ShowPviObjectsFillListView(HWND hlistview)
 {
     LVITEM lvitem;
     int i;

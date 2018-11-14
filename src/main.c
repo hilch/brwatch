@@ -1,5 +1,6 @@
 
 #define WIN32_LEAN_AND_MEAN  /* speed up compilations */
+
 #include "main.h"
 #include "mytreeview.h"
 #include "mylistview.h"
@@ -8,6 +9,10 @@
 #include "logger.h"
 #include "zip.h"
 #include "settings.h"
+#include "dlg_writepar.h"
+#include "dlg_about.h"
+#include "dlg_showpviobjects.h"
+#include "resource.h"
 #include <wingdi.h>
 
 /** Prototypes **************************************************************/
@@ -18,33 +23,9 @@ static void PviObjectsValid(void);
 static void PviObjectErrorChanged( PVIOBJECT *object, int errcode );
 //static void PviObjectDataChanged(PVIOBJECT *object, char* value );
 //static void PviObjectStatusChanged( PVIOBJECT *object, char* status );
-static void TreeViewItemSelected( HTREEITEM hti, LPARAM lParam );
-static void TreeViewBeginDragging( HTREEITEM hti, LPARAM lParam );
-
-static void TreeViewDblClick( HTREEITEM hti, LPARAM lParam );
-static void TreeViewRClick( HTREEITEM hti, LPARAM lParam );
-static void InsertInWatchList( PVIOBJECT *object);
-
-static void ListViewKeydown( WORD vkey );
-static void ListViewDblClick( LPNMLISTVIEW lpnm );
-static void ListViewRClick( LPNMLISTVIEW lpnm );
-static void ListViewActivate( LPNMLISTVIEW lpnm );
-static void ListViewBeginDragging( int iItem );
-static void ListViewUpdateValue( PVIOBJECT *object );
 
 static void LoadWatchFile( char *filename );
 static void SaveWatchFile( char *filename );
-
-extern LRESULT CALLBACK  WritePvarDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-/* externe Funktionen */
-extern LRESULT WINAPI AboutDlgProc(HWND, UINT, WPARAM, LPARAM);
-extern LRESULT WINAPI SelectDeviceDlgProc(HWND, UINT, WPARAM, LPARAM);
-extern LRESULT WINAPI ShowPviObjectsDlgProc(HWND, UINT, WPARAM, LPARAM);
-extern LRESULT WINAPI SettingsDlgProc(HWND, UINT, WPARAM, LPARAM);
-extern LRESULT WINAPI ConfigAxTraceDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-extern LRESULT WINAPI EthAdaptersDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-extern void ShowPviObjects( void );
 
 
 /** Global variables ********************************************************/
@@ -53,163 +34,16 @@ extern void ShowPviObjects( void );
 static char application_path[MAX_PATH];
 
 
-static HINSTANCE ghInstance;
-static HWND hMainWindow;
 
-static PVIOBJECT *dragged_object;
-static PVIOBJECT *selected_object;
-static HTREEITEM hselected_treeitem;
+
+
+
+//static HTREEITEM hselected_treeitem;
 
 static int	drop_target_index;
 static int instance_counter;
 
 static NOTIFYICONDATA notifyicondata;
-static MYTREEVIEWPARAM mytreeviewparam;
-static MYLISTVIEWPARAM mylistviewparam;
-
-
-static  WORD images[] =
-{
-    IDR_ICO_DEVICE,
-    IDR_ICO_CPU,
-    IDR_ICO_GLOBAL,
-    IDR_ICO_TASK,
-    IDR_ICO_VARIABLE,
-    IDR_ICO_STRUCT,
-    IDR_ICO_ARRAY,
-    IDR_ICO_VARIABLE_U32,
-    IDR_ICO_VARIABLE_I32,
-    IDR_ICO_VARIABLE_U16,
-    IDR_ICO_VARIABLE_I16,
-    IDR_ICO_VARIABLE_U8,
-    IDR_ICO_VARIABLE_I8,
-    IDR_ICO_VARIABLE_BOOL,
-    IDR_ICO_VARIABLE_REAL,
-    IDR_ICO_VARIABLE_STRING,
-    IDR_ICO_VARIABLE_TIME,
-    IDR_ICO_VARIABLE_DATE_AND_TIME,
-    0
-};
-
-
-/* ============================================================================================ */
-
-static HIMAGELIST CreateImageList(void)
-{
-    HIMAGELIST himl;  // handle to image list
-    HICON hicon;
-    int i;
-
-    // Imagelist erzeugen
-    if ((himl = ImageList_Create( 16, 16, FALSE, sizeof(images)/sizeof(char*), 0)) == NULL)
-        return NULL;
-
-    // Images hinzufügen
-    i = 0;
-    while( images[i] != 0 )
-    {
-        hicon = LoadImage( ghInstance, MAKEINTRESOURCE(images[i]), IMAGE_ICON, 0,0, LR_DEFAULTCOLOR  | LR_LOADTRANSPARENT | LR_VGACOLOR  );
-        ImageList_AddIcon( himl, hicon );
-        DestroyIcon( hicon );
-        ++i;
-    }
-
-    return(himl);
-
-}
-
-static int GetImageIndex( WORD resource )
-{
-    int i = 0;
-
-    while( images[i] != 0 )
-    {
-        if( images[i] == resource )
-            return i;
-        ++i;
-    }
-    return 0;
-}
-
-
-int GetPviObjectImage( PVIOBJECT *object )
-{
-    int imageindex=0;
-
-    if( object == NULL )
-        return 0;
-
-    switch( object->type )
-    {
-    case POBJ_PVAR:
-        if( object->ex.pv.dimension > 1 )
-        {
-            imageindex = GetImageIndex(IDR_ICO_ARRAY);
-            break;
-        }
-
-        switch( object->ex.pv.type )
-        {
-        case BR_STRUCT:
-            imageindex = GetImageIndex(IDR_ICO_STRUCT);
-            break;
-        case BR_UDINT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_U32);
-            break;
-        case BR_DINT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_I32);
-            break;
-        case BR_UINT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_U16);
-            break;
-        case BR_INT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_I16);
-            break;
-        case BR_USINT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_U8);
-            break;
-        case BR_SINT:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_I8);
-            break;
-        case BR_BOOL:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_BOOL);
-            break;
-        case BR_REAL:
-        case BR_LREAL:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_REAL);
-            break;
-        case BR_STRING:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_STRING);
-            break;
-        case BR_TIME:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_TIME);
-            break;
-        case BR_DATI:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE_DATE_AND_TIME);
-            break;
-        default:
-            imageindex = GetImageIndex(IDR_ICO_VARIABLE);
-            break;
-        }
-        break;
-
-    case POBJ_CPU:
-        imageindex = GetImageIndex(IDR_ICO_CPU);
-        break;
-
-    case POBJ_DEVICE:
-        imageindex = GetImageIndex(IDR_ICO_PVI);
-        break;
-
-    case POBJ_TASK:
-        imageindex = GetImageIndex(IDR_ICO_TASK);
-        break;
-
-    default:
-        break;
-    }
-    return imageindex;
-}
 
 
 
@@ -220,9 +54,9 @@ char *GetApplicationPath(void)
     return application_path;
 }
 
-HWND GetMainWindow( void )
+HWND MainWindowGetHandle( void )
 {
-    return( hMainWindow );
+    return( g_hwndMainWindow );
 }
 /* ============================================================================================== */
 
@@ -257,6 +91,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     MSG msg;
     char windowname[20];
 
+
+    HMODULE m_user32Dll = LoadLibrary("User32.dll");
+    if(m_user32Dll) {
+        FARPROC pFunc = GetProcAddress(m_user32Dll, "SetProcessDPIAware");
+        if(pFunc) {
+            pFunc();
+        }
+        FreeLibrary(m_user32Dll);
+        m_user32Dll = NULL;
+    }
+
     // Pfad der Applikation speichern
     if (GetCurrentDirectory(sizeof(application_path), application_path))
     {
@@ -267,25 +112,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return -1;
     }
 
-    InitializeSettings(); // ggf. Default- Ini kreieren
+    SettingsInitialize(); // ggf. Default- Ini kreieren
 
-
-
-
-    // Instanzen zählen
+    // instance counter
     instance_counter = 1;
     EnumWindows( EnumWindowsProc, 0 );
 
-    //StringCbPrintf( windowname, sizeof(windowname),  APPLICATION_NAME " No.%u", instance_counter );
-    sprintf( windowname, APPLICATION_NAME " No.%u", instance_counter );
+    sprintf( windowname, APPLICATION_NAME " {%u. instance}", instance_counter );
 
-
-    //PVICOM_DllMain( hInstance , DLL_PROCESS_ATTACH, 0);
     InitCommonControls();
 
-    //PlotInit(hInstance); // Initialisieren der Plot- Funktion
-
-    ghInstance = hInstance;
+    g_hInstance = hInstance;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = (WNDPROC)WndProc;
@@ -302,30 +139,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     if (!RegisterClass(&wc))
         return 0;
 
-    hMainWindow = CreateWindow(_T("brwatchClass"), windowname, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
-    if (!hMainWindow)
+    g_hwndMainWindow = CreateWindow(_T("brwatchClass"), windowname, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+    if (!g_hwndMainWindow)
         return 0;
-    ShowWindow(hMainWindow, nCmdShow);
-    UpdateWindow(hMainWindow);
+    ShowWindow(g_hwndMainWindow, nCmdShow);
+    UpdateWindow(g_hwndMainWindow);
 
 
-    // Notify
+    // Notify area
     memset( &notifyicondata, 0, sizeof(notifyicondata) );
     notifyicondata.cbSize = sizeof(notifyicondata);
-    notifyicondata.hWnd = hMainWindow;
+    notifyicondata.hWnd = g_hwndMainWindow;
     strcpy( notifyicondata.szTip, windowname );
     strcat( notifyicondata.szTip, " - Click here to size up" );
     notifyicondata.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_ICO_MAIN));
     notifyicondata.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     notifyicondata.uCallbackMessage = NOTIFY_ICON_MESSAGE;
 
-
-
-    // Callback- Funktionen für PVI- Interface setzen
+    // set callback functions for PVI
     pvi_interface_notify.cbobjects_valid = PviObjectsValid;
     pvi_interface_notify.cberror_changed = PviObjectErrorChanged;
-    pvi_interface_notify.cbdata_changed = ListViewUpdateValue;
-
+    pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
 
 
     while (GetMessage(&msg, NULL, 0, 0))
@@ -335,7 +169,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     StopPvi();
-    //PVICOM_DllMain( hInstance , DLL_PROCESS_DETACH, 0);
     return (int) msg.wParam;
 }
 
@@ -365,20 +198,20 @@ static void PviObjectsValid(void)
         object = object->next;
         if (object->type == POBJ_DEVICE)
         {
-            AddItemToMyTreeView(&mytreeviewparam, TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
+            MyTreeViewAddItem(&mytreeviewparam, TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
         }
     }
 
-    // war der Logger vor dem letzten Beenden aktiv, so wird er automatisch gestartet
-    if( GetPrivateProfileInt( "General", "LoggerActive", 0, GetIniFile() ) )  // war Logger aktiv ?
+    // if logger was active when program ended it will be started again.
+    if( GetPrivateProfileInt( "General", "LoggerActive", 0, SettingsGetFileName() ) )  // was logger active ?
     {
         strcpy( logger_watch_file, GetApplicationPath() );
         strcat( logger_watch_file, "\\_logger.wtc" );
         LoadWatchFile( logger_watch_file );
         Logger();
-        SendMessage( GetMainWindow(), NOTIFY_LOGGER_STATUS, 0, 0 );
+        SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
         Shell_NotifyIcon(NIM_ADD, &notifyicondata );
-        ShowWindow( hMainWindow, SW_HIDE );
+        ShowWindow( g_hwndMainWindow, SW_HIDE );
     }
 }
 
@@ -432,507 +265,9 @@ static void PviObjectErrorChanged( PVIOBJECT *object, int errcode )
         }
         ListView_SetItemText( mylistviewparam.hwndLV, index, 3, errtext );
     }
-
-
-
-
 }
 
 
-
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: TreeViewInsertChildObjects
- Created  : Thu Mar  9 11:53:17 2006
- Modified : Thu Mar  9 11:53:17 2006
-
- Synopsys : holt die Kinder des Objektes aus der Liste und trägt sie im
-            TreeView ein
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent )
-{
-    PVIOBJECT *child;
-    int imageindex;
-    TVITEM tvitem;
-
-    if( parent != NULL )
-    {
-
-        ExpandPviObject(parent);
-
-        // Nach dem Expandieren stehen evtl erweiterte Informationen zum Elternobject zur Verfügung
-        if( parent->type == POBJ_CPU )
-        {
-            char tempstring[256];
-            sprintf( tempstring, "%s %s %s", parent->ex.cpu.cputype, parent->ex.cpu.arversion, parent->descriptor );
-            memset( &tvitem, 0, sizeof(tvitem) );
-            tvitem.hItem = hti;
-            tvitem.mask = TVIF_TEXT;
-            tvitem.pszText = tempstring;
-            TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
-        }
-        else if( parent->type == POBJ_PVAR )
-        {
-            char tempstring[256];
-            if( parent->ex.pv.type == BR_STRUCT )
-            {
-                if( parent->ex.pv.dimension > 1 )   // Struktur- Arrays
-                {
-                    sprintf( tempstring, "%s   :%s[%u]",parent->descriptor, parent->ex.pv.pdatatype, parent->ex.pv.dimension );
-                }
-                else
-                {
-                    sprintf( tempstring, "%s   :%s",parent->descriptor, parent->ex.pv.pdatatype );
-                }
-                memset( &tvitem, 0, sizeof(tvitem) );
-                tvitem.hItem = hti;
-                tvitem.mask = TVIF_TEXT;
-                tvitem.pszText = tempstring;
-                TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
-            }
-            else
-            {
-                if( parent->ex.pv.dimension > 1 )   // Arrays von Basistypen
-                {
-                    sprintf( tempstring, "%s   :%s[%u]",parent->descriptor, parent->ex.pv.pdatatype, parent->ex.pv.dimension );
-                    memset( &tvitem, 0, sizeof(tvitem) );
-                    tvitem.hItem = hti;
-                    tvitem.mask = TVIF_TEXT;
-                    tvitem.pszText = tempstring;
-                    TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
-                }
-            }
-        }
-
-        child = FindPviChildObject( parent, TRUE );
-        while( child != NULL )
-        {
-            char tempstring[256];
-
-            switch( parent->type )
-            {
-            case POBJ_PVAR:
-                if( parent->ex.pv.type == BR_STRUCT && parent->ex.pv.dimension == 1)
-                {
-                    strcpy( tempstring, child->descriptor + strlen(parent->descriptor) + 1);
-                }
-                else
-                {
-                    strcpy( tempstring, child->descriptor );
-                }
-                break;
-
-            default:
-                strcpy( tempstring, child->descriptor );
-                break;
-
-            }
-
-            imageindex = GetPviObjectImage( child );
-
-            AddItemToMyTreeView( &mytreeviewparam, hti, tempstring, (LPARAM) child->name, imageindex );
-            child = FindPviChildObject( parent, FALSE );
-        } /* End while()*/
-    }
-
-}
-
-/* alle Kinder löschen */
-static void TreeViewDeleteAllChilds( HTREEITEM hti )
-{
-    HTREEITEM hChild;
-    HTREEITEM hSibling;
-
-    hChild = TreeView_GetChild( mytreeviewparam.hwndTV, hti );
-    while( hChild != NULL )
-    {
-        hSibling = TreeView_GetNextSibling( mytreeviewparam.hwndTV, hChild );
-        TreeView_DeleteItem( mytreeviewparam.hwndTV, hChild );
-        hChild = hSibling;
-    }
-}
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: TreeViewItemSelected
- Created  : Mon Feb 20 15:35:09 2006
- Modified : Mon Feb 20 15:35:09 2006
-
- Synopsys : ein Element im TreeView wurde angeklickt
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-
-static void TreeViewItemSelected( HTREEITEM hti, LPARAM lParam )
-{
-    PVIOBJECT *parent;  // das angeklickte Objekte ist parent
-    HCURSOR oldcursor;
-
-    if( TreeView_GetChild( mytreeviewparam.hwndTV, hti ) == NULL )  // noch nix eingelesen
-    {
-        parent = FindPviObjectByName( (char*) lParam );
-        if( parent != NULL )
-        {
-            if( parent->error == 0 )
-            {
-                oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
-                TreeViewInsertChildObjects( hti, parent );
-                SetCursor(oldcursor);
-            }
-        }
-    }
-}
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: TreeViewBeginDragging
- Created  : Mon Feb 20 15:35:40 2006
- Modified : Mon Feb 20 15:35:40 2006
-
- Synopsys : noch nicht :-(
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void TreeViewBeginDragging( HTREEITEM hti, LPARAM lParam )
-{
-    HIMAGELIST himl;
-
-    TreeView_Select( mytreeviewparam.hwndTV, hti, TVGN_DROPHILITE ); // nur wg. Optik
-
-    himl = TreeView_CreateDragImage( mytreeviewparam.hwndTV, hti);
-    ImageList_BeginDrag(himl, 0, 0, 0);
-    // start drag effect
-    ImageList_DragEnter(hMainWindow,0,0);
-    SetCapture(hMainWindow);
-
-    dragged_object = FindPviObjectByName( (char*) lParam);
-}
-
-
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: TreeViewDblClick
- Created  : Mon Feb 20 15:36:29 2006
- Modified : Mon Feb 20 15:36:29 2006
-
- Synopsys : ein Element im TreeView wurde doppelt geklickt
-
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-static void TreeViewDblClick(HTREEITEM hti, LPARAM lParam)
-{
-    PVIOBJECT *object;
-    object = FindPviObjectByName( (char*) lParam );
-    if( object != NULL )
-    {
-        object->watchsort = ListView_GetItemCount( mylistviewparam.hwndLV );
-        InsertInWatchList( object);
-    }
-}
-
-
-/* TreeView, rechte Maustaste */
-static void TreeViewRClick(HTREEITEM hti, LPARAM lParam)
-{
-    PVIOBJECT *object;
-    RECT rect_window;
-    RECT rect_item;
-    LPRECT lprect_item = &rect_item;
-    HCURSOR hcursor;
-    unsigned long broadcast;
-
-    if( GetWindowRect( mytreeviewparam.hwndTV, &rect_window ) )
-    {
-        if( TreeView_GetItemRect( mytreeviewparam.hwndTV, hti, lprect_item, TRUE ) )
-        {
-
-            object = FindPviObjectByName( (char*) lParam );
-            if( object != NULL )
-            {
-                switch( object->type )
-                {
-                case POBJ_DEVICE:
-                    if( strstr( strupr(object->descriptor), "TCPIP" ) )
-                    {
-                        selected_object = object;
-                        hselected_treeitem = hti;
-
-                        DialogBoxParam( ghInstance, MAKEINTRESOURCE(DLG_ETH_ADAPTERS), GetMainWindow(), (DLGPROC) EthAdaptersDlgProc, (LPARAM) &broadcast );
-                        if( broadcast == 0 )
-                            break;
-                        else
-                            object->ex.dev.broadcast = broadcast;
-
-                        hcursor = SetCursor( LoadCursor( NULL, IDC_WAIT ) );
-                        selected_object->ex.dev.allow_icmp = 1;
-                        TreeViewDeleteAllChilds( hselected_treeitem );
-                        UpdateWindow( mytreeviewparam.hwndTV );
-                        TreeViewInsertChildObjects( hselected_treeitem, selected_object );
-                        TreeView_Expand( mytreeviewparam.hwndTV, hselected_treeitem, TVE_EXPAND );
-                        SetCursor(hcursor);
-                        //hPopup = CreatePopupMenu();
-                        //AppendMenu( hPopup, MF_ENABLED | MF_STRING, IDM_SEND_ICMP, "Search CPU via ICMP" );
-                        //TrackPopupMenu( hPopup, TPM_VERTICAL, rect_window.left + rect_item.left ,
-                        //		rect_window.top +rect_item.bottom,
-                        //		0, hMainWindow, NULL );
-                        //}
-                        //DestroyMenu(hPopup);
-                    }
-
-                    break;
-
-                case POBJ_PVAR:
-                    switch( object->ex.pv.type )
-                    {
-                    case BR_STRUCT:
-                        TreeViewItemSelected( hti, lParam );
-                        if( object->ex.pv.pdatatype != NULL )
-                        {
-                            // Einsprungpunkt für W&H - Tracebaustein...
-                            if( !strcmp( object->ex.pv.pdatatype, "wh_acptrace") )
-                            {
-                                //MessageBox( GetMainWindow(), "hier", "hier", MB_OK );
-                                DialogBoxParam( ghInstance, MAKEINTRESOURCE(DLG_AXCONFIG), GetMainWindow(), (DLGPROC) ConfigAxTraceDlg, (LPARAM) object );
-                            }
-                        }
-                        break;
-
-                    default:
-                        break;
-                    }
-                    break;
-
-                default:
-                    break;
-
-                }
-            }
-        }
-    }
-}
-
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: InsertInWatchList
- Created  : Thu Mar  9 10:17:07 2006
- Modified : Thu Mar  9 10:17:07 2006
-
- Synopsys : nimmt ein Objekt in das ListView auf
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void InsertInWatchList( PVIOBJECT *object )
-{
-
-    LVITEM lvitem;
-    char *text;
-    BOOL found;
-    int i;
-
-    if( object != NULL )
-    {
-
-        // nicht eintragen, wenn es schon existiert
-        found = FALSE;
-        i= ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
-        while( i!= -1 )
-        {
-            memset( &lvitem, 0, sizeof(lvitem) );
-            lvitem.mask = LVIF_PARAM;
-            lvitem.iItem = i;
-            ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-            if( lvitem.lParam != 0 )
-            {
-                if( strcmp( object->name, (char*) lvitem.lParam ) == 0 )
-                {
-                    found = TRUE;
-                }
-            }
-            i = ListView_GetNextItem( mylistviewparam.hwndLV, i, LVNI_ALL );
-        }
-
-        if( found == TRUE )
-            return;
-
-        if( object->watchsort < 0 )   // Object wird nicht gelistet
-        {
-            return;
-        }
-
-        if( object->type == POBJ_PVAR)
-        {
-            if( object->ex.pv.type == BR_STRUCT || object->ex.pv.dimension > 1 )
-                return;  // keine Strukturen oder Arrays...
-            if( WatchPviObject( object, TRUE ) != NULL )
-            {
-                char tempstring[256];
-
-                if( object->ex.pv.task != NULL )
-                {
-                    PVIOBJECT *task = object->ex.pv.task;
-
-                    strcpy( tempstring, task->descriptor );
-                    strcat( tempstring, ":" );
-                }
-                else
-                {
-                    strcpy( tempstring, "" ); // sollte eigentlich nie der Fall sein !
-                }
-                strcat( tempstring, object->descriptor );
-
-                memset(&lvitem, 0, sizeof(lvitem));
-                lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-                lvitem.pszText = tempstring;
-                lvitem.lParam = (LPARAM) object->name;
-                lvitem.iImage = GetImageIndex(IDR_ICO_VARIABLE);
-                lvitem.iItem = object->watchsort;
-
-                /* Name */
-                ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
-                ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
-
-
-                /* Datentyp */
-                if( object->ex.pv.type == BR_STRING )
-                {
-                    sprintf( tempstring, "%1s%s(%lu)", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype, object->ex.pv.length-1 );
-                }
-                else
-                {
-                    sprintf( tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype );
-                }
-                text = tempstring;
-                ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, text ); // Datentyp
-                memset(&lvitem, 0, sizeof(lvitem));
-                lvitem.mask = LVIF_IMAGE;
-                lvitem.iImage = GetPviObjectImage(object);
-                lvitem.iSubItem = 1;
-                lvitem.iItem = object->watchsort;
-                ListView_SetItem( mylistviewparam.hwndLV, &lvitem ); // Icon setzen
-                ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
-
-                /* Gültigkeitsbereich */
-                switch( object->ex.pv.scope[0] )
-                {
-                case 'g':
-                    text = "<GLOBAL>";
-                    break;
-                case 'l':
-                    text = "<LOCAL >";
-                    break;
-                case 'd':
-                    text = "<DYNAM.>";
-                    break;
-                }
-                ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, text ); // Scope
-                ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE );
-
-                /* Wert */
-                text = " ";
-                ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, text );	// Wert
-                //
-                ListView_EnsureVisible( mylistviewparam.hwndLV, lvitem.iItem, TRUE );
-            }
-
-        }
-        else if( object->type == POBJ_CPU )
-        {
-            char tempstring[256];
-
-            sprintf( tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor );
-            memset(&lvitem, 0, sizeof(lvitem));
-            lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-            lvitem.pszText = tempstring;
-            lvitem.lParam = (LPARAM) object->name;
-            lvitem.iImage = GetPviObjectImage(object);
-            lvitem.iItem = object->watchsort;
-
-            /* Name */
-            ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
-            ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
-
-            /* Type */
-            ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "CPU " );
-            ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
-
-            /* Wert */
-            switch( object->error )
-            {
-            case 0:
-                strcpy( tempstring, "" );
-                break;
-
-            case 4808: // keine Verbindung zur SPS
-                sprintf( tempstring, "(OFFLINE)" );
-                break;
-
-            default:
-                sprintf( tempstring, "Err:%i", object->error );
-                break;
-            }
-            ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// Wert
-            ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
-
-        }
-        else if( object->type == POBJ_TASK )
-        {
-            char tempstring[256];
-
-            strcpy( tempstring, object->descriptor );
-
-            memset(&lvitem, 0, sizeof(lvitem));
-            lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-            lvitem.pszText = tempstring;
-            lvitem.lParam = (LPARAM) object->name;
-            lvitem.iImage = GetPviObjectImage(object);
-            lvitem.iItem = object->watchsort;
-
-            /* Name */
-            ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
-            ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
-
-            /* Type */
-            ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "TASK" );
-            ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
-
-            /* Scope */
-            // strcpy( tempstring, ((PVIOBJECT*) object->ex.task.cpu)->descriptor );
-            // ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, tempstring );
-            // ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
-        }
-
-
-        // Indes des Elementes in der Liste in den Objektinformationen speichern
-        i = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
-        while( i != -1 )
-        {
-            memset( &lvitem, 0, sizeof(lvitem) );
-            lvitem.mask = LVIF_PARAM;
-            lvitem.iItem = i;
-            ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-            if( lvitem.lParam != 0 )
-            {
-                object = FindPviObjectByName( (char*) lvitem.lParam );
-                if( object != NULL )
-                {
-                    object->watchsort = lvitem.iItem;
-                }
-            }
-            i = ListView_GetNextItem( mylistviewparam.hwndLV, i, LVNI_ALL );
-        }
-
-
-    }
-}
 
 
 /*-@@+@@--------------------------------[Do not edit manually]------------
@@ -1025,551 +360,13 @@ static void LoadWatchFile( char *filename )
                 object->gui_info.loaded_from_file = 0;
                 ++sort;
                 --n;
-                InsertInWatchList( object );
+                MyListViewInsertPVIObjects( object );
             }
         }
     }
 
     UpdateWindow(mylistviewparam.hwndLV);
     SetCursor( oldcursor );
-}
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: ListViewUpdateValue
- Created  : Wed Apr  5 13:28:45 2006
- Modified : Wed Apr  5 13:28:45 2006
-
- Synopsys : Übersetzt die Daten eines Objectes in ASCII und trägt diese ins
-            Listview ein
-
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void ListViewUpdateValue( PVIOBJECT *object )
-{
-    LVFINDINFO lvfindinfo;
-    int index;
-    char *format_decimal=NULL;
-    char *format_hex=NULL;
-    char *format_binary=NULL;
-    char *format_char=NULL;
-    char *text_binary=NULL;
-    long long intval=0;
-    int days, hours, minutes, seconds, milliseconds;
-    char value[256];
-    char tempstring[256];
-
-    memset( &lvfindinfo, 0, sizeof(lvfindinfo) );
-
-    lvfindinfo.flags = LVFI_PARAM;
-    lvfindinfo.lParam = (LPARAM) object->name;
-
-    index = ListView_FindItem( mylistviewparam.hwndLV, -1, &lvfindinfo );
-    if( index >= 0 )  	// Objekt in Listview gefunden
-    {
-        switch( object->type )
-        {
-        case POBJ_PVAR:
-            switch( object->ex.pv.type )
-            {
-            case BR_USINT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    unsigned char x;
-                    memcpy( &x, object->ex.pv.pvalue, 1 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+3llu  ";
-                format_hex 			= "16#%2.2llX  ";
-                format_binary 		= "2#%s  ";
-                format_char 		= "'%c'";
-                text_binary 		= int2bin(intval,8);
-                break;
-
-            case BR_SINT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    signed char x;
-                    memcpy( &x, object->ex.pv.pvalue, 1 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+3lli  ";
-                format_hex 			= "16#%2.2llX  ";
-                format_binary 		= "2#%s  ";
-                format_char 		= "'%c'";
-                text_binary 		= int2bin(intval,8);
-                break;
-
-            case BR_UINT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    unsigned short x;
-                    memcpy( &x, object->ex.pv.pvalue, 2 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+5llu  ";
-                format_hex 			= "16#%4.4llX  ";
-                format_binary 		= "2#%s";
-                format_char 		= "";
-                text_binary 		= int2bin(intval,16);
-                break;
-
-            case BR_INT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    signed short x;
-                    memcpy( &x, object->ex.pv.pvalue, 2 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+5lli  ";
-                format_hex 			= "16#%4.4llX  ";
-                format_binary 		= "2#%s";
-                format_char 		= "";
-                text_binary 		= int2bin(intval,16);
-                break;
-
-            case BR_UDINT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    unsigned int x;
-                    memcpy( &x, object->ex.pv.pvalue, 4 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+10llu  ";
-                format_hex 			= "16#%8.8llX  ";
-                format_binary 		= "2#%s";
-                format_char			= "";
-                text_binary 		= int2bin(intval,32);
-                break;
-
-            case BR_DINT:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    signed int x;
-                    memcpy( &x, object->ex.pv.pvalue, 4 );
-                    intval = x;
-                }
-                format_decimal 		= "10#%+10lli  ";
-                format_hex 			= "16#%8.8llX  ";
-                format_binary 		= "2#%s";
-                format_char			= "";
-                text_binary 		= int2bin(intval,32);
-                break;
-
-            case BR_BOOL:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    unsigned char x;
-                    memcpy( &x, object->ex.pv.pvalue, 1 );
-                    intval = x;
-                }
-                format_decimal 		= "%1.1i    ";
-                format_hex 			= "";
-                format_char			= "";
-                format_binary 		= intval ? "TRUE" : "FALSE";
-                break;
-
-
-            case BR_REAL:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    sprintf( value, "%g", *((float*) object->ex.pv.pvalue) );
-                }
-                break;
-
-            case BR_LREAL:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    sprintf( value, "%g", *((double*) object->ex.pv.pvalue) );
-                }
-                break;
-
-            case BR_STRING:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    char *s;
-                    char *d;
-                    s = (char*) object->ex.pv.pvalue;
-                    d = value;
-                    while( *s )
-                    {
-                        if( (*s & 0xff) < ' ' )
-                        {
-                            sprintf( d, "\\x%3.3x", (*s & 0xff) );
-                            d+=5;
-                            ++s;
-                        }
-                        else
-                        {
-                            *d++=*s++;
-                        }
-                    }
-                    *d = 0;
-                    if( object->gui_info.interpret_as_oem )
-                    {
-                        strcpy(tempstring, value);
-                        OemToChar( tempstring, value );
-                    }
-                }
-                break;
-
-
-            case BR_DATI:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    struct tm* ptst;
-                    __time64_t t=0;
-
-                    memset( value, 0, sizeof(value) );
-
-                    memcpy( &t, object->ex.pv.pvalue, sizeof(time_t) );
-                    ptst = _gmtime64( &t );
-                    if( ptst != NULL )
-                        strncpy( value, asctime( ptst ), 24 );
-                    else
-                        strcpy( value, "(illegal time!)" );
-
-                    if( object->gui_info.display_as_decimal )
-                    {
-                        char tempstring[20];
-                        sprintf( tempstring, "  (10#%.5u)", *((unsigned int*) object->ex.pv.pvalue) );
-                        strcat( value, tempstring );
-                    }
-                }
-                break;
-
-            case BR_TIME:
-                if( object->ex.pv.pvalue != NULL )
-                {
-                    memcpy( &intval, object->ex.pv.pvalue, 4 );
-                    days = (int) intval / (24*3600*1000);
-                    intval -= days * (24*3600*1000);
-                    hours = (int) intval / (3600*1000);
-                    intval -= hours * (3600*1000);
-                    minutes = (int) intval / (60*1000);
-                    intval -= minutes * (60*1000);
-                    seconds = (int) intval / 1000;
-                    intval -= seconds * 1000;
-                    milliseconds = (int) intval;
-                    sprintf( value, "%2.1ud %2.1uh %2.1um %2.1us %3.3ums", days, hours, minutes, seconds, milliseconds );
-                    if( object->gui_info.display_as_decimal )
-                    {
-                        char tempstring[20];
-                        sprintf( tempstring, "  (10#%.5u)", *((unsigned int*) object->ex.pv.pvalue) );
-                        strcat( value, tempstring );
-                    }
-                }
-                break;
-
-            default:
-                strcpy( value, "???" );
-                break;
-
-            }
-
-
-            // die Formate von Integer- Datentypen kann man umschalten
-            if( object->ex.pv.type == BR_USINT || object->ex.pv.type == BR_SINT ||
-                    object->ex.pv.type == BR_UINT || object->ex.pv.type == BR_INT ||
-                    object->ex.pv.type == BR_UDINT || object->ex.pv.type == BR_DINT ||
-                    object->ex.pv.type == BR_BOOL  )
-            {
-                strcpy( value, "" );
-                if( object->gui_info.display_as_decimal )
-                {
-                    sprintf( tempstring, format_decimal, intval );
-                    strcat( value, tempstring );
-                }
-                if( object->gui_info.display_as_hex )
-                {
-                    sprintf( tempstring, format_hex, intval );
-                    strcat( value, tempstring );
-                }
-                if( object->gui_info.display_as_binary )
-                {
-                    sprintf( tempstring, format_binary, text_binary );
-                    strcat( value, tempstring );
-                }
-                if( object->gui_info.display_as_char )
-                {
-                    sprintf( tempstring, format_char, intval );
-                    strcat( value, tempstring );
-                }
-            }
-
-
-            break;
-
-        case POBJ_CPU:
-            sprintf( value, "%10s(%s)  RTC:%4.4u/%2.2u/%2.2u  %2.2u:%2.2u:%2.2u",
-                     object->ex.cpu.status,
-                     object->ex.cpu.running ? "RUN":"STOP",
-                     object->ex.cpu.rtc_time.tm_year + 1900,
-                     object->ex.cpu.rtc_time.tm_mon + 1,
-                     object->ex.cpu.rtc_time.tm_mday,
-                     object->ex.cpu.rtc_time.tm_hour,
-                     object->ex.cpu.rtc_time.tm_min,
-                     object->ex.cpu.rtc_time.tm_sec			 );
-            break;
-
-        case POBJ_TASK:
-            if( ((PVIOBJECT*)object->ex.task.cpu)->ex.cpu.running == FALSE )
-            {
-                strcpy( value, "(CPU not running)");
-            }
-            else
-            {
-                strcpy( value, object->ex.task.status );
-            }
-            break;
-
-        default:
-            strcpy( value, "" );
-            break;
-        }
-
-        ListView_SetItemText( mylistviewparam.hwndLV, index, 3, value );
-
-    }
-
-}
-
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: ListViewKeydown
- Created  : Tue Feb 21 13:16:36 2006
- Modified : Tue Feb 21 13:16:36 2006
-
- Synopsys : wid aufgerufen, wenn im Listview Tasten betätigt werden
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void ListViewKeydown( WORD vkey )
-{
-    int index;
-    LVITEM lvitem;
-    PVIOBJECT *object;
-
-
-    switch( vkey )
-    {
-    case VK_DELETE:
-        index = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_SELECTED );
-        while( index != -1 )
-        {
-            memset(&lvitem, 0, sizeof(lvitem) );
-            lvitem.iItem = index;
-            lvitem.mask = LVIF_PARAM;
-            ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-            object = FindPviObjectByName( (char*) lvitem.lParam );
-            WatchPviObject( object, FALSE ); // aus dem Watch entfernen
-            ListView_DeleteItem( mylistviewparam.hwndLV, index ); // aus der Liste entfernen
-            index = ListView_GetNextItem( mylistviewparam.hwndLV, index, LVNI_SELECTED );
-        }
-        break;
-
-
-    case VK_RETURN:
-        index = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_SELECTED );
-        if( index != -1 )
-        {
-            memset(&lvitem, 0, sizeof(lvitem) );
-            lvitem.iItem = index;
-            lvitem.mask = LVIF_PARAM;
-            ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-
-            if( lvitem.lParam != 0 )
-            {
-                object = FindPviObjectByName((char*)lvitem.lParam );
-                if( object->type == POBJ_PVAR )
-                {
-                    DialogBoxParam( ghInstance, MAKEINTRESOURCE(DLG_WRITE_PVAR), hMainWindow,
-                                    (DLGPROC) WritePvarDlgProc, (LPARAM) object );
-                }
-            }
-        }
-        break;
-    }
-}
-
-
-
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: ListViewDblClick
- Created  : Wed Feb 22 16:10:05 2006
- Modified : Wed Feb 22 16:10:05 2006
-
- Synopsys : wird aufgerufen, wenn der Benutzer eine Zeile im Listview
-            doppelclickt
- Input    :
- Output   :
- Errors   :
- ------------------------------------------------------------------@@-@@-*/
-
-static void ListViewDblClick( LPNMLISTVIEW lpnm )
-{
-    LVITEM lvitem;
-    PVIOBJECT *object;
-    BOOL write_allowed;
-
-    // Ini- Datei lesen
-    write_allowed = GetPrivateProfileInt( "General", "WriteAllowed", 0, GetIniFile() );
-
-    if( !write_allowed )
-        return;
-
-    memset( &lvitem, 0, sizeof(lvitem) );
-    lvitem.mask = LVIF_PARAM;
-    lvitem.iItem = lpnm->iItem;
-    ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-
-
-    if( lvitem.lParam != 0 )
-    {
-        object = FindPviObjectByName((char*)lvitem.lParam );
-        if( object->type == POBJ_PVAR )
-        {
-            DialogBoxParam( ghInstance, MAKEINTRESOURCE(DLG_WRITE_PVAR), hMainWindow,
-                            (DLGPROC) WritePvarDlgProc, (LPARAM) object );
-        }
-    }
-
-}
-
-
-static void ListViewRClick( LPNMLISTVIEW lpnm )
-{
-    HMENU hmenu;
-    //RECT offset;
-    LVITEM lvitem;
-    UINT enabled;
-    char *entry;
-    POINT pt;
-
-
-    memset( &lvitem, 0, sizeof(lvitem) );
-    lvitem.mask = LVIF_PARAM ;
-    lvitem.iItem = lpnm->iItem;
-    ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-
-    if( lvitem.lParam == 0 )
-        return; // sollte eigentlich nicht vorkommen :-)
-
-    selected_object = FindPviObjectByName( (char*) lvitem.lParam );
-
-    if( selected_object == NULL )
-        return; // sollte auch nicht vorkommen...
-
-    //GetWindowRect( mylistviewparam.hwndLV, &offset );
-    GetCursorPos(&pt);
-
-    hmenu = CreatePopupMenu();
-
-    switch( selected_object->type )
-    {
-    case POBJ_PVAR:
-        switch( selected_object->ex.pv.type )
-        {
-        case BR_USINT:
-        case BR_SINT:
-            enabled = selected_object->gui_info.display_as_char ? MF_CHECKED : MF_UNCHECKED;
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_CHAR, "char" );
-        case BR_UINT:
-        case BR_INT:
-        case BR_UDINT:
-        case BR_DINT:
-            enabled = selected_object->gui_info.display_as_decimal ? MF_CHECKED : MF_UNCHECKED;
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_DECIMAL, "dec" );
-            enabled = selected_object->gui_info.display_as_hex ? MF_CHECKED : MF_UNCHECKED;
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_HEX, "hex" );
-            enabled = selected_object->gui_info.display_as_binary ? MF_CHECKED : MF_UNCHECKED;
-            AppendMenu( hmenu,  MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_BINARY, "bin" );
-            break;
-
-        case BR_REAL:
-        case BR_LREAL:
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING, 0, "no option" );
-            break;
-
-        case BR_STRING:
-            entry = selected_object->gui_info.interpret_as_oem ? "interpret as ANSI" : "interpret as OEM";
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_OEMCHAR, entry );
-            break;
-
-        case BR_TIME:
-        case BR_DATI:
-            entry = selected_object->gui_info.display_as_decimal ? "hide decimal value" : "show decimal value";
-            AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_DECIMAL, entry );
-            break;
-
-        default:
-            break;
-        }
-
-        break;
-
-    default:
-        break;
-
-    }
-
-    AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "remove this object" );
-    //TrackPopupMenu( hmenu, TPM_VERTICAL, offset.left + lpnm->ptAction.x , offset.top + lpnm->ptAction.y, 0, hMainWindow, NULL );
-    TrackPopupMenu( hmenu, TPM_VERTICAL, pt.x, pt.y, 0, hMainWindow, NULL );
-
-}
-
-
-
-static void ListViewActivate( LPNMLISTVIEW lpnm )
-{
-    LVITEM lvitem;
-
-    memset( &lvitem, 0, sizeof(lvitem) );
-    lvitem.mask = LVIF_PARAM ;
-    lvitem.iItem = lpnm->iItem;
-    ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-
-}
-
-
-static void ListViewBeginDragging( int iItem )
-{
-    HIMAGELIST himl;
-    LVITEM lvitem;
-    POINT p;
-    RECT rect_mainwindow, rect_listview;
-
-    ZeroMemory( &rect_mainwindow, sizeof(rect_mainwindow) );
-    ZeroMemory( &rect_listview, sizeof(rect_listview) );
-
-    GetWindowRect( mylistviewparam.hwndLV, &rect_listview );
-    GetWindowRect( hMainWindow, &rect_mainwindow );
-
-    memset( &lvitem, 0, sizeof(lvitem) );
-    lvitem.mask = LVIF_PARAM ;
-    lvitem.iItem = iItem;
-    ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-    dragged_object = FindPviObjectByName( (char*) lvitem.lParam);
-
-    if( dragged_object == NULL )
-        return;
-
-    himl = ListView_CreateDragImage( mylistviewparam.hwndLV, iItem, &p );
-    ImageList_BeginDrag(himl, 0, 0, 0);
-    // start drag effect
-    ImageList_DragEnter(hMainWindow, rect_listview.left - rect_mainwindow.left,
-                        rect_listview.top - rect_mainwindow.top );
-    SetCapture(hMainWindow);
-
-    WatchPviObject( dragged_object, FALSE ); // aus dem Watch entfernen
-    ListView_DeleteItem( mylistviewparam.hwndLV, iItem );
-    ListView_Update( mylistviewparam.hwndLV, iItem );
-
 }
 
 
@@ -1593,9 +390,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
     RECT rect;
     HIMAGELIST himl;
 
+    if( MyListViewHandleMessages( &mylistviewparam, wMsg, wParam, lParam ) == 0 )
+        return(0);
 
-    HANDLE_MYTREEVIEW_MSG(&mytreeviewparam, wMsg, wParam, lParam);
-    HANDLE_MYLISTVIEW_MSG(&mylistviewparam, wMsg, wParam, lParam);
+    if( MyTreeViewHandleMessages(&mytreeviewparam, wMsg, wParam, lParam) == 0 )
+        return(0);
 
     switch (wMsg)
     {
@@ -1604,12 +403,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         switch (wParam)
         {
         case IDM_ABOUT:
-            DialogBox(ghInstance, MAKEINTRESOURCE(DLG_ABOUT), hWnd, (DLGPROC)AboutDlgProc);
+            DialogBox(g_hInstance, MAKEINTRESOURCE(DLG_ABOUT), hWnd, (DLGPROC)AboutDlgProc);
             break;
 
         case IDM_STATUSPVIOBJEKTE:
             //DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, (DLGPROC)ShowPviObjectsDlgProc);
-            ShowPviObjects(  );
+            ShowWindowPviObjects(  );
             break;
         case IDM_MNU_REFRESH:
             if( MessageBox( hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING ) == IDYES )
@@ -1667,7 +466,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 
         case IDM_LOGGER_CONFIG:
-            DialogBox(ghInstance, MAKEINTRESOURCE(DLG_LOGGER_CONFIG), hWnd, (DLGPROC)LoggerConfigDlgProc);
+            DialogBox(g_hInstance, MAKEINTRESOURCE(DLG_LOGGER_CONFIG), hWnd, (DLGPROC)LoggerConfigDlgProc);
             break;
             break;
 
@@ -1709,68 +508,43 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         break;
 
 
-
-        /*
-        case ID_LOGGER_OPENLOGGERFILE:
-        {
-            char filename[MAX_PATH];
-
-            OPENFILENAME ofn;
-            memset(&ofn, 0, sizeof(ofn));
-            strcpy(filename, "logger");
-            ofn.lStructSize = sizeof(ofn);
-            ofn.hwndOwner = hWnd;
-            ofn.lpstrFilter = "Logger File\0*.csv\0\0";
-            ofn.lpstrFile = filename;
-            ofn.lpstrDefExt = "csv";
-            ofn.nMaxFile = sizeof(filename);
-            ofn.Flags = OFN_HIDEREADONLY;
-            if (GetOpenFileName(&ofn))
-            {
-                Plot(filename);
-            }
-        }
-        break;
-*/
-
-
         case IDM_CHANGE_VIEW_DECIMAL:
-            if (selected_object != NULL)
+            if (g_selectedPVIObject != NULL)
             {
-                selected_object->gui_info.display_as_decimal ^= 1;
-                ListViewUpdateValue( selected_object );
+                g_selectedPVIObject->gui_info.display_as_decimal ^= 1;
+                MyListViewUpdateValue( g_selectedPVIObject );
             }
             break;
 
         case IDM_CHANGE_VIEW_HEX:
-            if (selected_object != NULL)
+            if (g_selectedPVIObject != NULL)
             {
-                selected_object->gui_info.display_as_hex ^= 1;
-                ListViewUpdateValue( selected_object );
+                g_selectedPVIObject->gui_info.display_as_hex ^= 1;
+                MyListViewUpdateValue( g_selectedPVIObject );
             }
             break;
 
         case IDM_CHANGE_VIEW_BINARY:
-            if (selected_object != NULL)
+            if (g_selectedPVIObject != NULL)
             {
-                selected_object->gui_info.display_as_binary ^= 1;
-                ListViewUpdateValue( selected_object );
+                g_selectedPVIObject->gui_info.display_as_binary ^= 1;
+                MyListViewUpdateValue( g_selectedPVIObject );
             }
             break;
 
         case IDM_CHANGE_VIEW_CHAR:
-            if (selected_object != NULL)
+            if (g_selectedPVIObject != NULL)
             {
-                selected_object->gui_info.display_as_char ^= 1;
-                ListViewUpdateValue( selected_object );
+                g_selectedPVIObject->gui_info.display_as_char ^= 1;
+                MyListViewUpdateValue( g_selectedPVIObject );
             }
             break;
 
         case IDM_CHANGE_VIEW_OEMCHAR:
-            if (selected_object != NULL)
+            if (g_selectedPVIObject != NULL)
             {
-                selected_object->gui_info.interpret_as_oem ^= 1;
-                ListViewUpdateValue( selected_object );
+                g_selectedPVIObject->gui_info.interpret_as_oem ^= 1;
+                MyListViewUpdateValue( g_selectedPVIObject );
             }
             break;
 
@@ -1791,9 +565,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
                 if( lvitem.lParam != 0 )
                 {
                     //temp = (char*) lvitem.lParam;
-                    if( strcmp( selected_object->name, (char*) lvitem.lParam ) == 0 )
+                    if( strcmp( g_selectedPVIObject->name, (char*) lvitem.lParam ) == 0 )
                     {
-                        WatchPviObject( selected_object, FALSE ); // aus dem Watch entfernen
+                        WatchPviObject( g_selectedPVIObject, FALSE ); // aus dem Watch entfernen
                         ListView_DeleteItem( mylistviewparam.hwndLV, i ); // aus der Liste entfernen
                         break;
                     }
@@ -1835,7 +609,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
             ZeroMemory(&cf, sizeof(cf) );
             cf.lStructSize = sizeof(cf);
-            cf.hInstance = ghInstance;
+            cf.hInstance = g_hInstance;
             cf.hwndOwner = hWnd;
             cf.Flags = CF_SCREENFONTS | CF_NOVERTFONTS | CF_INITTOLOGFONTSTRUCT ;
             cf.lpLogFont = &font;
@@ -1848,7 +622,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         break;
 
         case IDM_OPTIONS_SETTINGS:
-            DialogBox( ghInstance, MAKEINTRESOURCE(DLG_SETTINGS), hWnd, (DLGPROC) SettingsDlg );
+            DialogBox( g_hInstance, MAKEINTRESOURCE(DLG_SETTINGS), hWnd, (DLGPROC) SettingsDlg );
+            break;
+
+        case IDM_QUIT:
+            DestroyWindow( hWnd );
             break;
         }
 
@@ -1879,14 +657,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         drag_splitter = FALSE;
 
         // Droppen vom Object
-        if (dragged_object != NULL)
+        if (g_draggedPVIObject != NULL)
         {
             ImageList_EndDrag();
-            ImageList_DragLeave(hMainWindow);
+            ImageList_DragLeave(g_hwndMainWindow);
             ReleaseCapture();
-            dragged_object->watchsort = drop_target_index;
-            InsertInWatchList(dragged_object);
-            dragged_object = NULL;
+            g_draggedPVIObject->watchsort = drop_target_index;
+            MyListViewInsertPVIObjects(g_draggedPVIObject);
+            g_draggedPVIObject = NULL;
             TreeView_Select(mytreeviewparam.hwndTV, 0, TVGN_DROPHILITE);	// nur wg. Optik
         }
         return 0;
@@ -1912,7 +690,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
                 splitter_xpos = LOWORD(lParam);
             }
         }
-        if (dragged_object != NULL)  	// Dragging eines Ojbektes vom TreeView zum ListView
+        if (g_draggedPVIObject != NULL)  	// Dragging eines Ojbektes vom TreeView zum ListView
         {
             POINTS Pos;
             LVHITTESTINFO lvht;
@@ -1942,7 +720,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         if( wParam == SC_MINIMIZE )
         {
             Shell_NotifyIcon(NIM_ADD, &notifyicondata );
-            ShowWindow( hMainWindow, SW_HIDE );
+            ShowWindow( g_hwndMainWindow, SW_HIDE );
             return 0;
         }
         break;
@@ -1952,7 +730,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         switch( LOWORD( lParam ) )
         {
         case WM_LBUTTONDOWN:
-            ShowWindow( hMainWindow, SW_RESTORE );
+            ShowWindow( g_hwndMainWindow, SW_RESTORE );
             Shell_NotifyIcon(NIM_DELETE, &notifyicondata );
             break;
         }
@@ -1968,7 +746,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
             ModifyMenu( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop" );
             EnableWindow( mylistviewparam.hwndLV, FALSE );
             EnableWindow( mytreeviewparam.hwndTV, FALSE );
-            WritePrivateProfileString( "General", "LoggerActive", "1", GetIniFile() );
+            WritePrivateProfileString( "General", "LoggerActive", "1", SettingsGetFileName() );
             strcpy( logger_watch_file, GetApplicationPath() );
             strcat( logger_watch_file, "\\_logger.wtc" );
             SaveWatchFile( logger_watch_file );
@@ -1979,33 +757,33 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
             ModifyMenu( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start" );
             EnableWindow( mylistviewparam.hwndLV, TRUE );
             EnableWindow( mytreeviewparam.hwndTV, TRUE );
-            WritePrivateProfileString( "General", "LoggerActive", "0", GetIniFile() );
+            WritePrivateProfileString( "General", "LoggerActive", "0", SettingsGetFileName() );
         }
         break;
 
     case WM_CREATE:
         InitCommonControls();
         /* Imagelist */
-        himl = CreateImageList();
+        himl = ResourcesCreateImageList();
 
-        dragged_object = NULL;
+        g_draggedPVIObject = NULL;
 
         /* TreeView */
         memset(&mytreeviewparam, 0, sizeof(mytreeviewparam));
-        mytreeviewparam.hinstance = ghInstance;
+        mytreeviewparam.hinstance = g_hInstance;
         mytreeviewparam.hwndParent = hWnd;
-        mytreeviewparam.cbselected = TreeViewItemSelected;	// Callback
-        mytreeviewparam.cbbegindrag = TreeViewBeginDragging;
-        mytreeviewparam.cbdblclick = TreeViewDblClick;
-        mytreeviewparam.cbrclick = TreeViewRClick;
+        mytreeviewparam.cbselected = MyTreeViewItemSelected;	// Callback
+        mytreeviewparam.cbbegindrag = MyTreeViewBeginDragging;
+        mytreeviewparam.cbdblclick = MyTreeViewDblClick;
+        mytreeviewparam.cbrclick = MyTreeViewRClick;
 
-        CreateMyTreeView(&mytreeviewparam);
+        MyTreeViewCreateWindow(&mytreeviewparam);
         TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_NORMAL);
         //TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_STATE );
 
         /* Listview */
         memset(&mylistviewparam, 0, sizeof(mylistviewparam));
-        mylistviewparam.hinstance = ghInstance;
+        mylistviewparam.hinstance = g_hInstance;
         mylistviewparam.hwndParent = hWnd;
         mylistviewparam.column[0].name = "Name";
         mylistviewparam.column[0].width = 100;
@@ -2015,13 +793,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         mylistviewparam.column[2].width = 100;
         mylistviewparam.column[3].name = "Value";
         mylistviewparam.column[3].width = 600;
-        mylistviewparam.cbkeydown = ListViewKeydown;	// Callbacks
-        mylistviewparam.cbdblclick = ListViewDblClick;
-        mylistviewparam.cbrclick = ListViewRClick;
-        mylistviewparam.cbbegindrag = ListViewBeginDragging;
-        mylistviewparam.cbactivate = ListViewActivate;
+        mylistviewparam.cbkeydown = MyListViewKeydown;	// Callbacks
+        mylistviewparam.cbdblclick = MyListViewDblClick;
+        mylistviewparam.cbrclick = MyListViewRClick;
+        mylistviewparam.cbbegindrag = MyListViewBeginDragging;
+        mylistviewparam.cbactivate = MyListViewActivate;
 
-        CreateMyListView(&mylistviewparam);
+        MyListViewCreateWindow(&mylistviewparam);
         ListView_SetImageList(mylistviewparam.hwndLV, himl, LVSIL_SMALL);
 
         /* Schreibfenster */
@@ -2033,7 +811,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
         // }
 
         if (StartPvi())
-            MessageBox(hMainWindow, "Beim Initialisieren von PVI ist ein Fehler aufgetreten.\nsiehe Logdatei !", "Fehler", MB_OK);
+            MessageBox(g_hwndMainWindow, "Beim Initialisieren von PVI ist ein Fehler aufgetreten.\nsiehe Logdatei !", "Fehler", MB_OK);
         if( ZipDllFound() )
         {
             EnableMenuItem( GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED );

@@ -51,23 +51,6 @@ BOOL IsLoggerRunning( void )
 }
 
 
-//static BOOL CheckZipExe( void ){
-//	FILE *f;
-//	char zipexe[MAX_PATH];
-//
-//	strcpy( zipexe, GetApplicationPath() );
-//	strcat( zipexe, "\\zip.exe" );
-//	f = fopen(  zipexe , "r");
-//	if( f == NULL ){
-//		return FALSE;
-//	}
-//	else {
-//		fclose(f);
-//		return TRUE;
-//	}
-//}
-
-
 
 /*-@@+@@--------------------------------[Do not edit manually]------------
  Procedure: CoundLoggedObjects
@@ -144,13 +127,14 @@ static void ReadSettings( void )
     PVIOBJECT *object;
     int last_watchsort;
 
-    GetPrivateProfileString( "Logger", "Filename", "C:\\logger.csv", loggerfile, sizeof(loggerfile), GetIniFile() );
-    filesize = GetPrivateProfileInt( "Logger", "maxfilesize", 10, GetIniFile() );
-    cycletime = GetPrivateProfileInt( "Logger", "cycletime", 500, GetIniFile() );
-    zip_the_files = GetPrivateProfileInt( "Logger", "zip", 0, GetIniFile() );
-    write_by_change = GetPrivateProfileInt( "Logger", "write_by_change", 0, GetIniFile() );
 
-    // das erste CPU- Objekt soll Timemaster sein.
+    GetPrivateProfileString( "Logger", "Filename", "C:\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName() );
+    filesize = GetPrivateProfileInt( "Logger", "maxfilesize", 10, SettingsGetFileName() );
+    cycletime = GetPrivateProfileInt( "Logger", "cycletime", 500, SettingsGetFileName() );
+    zip_the_files = GetPrivateProfileInt( "Logger", "zip", 0, SettingsGetFileName() );
+    write_by_change = GetPrivateProfileInt( "Logger", "write_by_change", 0, SettingsGetFileName() );
+
+     // das erste CPU- Objekt soll Timemaster sein.
     cpu_timemaster = NULL;
     object = GetNextPviObject(TRUE);
     last_watchsort = (int) 1e6;
@@ -211,25 +195,25 @@ static BOOL ValidateSettings( void )
 
     if( filesize < 1 )
     {
-        MessageBox( GetMainWindow(), "filesize at least 1 kByte !", "Logger Error - Wrong size", MB_OK | MB_ICONERROR );
+        MessageBox( MainWindowGetHandle(), "filesize at least 1 kByte !", "Logger Error - Wrong size", MB_OK | MB_ICONERROR );
         return FALSE;
     }
 
     if( cycletime < 50 )
     {
-        MessageBox( GetMainWindow(), "cycletime must not below 50 ms !", "Logger Error - Wrong cycletime", MB_OK | MB_ICONERROR );
+        MessageBox( MainWindowGetHandle(), "cycletime must not below 50 ms !", "Logger Error - Wrong cycletime", MB_OK | MB_ICONERROR );
         return FALSE;
     }
 
     if( cpu_timemaster == NULL )
     {
-        MessageBox( GetMainWindow(), "no cpu for timestamp found !", "Logger Error - No Timestamp- CPU", MB_OK | MB_ICONERROR );
+        MessageBox( MainWindowGetHandle(), "no cpu for timestamp found !", "Logger Error - No Timestamp- CPU", MB_OK | MB_ICONERROR );
         return FALSE;
     }
 
     if( CountLoggedObjects() == 0 )
     {
-        MessageBox( GetMainWindow(), "no objects to log !", "Logger Error - No Objects", MB_OK | MB_ICONERROR );
+        MessageBox( MainWindowGetHandle(), "no objects to log !", "Logger Error - No Objects", MB_OK | MB_ICONERROR );
         return FALSE;
     }
 
@@ -426,8 +410,8 @@ void LoggerDataChanged( PVIOBJECT *object )
                     break;
                 }
 
-                // Zeitstempel
-                result = fprintf( f, "%4.4u/%2.2u/%2.2u-%2.2u:%2.2u:%2.2u;%4.4u",
+                // timestamp
+                result = fprintf( f, "%4.4u/%2.2u/%2.2u-%2.2u:%2.2u:%2.2u,%4.4u",
                                   cpu_timemaster->ex.cpu.rtc_time.tm_year + 1900,
                                   cpu_timemaster->ex.cpu.rtc_time.tm_mon + 1,
                                   cpu_timemaster->ex.cpu.rtc_time.tm_mday,
@@ -450,57 +434,59 @@ void LoggerDataChanged( PVIOBJECT *object )
                         // Name
                         if( object->ex.pv.scope[0] == 'l' || object->ex.pv.scope[0] == 'd' )   // lokale oder dynamische Variablen
                         {
-                            result = fprintf( f, ";%s[%s]%s->%s:%s", cpu->ex.cpu.cputype, cpu->ex.cpu.arversion, cpu->descriptor, task->descriptor, object->descriptor );
+                            result = fprintf( f, ",%s[%s]%s->%s:%s", cpu->ex.cpu.cputype, cpu->ex.cpu.arversion, cpu->descriptor, task->descriptor, object->descriptor );
                         }
                         else    // globale Variable
                         {
-                            result = fprintf( f, ";%s[%s]%s->%s", cpu->ex.cpu.cputype, cpu->ex.cpu.arversion, cpu->descriptor, object->descriptor );
+                            result = fprintf( f, ",%s[%s]%s->%s", cpu->ex.cpu.cputype, cpu->ex.cpu.arversion, cpu->descriptor, object->descriptor );
                         }
 
                         // Wert
                         switch( object->ex.pv.type )
                         {
                         case BR_USINT:
-                            result = fprintf( f, ";%u", * ( (unsigned char*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%u", * ( (unsigned char*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_SINT:
-                            result = fprintf( f, ";%+i", * ( (signed char*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%+i", * ( (signed char*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_UINT:
-                            result = fprintf( f, ";%u", * ( (unsigned short*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%u", * ( (unsigned short*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_INT:
-                            result = fprintf( f, ";%+i", * ( (signed short*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%+i", * ( (signed short*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_DATI:
                         case BR_UDINT:
                         case BR_TIME:
-                            result = fprintf( f, ";%u", * ( (unsigned int*) object->ex.pv.pvalue ) );
+                        case BR_TOD:
+                        case BR_DATE:
+                            result = fprintf( f, ",%u", * ( (unsigned int*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_DINT:
-                            result = fprintf( f, ";%+i", * ( (signed int*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%+i", * ( (signed int*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_BOOL:
-                            result = fprintf( f, ";%.1u", * ( (unsigned  char*) object->ex.pv.pvalue ) );
+                            result = fprintf( f, ",%.1u", * ( (unsigned  char*) object->ex.pv.pvalue ) );
                             break;
 
                         case BR_REAL:
                         {
                             float real = * ((float*) object->ex.pv.pvalue );
-                            result = fprintf( f, ";%g", real );
+                            result = fprintf( f, ",%g", real );
                         }
                         break;
 
                         case BR_LREAL:
                         {
                             double lreal = * ((double*) object->ex.pv.pvalue );
-                            result = fprintf( f, ";%g", lreal );
+                            result = fprintf( f, ",%g", lreal );
                         }
                         break;
 
@@ -538,7 +524,7 @@ void LoggerDataChanged( PVIOBJECT *object )
                                     }
                                 }
                                 *d = 0;
-                                result = fprintf( f, ";\"%.80s\"", value );
+                                result = fprintf( f, ",\"%.80s\"", value );
                             }
                             break;
 
@@ -612,7 +598,7 @@ void LoggerDataChanged( PVIOBJECT *object )
                 free(cache);
                 logger_is_running = FALSE;
                 start_write_by_change = 0; // Routine beendet sich selbst
-                SendMessage( GetMainWindow(), NOTIFY_LOGGER_STATUS, 0, 0 );
+                SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
                 if( strcmp( errstring, "") )
                 {
                     MessageBox( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
@@ -841,6 +827,8 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
                     case BR_DATI:
                     case BR_UDINT:
                     case BR_TIME:
+                    case BR_DATE:
+                    case BR_TOD:
                         result = fprintf( f, ";%u", * ( (unsigned int*) logged_object[i]->ex.pv.pvalue ) );
                         break;
 
@@ -978,7 +966,7 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
         KillTimer( NULL, idEvent ); // Funktion killt sich selbst
         free(cache);
         logger_is_running = FALSE;
-        SendMessage( GetMainWindow(), NOTIFY_LOGGER_STATUS, 0, 0 );
+        SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
         if( strcmp( errstring, "") )
         {
             MessageBox( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
@@ -1072,15 +1060,16 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 
             if( ValidateSettings() )
             {
-                WritePrivateProfileString( "Logger", "Filename", loggerfile, GetIniFile() );
+                WritePrivateProfileString( "Logger", "Filename", loggerfile, SettingsGetFileName() );
                 sprintf( tempstring, "%u", filesize );
-                WritePrivateProfileString( "Logger", "maxfilesize", tempstring, GetIniFile() );
+                WritePrivateProfileString( "Logger", "maxfilesize", tempstring, SettingsGetFileName() );
                 sprintf( tempstring, "%u", cycletime );
-                WritePrivateProfileString( "Logger", "cycletime", tempstring, GetIniFile() );
+                WritePrivateProfileString( "Logger", "cycletime", tempstring, SettingsGetFileName() );
                 zip_the_files = IsDlgButtonChecked( hDlg, IDC_CHECK_ZIP ) == BST_CHECKED ? TRUE : FALSE;
-                WritePrivateProfileString( "Logger", "zip", zip_the_files == TRUE ? "1" : "0", GetIniFile() );
+                WritePrivateProfileString( "Logger", "zip", zip_the_files == TRUE ? "1" : "0", SettingsGetFileName() );
                 write_by_change = IsDlgButtonChecked( hDlg, IDC_CHECK_CHANGED ) == BST_CHECKED ? TRUE : FALSE;
-                WritePrivateProfileString( "Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", GetIniFile() );
+                WritePrivateProfileString( "Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", SettingsGetFileName() );
+
                 EndDialog(hDlg, TRUE );
                 return TRUE;
             }

@@ -6,9 +6,7 @@
 	#define _WIN32_IE 0x0401
 #endif
 #include <commctrl.h>
-
-
-
+#include "pvi_interface.h"
 #define MAX_MYLISTVIEW_COLS		10
 
 typedef struct {
@@ -24,16 +22,22 @@ typedef struct {
 	void					(* cbkeydown)(	WORD vkey );				// Zeiger auf Callback "Taste betätigt"
 	void					(* cbbegindrag) (int iItem);				// Zeiger auf Callback "Begin Dragging"
 	void					(* cbdblclick)( LPNMLISTVIEW );				// Zeiger auf Callback "Doppelclick"
-	void					(* cbrclick) ( LPNMLISTVIEW );				// Zeiger auf Callback "Rechtsclick"			
+	void					(* cbrclick) ( LPNMLISTVIEW );				// Zeiger auf Callback "Rechtsclick"
 	void					(* cbactivate) (LPNMLISTVIEW );				// Zeiger auf Callback "aktiviert"
 } MYLISTVIEWPARAM;
 
+MYLISTVIEWPARAM mylistviewparam;
 
-HWND CreateMyListView( MYLISTVIEWPARAM * );
+HWND MyListViewCreateWindow( MYLISTVIEWPARAM * );
+void MyListViewKeydown( WORD vkey );
+void MyListViewDblClick( LPNMLISTVIEW lpnm );
+void MyListViewRClick( LPNMLISTVIEW lpnm );
+void MyListViewActivate( LPNMLISTVIEW lpnm );
+void MyListViewBeginDragging( int iItem );
+void MyListViewUpdateValue( PVIOBJECT *object );
+LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM* , UINT, WPARAM , LPARAM );
+void MyListViewInsertPVIObjects( PVIOBJECT *object);
 
-LRESULT CALLBACK HandleMyListViewMessages(MYLISTVIEWPARAM* , UINT, WPARAM , LPARAM );
-
-#define HANDLE_MYLISTVIEW_MSG( param , wMsg, wParam, lParam ) 		if( HandleMyListViewMessages( param, wMsg, wParam, lParam ) == 0 ) return(0);
 
 
 

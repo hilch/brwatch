@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN  /* speed up compilations */
 #include "mytreeview.h"
+#include "mylistview.h"
 #include "main.h"
 
 #define CX_BITMAP 			16   /* Breite eines Bitmaps */
@@ -18,7 +19,7 @@
  Errors   :
  ------------------------------------------------------------------@@-@@-*/
 
-void ClearMyTreeView( MYTREEVIEWPARAM *tv )
+void MyTreeViewClearAll( MYTREEVIEWPARAM *tv )
 {
 
     TreeView_DeleteAllItems( tv->hwndTV );
@@ -33,7 +34,7 @@ void ClearMyTreeView( MYTREEVIEWPARAM *tv )
 
 #define MY_TREEVIEW_STYLE WS_VISIBLE|WS_CHILD | TVS_HASLINES|TVS_LINESATROOT|TVS_HASBUTTONS /*| TVS_TRACKSELECT */
 
-HWND CreateMyTreeView( MYTREEVIEWPARAM * param )
+HWND MyTreeViewCreateWindow( MYTREEVIEWPARAM * param )
 {
     //RECT rcClient;				// dimensions of client area
     // HIMAGELIST himl;  // handle to image list
@@ -51,7 +52,7 @@ HWND CreateMyTreeView( MYTREEVIEWPARAM * param )
     hfont = GetStockObject( DEFAULT_GUI_FONT );
     SendMessage( param->hwndTV, WM_SETFONT, (WPARAM) hfont, 1 );
 
-    ClearMyTreeView(param);
+    MyTreeViewClearAll(param);
 
     return param->hwndTV;
 }
@@ -66,7 +67,7 @@ HWND CreateMyTreeView( MYTREEVIEWPARAM * param )
 
 
 
-HTREEITEM AddItemToMyTreeView(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index )
+HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index )
 {
     TVITEM tvi;
     TVINSERTSTRUCT tvins;
@@ -112,7 +113,7 @@ HTREEITEM AddItemToMyTreeView(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text,
     return hti;
 }
 
-LRESULT CALLBACK HandleMyTreeViewMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARAM wParam, LPARAM lParam)
 {
     LPNMTREEVIEW pnmtv;
     HTREEITEM hti;
@@ -194,3 +195,236 @@ LRESULT CALLBACK HandleMyTreeViewMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
     }
     return 1;
 }
+
+
+
+/*-@@+@@--------------------------------[Do not edit manually]------------
+ Procedure: TreeViewInsertChildObjects
+ Created  : Thu Mar  9 11:53:17 2006
+ Modified : Thu Mar  9 11:53:17 2006
+
+ Synopsys : holt die Kinder des Objektes aus der Liste und trägt sie im
+            TreeView ein
+ Input    :
+ Output   :
+ Errors   :
+ ------------------------------------------------------------------@@-@@-*/
+
+static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent )
+{
+    PVIOBJECT *child;
+    int imageindex;
+    TVITEM tvitem;
+
+    if( parent != NULL )
+    {
+
+        ExpandPviObject(parent);
+
+        // Nach dem Expandieren stehen evtl erweiterte Informationen zum Elternobject zur Verfügung
+        if( parent->type == POBJ_CPU )
+        {
+            char tempstring[256];
+            sprintf( tempstring, "%s %s %s", parent->ex.cpu.cputype, parent->ex.cpu.arversion, parent->descriptor );
+            memset( &tvitem, 0, sizeof(tvitem) );
+            tvitem.hItem = hti;
+            tvitem.mask = TVIF_TEXT;
+            tvitem.pszText = tempstring;
+            TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+        }
+        else if( parent->type == POBJ_PVAR )
+        {
+            char tempstring[256];
+            if( parent->ex.pv.type == BR_STRUCT )
+            {
+                if( parent->ex.pv.dimension > 1 )   // Struktur- Arrays
+                {
+                    sprintf( tempstring, "%s   :%s[%u]",parent->descriptor, parent->ex.pv.pdatatype, parent->ex.pv.dimension );
+                }
+                else
+                {
+                    sprintf( tempstring, "%s   :%s",parent->descriptor, parent->ex.pv.pdatatype );
+                }
+                memset( &tvitem, 0, sizeof(tvitem) );
+                tvitem.hItem = hti;
+                tvitem.mask = TVIF_TEXT;
+                tvitem.pszText = tempstring;
+                TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+            }
+            else
+            {
+                if( parent->ex.pv.dimension > 1 )   // Arrays von Basistypen
+                {
+                    sprintf( tempstring, "%s   :%s[%u]",parent->descriptor, parent->ex.pv.pdatatype, parent->ex.pv.dimension );
+                    memset( &tvitem, 0, sizeof(tvitem) );
+                    tvitem.hItem = hti;
+                    tvitem.mask = TVIF_TEXT;
+                    tvitem.pszText = tempstring;
+                    TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+                }
+            }
+        }
+
+        child = FindPviChildObject( parent, TRUE );
+        while( child != NULL )
+        {
+            char tempstring[256];
+
+            switch( parent->type )
+            {
+            case POBJ_PVAR:
+                if( parent->ex.pv.type == BR_STRUCT && parent->ex.pv.dimension == 1)
+                {
+                    strcpy( tempstring, child->descriptor + strlen(parent->descriptor) + 1);
+                }
+                else
+                {
+                    strcpy( tempstring, child->descriptor );
+                }
+                break;
+
+            default:
+                strcpy( tempstring, child->descriptor );
+                break;
+
+            }
+
+            imageindex = ResourcesGetPviObjectImage( child );
+
+            MyTreeViewAddItem( &mytreeviewparam, hti, tempstring, (LPARAM) child->name, imageindex );
+            child = FindPviChildObject( parent, FALSE );
+        } /* End while()*/
+    }
+
+}
+
+
+/*-@@+@@--------------------------------[Do not edit manually]------------
+ Procedure: TreeViewItemSelected
+ Created  : Mon Feb 20 15:35:09 2006
+ Modified : Mon Feb 20 15:35:09 2006
+
+ Synopsys : ein Element im TreeView wurde angeklickt
+ Input    :
+ Output   :
+ Errors   :
+ ------------------------------------------------------------------@@-@@-*/
+
+
+void MyTreeViewItemSelected( HTREEITEM hti, LPARAM lParam )
+{
+    PVIOBJECT *parent;  // das angeklickte Objekte ist parent
+    HCURSOR oldcursor;
+
+    if( TreeView_GetChild( mytreeviewparam.hwndTV, hti ) == NULL )  // noch nix eingelesen
+    {
+        parent = FindPviObjectByName( (char*) lParam );
+        if( parent != NULL )
+        {
+            if( parent->error == 0 )
+            {
+                oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+                TreeViewInsertChildObjects( hti, parent );
+                SetCursor(oldcursor);
+            }
+        }
+    }
+}
+/*-@@+@@--------------------------------[Do not edit manually]------------
+ Procedure: TreeViewBeginDragging
+ Created  : Mon Feb 20 15:35:40 2006
+ Modified : Mon Feb 20 15:35:40 2006
+
+ Synopsys : noch nicht :-(
+ Input    :
+ Output   :
+ Errors   :
+ ------------------------------------------------------------------@@-@@-*/
+
+void MyTreeViewBeginDragging( HTREEITEM hti, LPARAM lParam )
+{
+    HIMAGELIST himl;
+
+    TreeView_Select( mytreeviewparam.hwndTV, hti, TVGN_DROPHILITE ); // nur wg. Optik
+
+    himl = TreeView_CreateDragImage( mytreeviewparam.hwndTV, hti);
+    ImageList_BeginDrag(himl, 0, 0, 0);
+    // start drag effect
+    ImageList_DragEnter(g_hwndMainWindow,0,0);
+    SetCapture(g_hwndMainWindow);
+
+    g_draggedPVIObject = FindPviObjectByName( (char*) lParam);
+}
+
+
+
+/*-@@+@@--------------------------------[Do not edit manually]------------
+ Procedure: TreeViewDblClick
+ Created  : Mon Feb 20 15:36:29 2006
+ Modified : Mon Feb 20 15:36:29 2006
+
+ Synopsys : ein Element im TreeView wurde doppelt geklickt
+
+ Input    :
+ Output   :
+ Errors   :
+ ------------------------------------------------------------------@@-@@-*/
+void MyTreeViewDblClick(HTREEITEM hti, LPARAM lParam)
+{
+    PVIOBJECT *object;
+    object = FindPviObjectByName( (char*) lParam );
+    if( object != NULL )
+    {
+        object->watchsort = ListView_GetItemCount( mylistviewparam.hwndLV );
+        MyListViewInsertPVIObjects( object);
+    }
+}
+
+
+/* mouse right click on tree view */
+void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
+{
+    PVIOBJECT *object;
+    RECT rect_window;
+    RECT rect_item;
+    LPRECT lprect_item = &rect_item;
+
+    if( GetWindowRect( mytreeviewparam.hwndTV, &rect_window ) )
+    {
+        if( TreeView_GetItemRect( mytreeviewparam.hwndTV, hti, lprect_item, TRUE ) )
+        {
+
+            object = FindPviObjectByName( (char*) lParam );
+            if( object != NULL )
+            {
+                switch( object->type )
+                {
+                case POBJ_DEVICE:
+                    break;
+
+                case POBJ_PVAR:
+                    switch( object->ex.pv.type )
+                    {
+                    case BR_STRUCT:
+                        MyTreeViewItemSelected( hti, lParam );
+                        if( object->ex.pv.pdatatype != NULL )
+                        {
+                         }
+                        break;
+
+                    default:
+                        break;
+                    }
+                    break;
+
+                default:
+                    break;
+
+                }
+            }
+        }
+    }
+}
+
+
+

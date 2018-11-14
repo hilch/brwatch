@@ -7,16 +7,14 @@ static char inifile[MAX_PATH];
 
 
 
-char *GetIniFile( void )
+char *SettingsGetFileName( void )
 {
-
-
     return inifile;
 }
 
 
 
-void InitializeSettings(void)
+void SettingsInitialize(void)
 {
     FILE *file;
     HRSRC hrsrc;
@@ -24,6 +22,7 @@ void InitializeSettings(void)
     char * p;
     DWORD length;
     BOOL inifile_exist=FALSE;
+    char errorMessage[256];
 
     strcpy( inifile, GetApplicationPath() );
     strcat( inifile, "\\" INIFILE);
@@ -44,10 +43,18 @@ void InitializeSettings(void)
                         {
                             char tempstring[256];
                             inifile_exist = TRUE;
-                            sprintf( tempstring, "The settings were not found.\nSo, a default- file %s\nwas created !", inifile );
-                            MessageBox( GetMainWindow(), tempstring, "Create setting file", MB_OK );
+                            sprintf( tempstring, "The settings were not found.\n%s\nwas created !", inifile );
+                            MessageBox( MainWindowGetHandle(), tempstring, "Create *.ini file", MB_OK );
+                        }
+                        else
+                        {
+                            perror(errorMessage);
                         }
                         fclose(file);
+                    }
+                    else
+                    {
+                        perror(errorMessage);
                     }
 
                 }
@@ -62,7 +69,9 @@ void InitializeSettings(void)
 
     if( inifile_exist == FALSE )
     {
-        MessageBox( GetMainWindow(), "Error creating settings- file !", "Error!", MB_OK | MB_ICONERROR );
+        char tempstring[256];
+        sprintf( tempstring, "Error creating *.ini file !\n%s", errorMessage );
+        MessageBox( MainWindowGetHandle(), tempstring, "Error!", MB_OK | MB_ICONERROR );
     }
 
 }
@@ -86,11 +95,11 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         buf = malloc(32768);
         if( buf == NULL )
         {
-            MessageBox( GetMainWindow(), "To less memory !", "Error", MB_OK | MB_ICONERROR );
+            MessageBox( MainWindowGetHandle(), "To less memory !", "Error", MB_OK | MB_ICONERROR );
             return FALSE;
         }
 
-        file = fopen( GetIniFile(), "rb" );
+        file = fopen( SettingsGetFileName(), "rb" );
 
         if( file != NULL )
         {
@@ -103,8 +112,8 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if( ferror(file) )
             {
-                sprintf( buf, "Error reading %s !", GetIniFile() );
-                MessageBox( GetMainWindow(), buf, "Error", MB_OK | MB_ICONERROR );
+                sprintf( buf, "Error reading %s !", SettingsGetFileName() );
+                MessageBox( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
                 free(buf);
                 fclose(file);
                 return FALSE;
@@ -112,14 +121,14 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else
         {
-            sprintf( buf, "Could not open %s !", GetIniFile() );
-            MessageBox( GetMainWindow(), buf, "Error", MB_OK | MB_ICONERROR );
+            sprintf( buf, "Could not open %s !", SettingsGetFileName() );
+            MessageBox( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
             free(buf);
             fclose(file);
             return FALSE;
         }
 
-        hfont = GetStockObject( DEFAULT_GUI_FONT );
+        hfont = GetStockObject( SYSTEM_FIXED_FONT );
         SendDlgItemMessage( hDlg, IDC_EDIT1, WM_SETFONT, (WPARAM) hfont, TRUE );
 
     }
@@ -135,7 +144,7 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             DWORD length;
             char * buf;
 
-            file = fopen( GetIniFile(), "wb+" );
+            file = fopen( SettingsGetFileName(), "wb+" );
             if( file != NULL )
             {
                 length = GetWindowTextLength( GetDlgItem(hDlg, IDC_EDIT1) );
@@ -151,7 +160,7 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     return TRUE;
                 }
             }
-            MessageBox( GetMainWindow(), "Could not save the settings", "Error", MB_OK | MB_ICONERROR );
+            MessageBox( MainWindowGetHandle(), "Could not save the settings", "Error", MB_OK | MB_ICONERROR );
         }
         // weiter wie bei IDCANCEL...
 

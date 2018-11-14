@@ -1,0 +1,2 @@
+
+void DlgEditCpuShowDialog( PVIOBJECT *object );

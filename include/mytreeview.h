@@ -18,13 +18,16 @@ typedef struct {
 	void					(* cbrclick) (HTREEITEM, LPARAM );			// Zeiger auf Callback "Rechts-click"
 } MYTREEVIEWPARAM;
 
+MYTREEVIEWPARAM mytreeviewparam;
+HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index );
+HWND MyTreeViewCreateWindow( MYTREEVIEWPARAM * );
+LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM* , UINT, WPARAM , LPARAM );
+void MyTreeViewClearAll( MYTREEVIEWPARAM* );
+void MyTreeViewDblClick(HTREEITEM hti, LPARAM lParam);
+void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam);
+void MyTreeViewBeginDragging( HTREEITEM hti, LPARAM lParam );
+void MyTreeViewItemSelected( HTREEITEM hti, LPARAM lParam );
 
-HTREEITEM AddItemToMyTreeView(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index );
-HWND CreateMyTreeView( MYTREEVIEWPARAM * );
-LRESULT CALLBACK HandleMyTreeViewMessages(MYTREEVIEWPARAM* , UINT, WPARAM , LPARAM );
-void ClearMyTreeView( MYTREEVIEWPARAM* );
-
-#define HANDLE_MYTREEVIEW_MSG( param , wMsg, wParam, lParam ) 		if( HandleMyTreeViewMessages( param, wMsg, wParam, lParam ) == 0 ) return(0);
 
 
 

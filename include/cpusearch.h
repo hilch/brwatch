@@ -1,3 +1,12 @@
 
+struct stEthernetCpuInfo {
+    char macAddress[20];
+    char ipAddress[20];
+    char subnetMask[20];
+};
+int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo , int maxEntries );
 
-int SearchBRCPU(unsigned char sourcenode, unsigned long broadcast, char *buffer, long buflen );
+
+
+
+

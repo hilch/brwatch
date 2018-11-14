@@ -21,7 +21,9 @@ typedef enum PVIPVARTYPE {
 	BR_STRING,
 	BR_STRUCT,
 	BR_TIME,
-	BR_DATI
+	BR_DATI,
+	BR_TOD,
+	BR_DATE
 } PVIPVARTYPE;
 
 /* Strukturnamen */
@@ -48,14 +50,13 @@ typedef struct PVIPVAROBJECT{
 /* erweiterte Info Geräteobjekt */
 typedef struct PVIDEVICEOBJECT{
 	unsigned long				broadcast;			// Broadcast IP
-	BOOL						allow_icmp;			// ICMP- Pakete senden
 } PVIDEVICEOBJECT;
 
 
 /* erweiterte Info CPU - objekt */
 typedef struct PVICPUOBJECT{
 	char						arversion[5];		// Version Automation Runtime
-	char						cputype[6];			// SPS- Typ
+	char						cputype[10];		// SPS- Typ
 	char						status[15];			//
 	struct tm					rtc_time;		    // Uhrzeit und Datum
 	BOOL						running;			// im "RUN"
@@ -113,7 +114,7 @@ PVIOBJECT *FindPviChildObject(PVIOBJECT * object, BOOL first );
 PVIOBJECT *ExpandPviObject( PVIOBJECT * object );
 PVIOBJECT *WatchPviObject( PVIOBJECT * object , BOOL watch );
 
-int	  WritePviPvar( PVIOBJECT *object, void* value );
+
 int GetNumberOfPviObjects( void );
 int AddToPviWatchFile( PVIOBJECT *object, char *filename );
 int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename);

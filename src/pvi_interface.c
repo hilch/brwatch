@@ -5,11 +5,11 @@ Module   : pvi_interface.c
 //#define WIN32_LEAN_AND_MEAN  /* speed up compilations */
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <direct.h>
 #include "main.h"
 #include "settings.h"
-#include "ping.h"
 #include "cpusearch.h"
 #include "stringtools.h"
 #include "logger.h"
@@ -20,13 +20,15 @@ Module   : pvi_interface.c
 
 #define MAX(x,y) ((x)>(y)?(x):(y))
 
+static int g_ansl = 0;
+
 
 /* Prototypen */
 static void WINAPI PviCallback (WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO* );
 static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime );
 static void AddRowToLog( char*, int );
 static void DeleteLog(void);
-static void CreateDefiniteObjectName( char *name, char *descriptor );
+static void CreateUniqueObjectName( char *name, char *descriptor );
 
 static PVIOBJECT *AddPviObject(PVIOBJECT *, BOOL);
 static PVIOBJECT *UnlinkPviObject( PVIOBJECT *object );
@@ -39,11 +41,8 @@ static PVIOBJECT *FindPviObjectByLinkId( DWORD );
 static void PviReadDataType( PVIOBJECT *object );
 
 /* */
-//static void DeleteDirectory( char *name );
-static int CountToken( char *s, char token );
-static BOOL FindToken( char **source, char* token );
-static int GetIntValue( char **source );
-//static void ReplaceChar( char * s, char old, char n );
+
+
 static char *AddPviDatatype( char * t );
 static int GetPviLicenceInfo(void );
 
@@ -80,38 +79,44 @@ static void ReadSettings(void)
     char key[20];
     char buffer[80];
 
-
     memset(&tempobject, 0, sizeof(PVIOBJECT));
 
     sprintf( section, "General" );
     sprintf( key, "PLCDataChangeEvents" );
     strcpy( buffer, "" );
-    GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), GetIniFile());
-    if( strlen( buffer) != 0 )
-    {
-        PLCDataChangeEvents = buffer[0] == '1' ? 1 : 0;
-    }
+    GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+    PLCDataChangeEvents = atoi(buffer);
 
 
-    // Devices anmelden
+
+    /* create ethernet device */
+    strcpy(tempobject.descriptor, "/IF=tcpip /SA=99");
+    CreateUniqueObjectName(tempstring, tempobject.descriptor);
+    sprintf(tempobject.name, "@Pvi/LN/DEV%s", tempstring);
+    tempobject.type = POBJ_DEVICE;
+    AddPviObject(&tempobject, TRUE);
+
+
+
+    // read devices from brwatch.ini
     for (i = 1; i <= 16; ++i)
     {
         sprintf(section, "DEVICE%u", i);
         strcpy(key, "broadcast");
-        GetPrivateProfileString(section, key, "255.255.255.255", buffer, sizeof(buffer), GetIniFile());
+        GetPrivateProfileString(section, key, "255.255.255.255", buffer, sizeof(buffer), SettingsGetFileName());
         tempobject.ex.dev.broadcast = inet_addr(buffer);
 
         strcpy(key, "name");
         strcpy( buffer, "" );
-        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), GetIniFile());
+        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 
         strcpy(key, "descriptor");
         strcpy( buffer, "" );
-        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), GetIniFile());
+        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
         if (strlen(buffer) != 0)
         {
             strcpy(tempobject.descriptor, buffer);
-            CreateDefiniteObjectName(tempstring, tempobject.descriptor);
+            CreateUniqueObjectName(tempstring, tempobject.descriptor);
             sprintf(tempobject.name, "@Pvi/LN/DEV%s", tempstring);
             tempobject.type = POBJ_DEVICE;
             AddPviObject(&tempobject, TRUE);
@@ -120,7 +125,7 @@ static void ReadSettings(void)
 
     }
 
-    // CPUs anmelden
+    // read CPUs from brwatch.ini
     for (i = 1; i <= 255; ++i)
     {
         char devicename[256];
@@ -129,16 +134,16 @@ static void ReadSettings(void)
         sprintf(section, "CPU%u", i);
         strcpy(key, "descriptor");
         strcpy( buffer, "" );
-        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), GetIniFile());
+        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
         strcpy(tempobject.descriptor, buffer);
 
         strcpy(key, "device");
         strcpy( buffer, "" );
-        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), GetIniFile());
+        GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
         if (strlen(buffer) != 0)
         {
             // Devicenamen zusammenbasteln
-            CreateDefiniteObjectName(tempstring, buffer);
+            CreateUniqueObjectName(tempstring, buffer);
             sprintf(devicename, "@Pvi/LN/DEV%s", tempstring);
 
             // Device mit dem angegebenen Namen suchen
@@ -148,7 +153,7 @@ static void ReadSettings(void)
                 if (strcmp(object->name, devicename) == 0)  	// Device gefunden
                 {
                     // Objektnamen erzeugen
-                    CreateDefiniteObjectName(tempstring, tempobject.descriptor);
+                    CreateUniqueObjectName(tempstring, tempobject.descriptor);
                     sprintf(tempobject.name, "%s/CPU%s", devicename, tempstring);
                     tempobject.type = POBJ_CPU;
                     AddPviObject(&tempobject, TRUE);
@@ -178,7 +183,7 @@ static void ReadSettings(void)
  Errors   :
  ------------------------------------------------------------------@@-@@-*/
 
-static void CreateDefiniteObjectName( char *name, char *descriptor )
+static void CreateUniqueObjectName( char *name, char *descriptor )
 {
     while( *descriptor )
     {
@@ -292,16 +297,6 @@ PVIOBJECT *AddPviObject(PVIOBJECT * tempobject, BOOL create )
         }
 
         result = PviCreate(&newobject->linkid, newobject->name, newobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, event_mask );
-        //result = PviCreate(&newobject->linkid, newobject->name, newobject->type, descriptor, 0, 0, 0, "");
-        // if ((result == 0 || result == 12002)) {	// OK oder Objekt schon vorhanden
-        // if( newobject->type == POBJ_PVAR ){
-        // event_mask = "Ev=ed";
-        // }
-        // else {
-        // event_mask = "Ev=e";
-        // }
-        // result = PviLink(&newobject->linkid, newobject->name, PviCallback, SET_PVICALLBACK_DATA, 0, event_mask);
-        // }
 
         if( result )
         {
@@ -315,7 +310,7 @@ PVIOBJECT *AddPviObject(PVIOBJECT * tempobject, BOOL create )
             if( newobject->type == POBJ_PVAR )
             {
                 PviReadRequest( newobject->linkid, POBJ_ACC_DATA, PviCallback, SET_PVICALLBACK_DATA, 0 );
-                // Variablen direkt einmal lesen
+                // read variable once
             }
         }
     }
@@ -349,7 +344,6 @@ static PVIOBJECT *UnlinkPviObject( PVIOBJECT *object )
     {
         if( find == object )
         {
-            //result = PviDelete( object->name );
             result = PviUnlink( object->linkid );
             if( result == 0 )
             {
@@ -689,10 +683,28 @@ static void WINAPI Pvi_GlobalEvent(WPARAM wParam, LPARAM lParam, LPVOID pData, D
         break;
 
     case POBJ_EVENT_PVI_ARRANGE:
+        {
+            char section[20];
+            char key[20];
+            char buffer[80];
+            sprintf( section, "General" );
+            sprintf( key, "Ansl" );
+            strcpy( buffer, "" );
+            GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+            g_ansl = atoi(buffer);
+        }
+
         AddRowToLog("POBJ_EVENT_PVI_ARRANGE", 0);
         ppo = &po;
         strcpy( po.name, "@Pvi/LN");
-        strcpy( po.descriptor,"LnIna2");
+        if( g_ansl )
+        {
+            strcpy( po.descriptor,"LnAnsl");
+        }
+        else
+        {
+            strcpy( po.descriptor,"LnIna2");
+        }
         po.type = POBJ_LINE;
         AddPviObject( ppo, 1 );
         ReadSettings();
@@ -760,6 +772,8 @@ static void WINAPI PviCallback (WPARAM wParam, LPARAM lParam, LPVOID pData, DWOR
                 case BR_UDINT:
                 case BR_DINT:
                 case BR_DATI:
+                case BR_TOD:
+                case BR_DATE:
                 case BR_TIME:
                 case BR_REAL:
                     if( object->ex.pv.pvalue != NULL )
@@ -838,7 +852,7 @@ static void WINAPI PviCallback (WPARAM wParam, LPARAM lParam, LPVOID pData, DWOR
                 {
                 case POBJ_CPU:
                     strncpy( object->ex.cpu.status, value, sizeof(object->ex.cpu.status)-1);
-                    if( strcmp( value, "WarmStart" ) == 0 || strcmp( value, "ColdStart" ) == 0 )
+                    if( strcmp( value, KWSTATUS_WARMSTART ) == 0 || strcmp( value, KWSTATUS_COLDSTART ) == 0 )
                     {
                         object->ex.cpu.running = TRUE;
                     }
@@ -896,16 +910,10 @@ static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWOR
     PVIOBJECT *object;
     static int zyklus_readpv = 0;
     static int zyklus_getlicenseinfo = 0;
-//	BOOL read_pvars;
 
     if( ++zyklus_readpv > 4 )
     {
         zyklus_readpv = 0;
-//		read_pvars = 1;
-    }
-    else
-    {
-//		read_pvars = 0;
     }
 
     // Pvi- Lizenzinformation lesen
@@ -915,8 +923,8 @@ static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWOR
         {
             if( GetPviLicenceInfo() == PVIWORK_STATE_LOCKED )
             {
-                MessageBox( GetMainWindow(), "Sorry PVI is locked.\nProgram must shut down !", "Error Pvi License", MB_ICONERROR );
-                SendMessage( GetMainWindow(), WM_CLOSE, 0, 0 );
+                MessageBox( MainWindowGetHandle(), "Sorry PVI is locked.\nProgram must shut down !", "Error Pvi License", MB_ICONERROR );
+                SendMessage( MainWindowGetHandle(), WM_CLOSE, 0, 0 );
             }
             else
             {
@@ -942,11 +950,6 @@ static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWOR
         case POBJ_TASK:
             PviReadRequest(object->linkid, POBJ_ACC_STATUS, PviCallback, SET_PVICALLBACK_DATA, object->linkid );
             break;
-
-        // case POBJ_PVAR:
-        // if( read_pvars )
-        // PviReadRequest(object->linkid, POBJ_ACC_DATA, PviCallback, SET_PVICALLBACK_DATA, object->linkid );
-        // break;
 
         default:
             break;
@@ -1015,20 +1018,16 @@ int StartPvi( void )
     DeleteLog(); // Pvi- Logdatei loeschen
 
     // PVI- Version in Logdatei schreiben
-    strcpy( tempstring, "" );
-    PviGetVersion( tempstring, sizeof(tempstring) );
-    AddRowToLog( tempstring, 0 );
+    strcpy( g_PVIVersionString, "" );
+    PviGetVersion( g_PVIVersionString, sizeof(g_PVIVersionString) );
+    AddRowToLog( g_PVIVersionString, 0 );
 
     // Pvi starten
     {
         char buffer[80];
 
         memset( buffer, 0, sizeof(buffer) );
-        GetPrivateProfileString( "REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), GetIniFile());
-
-#ifdef _DEBUG
-        strcpy( buffer, "COMT=0 AS=1 PT=20 IP=10.49.40.115" );
-#endif
+        GetPrivateProfileString( "REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), SettingsGetFileName());
 
         result = PviInitialize( 0, 0, buffer, NULL );
     }
@@ -1261,11 +1260,23 @@ static void PviReadDataType( PVIOBJECT *object )
                     object->ex.pv.length = 4;
                     object->ex.pv.pdatatype = "DATE_AND_TIME";
                 }
+                else if (FindToken(&s, KWPVTYPE_DATE))
+                {
+                    object->ex.pv.type = BR_DATE;
+                    object->ex.pv.length = 4;
+                    object->ex.pv.pdatatype = "DATE";
+                }
                 else if (FindToken(&s, KWPVTYPE_TIME))
                 {
                     object->ex.pv.type = BR_TIME;
                     object->ex.pv.length = 4;
                     object->ex.pv.pdatatype = "TIME";
+                }
+               else if (FindToken(&s, KWPVTYPE_TOD))
+                {
+                    object->ex.pv.type = BR_TOD;
+                    object->ex.pv.length = 4;
+                    object->ex.pv.pdatatype = "TOD";
                 }
                 else if (FindToken(&s, KWPVTYPE_STRUCTURE))
                 {
@@ -1335,78 +1346,75 @@ PVIOBJECT *ExpandPviObject( PVIOBJECT * object )
 
     tempobject = malloc(sizeof(PVIOBJECT));
 
-    if( tempobject == NULL )
+    if( tempobject != NULL )
     {
-        AddRowToLog( "AddPviChildObjects():malloc()", -1 );
-        return NULL;
-    }
 
-
-    if( object->gui_info.has_childs == 0 )
-    {
-        switch( object->type )
+        if( object->gui_info.has_childs == 0 )
         {
-        case POBJ_PVAR: 	/* Prozessvariable */
-            if( object->ex.pv.dimension > 1 )   // Array ?
+            switch( object->type )
             {
-
-                if( object->ex.pv.type == BR_STRUCT )  // Array von Strukturen ?
+            case POBJ_PVAR: 	/* Prozessvariable */
+                if( object->ex.pv.dimension > 1 )   // Array ?
                 {
-                    PviReadStructElements( object ); // nur einmal Strukturdefinition holen
-                }
 
-                // Alle Array-elemente anlegen
-                for( i = 0; i < object->ex.pv.dimension; ++i )
-                {
-                    memcpy( tempobject, object, sizeof(PVIOBJECT) );
-                    tempobject->ex.pv.dimension = 1;
-                    sprintf( tempobject->name, "%s[%i]", object->name, i );
-                    sprintf( tempobject->descriptor, "%s[%i]", object->descriptor, i );
-                    if( AddPviObject( tempobject, FALSE ) != NULL )
+                    if( object->ex.pv.type == BR_STRUCT )  // Array von Strukturen ?
                     {
-                        object->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde angelegt
+                        PviReadStructElements( object ); // nur einmal Strukturdefinition holen
                     }
-                }
 
-            }
-
-            else
-
-                if( object->ex.pv.type == BR_STRUCT )
-                {
-                    if( PviReadStructElements( object ) != NULL )
+                    // Alle Array-elemente anlegen
+                    for( i = 0; i < object->ex.pv.dimension; ++i )
                     {
-                        object->gui_info.has_childs = 1;
+                        memcpy( tempobject, object, sizeof(PVIOBJECT) );
+                        tempobject->ex.pv.dimension = 1;
+                        sprintf( tempobject->name, "%s[%i]", object->name, i );
+                        sprintf( tempobject->descriptor, "%s[%i]", object->descriptor, i );
+                        if( AddPviObject( tempobject, FALSE ) != NULL )
+                        {
+                            object->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde angelegt
+                        }
                     }
+
                 }
-            break;
 
-        case POBJ_CPU:
-            if( PviReadTaskList(object) != NULL )
-            {
-                object->gui_info.has_childs = 1;
+                else
+
+                    if( object->ex.pv.type == BR_STRUCT )
+                    {
+                        if( PviReadStructElements( object ) != NULL )
+                        {
+                            object->gui_info.has_childs = 1;
+                        }
+                    }
+                break;
+
+            case POBJ_CPU:
+                if( PviReadTaskList(object) != NULL )
+                {
+                    object->gui_info.has_childs = 1;
+                }
+                object->gui_info.has_childs = 0;
+                break;
+
+            case POBJ_TASK:
+                if( PviReadPvarList(object) == 0 )
+                {
+                    object->gui_info.has_childs = 1;
+                }
+                break;
+
+            case POBJ_DEVICE:
+                PviReadCPUList(object);
+                object->gui_info.has_childs = 0;
+                break;
+
+            default:
+                break;
             }
-            object->gui_info.has_childs = 0;
-            break;
-
-        case POBJ_TASK:
-            if( PviReadPvarList(object) == 0 )
-            {
-                object->gui_info.has_childs = 1;
-            }
-            break;
-
-        case POBJ_DEVICE:
-            PviReadCPUList(object);
-            object->gui_info.has_childs = 0;
-            break;
-
-        default:
-            break;
         }
-    }
 
-    free(tempobject);
+        free(tempobject);
+    }
     return NULL;
 }
 
@@ -1427,7 +1435,7 @@ PVIOBJECT *ExpandPviObject( PVIOBJECT * object )
 static PVIOBJECT *PviReadCPUList(PVIOBJECT *object )
 {
     PVIOBJECT *cpuobject;
-    char *s, *d;
+    char *s;
     char descriptor[256];
     int result;
     char *pbuffer;
@@ -1459,13 +1467,13 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object )
     s= _strupr(object->descriptor);
     while( *s )
     {
-        // suche nach direkt seriell angeschlossenen CPUs
+        // search for CPUs connected to a serial port
         if( FindToken( &s, "/IF=COM" ) )
         {
             memset( cpuobject, 0, sizeof(PVIOBJECT) );
             //strcpy( cpuobject->descriptor, "/RT=10000" );
 
-            CreateDefiniteObjectName( tempstring, cpuobject->descriptor );
+            CreateUniqueObjectName( tempstring, cpuobject->descriptor );
             sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring  );
 
             cpuobject->type = POBJ_CPU;
@@ -1502,60 +1510,85 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object )
             break;
         }
 
-        // suche nach Netzwerk- CPUs
+        // search for CPUs connected via ethernet
         if( FindToken( &s, "/IF=TCPIP" ) )
         {
-            char ipaddress[20];
-            int node;  // Knotennummer
-
-            if( object->ex.dev.allow_icmp && object->ex.dev.broadcast != 0 )
+            struct stEthernetCpuInfo *ethernetCpuInfo = malloc(256*sizeof(struct stEthernetCpuInfo) );
+            if( ethernetCpuInfo != NULL )
             {
-                object->ex.dev.allow_icmp = 0;
-                //if( Ping( object->ex.dev.broadcast, pbuffer, 65535 ) != 0 ){
-                if( SearchBRCPU( 255, object->ex.dev.broadcast, pbuffer, 65535 ) != 0 )
+                int i;
+                int noOfCpu = SearchEthernetCpus( ethernetCpuInfo, 256 );
+                for( i = 0; i < noOfCpu; ++i, ++ethernetCpuInfo )
                 {
-                    object = NULL;
-                    break; // Fehler
-                }
+                    memset( cpuobject, 0, sizeof(PVIOBJECT) );
+                    sprintf( cpuobject->descriptor, "/DAIP=%s", ethernetCpuInfo->ipAddress );
 
-                s = pbuffer;
-                d = ipaddress;
-                while( *s )
-                {
-                    *d++=*s++;
-                    if( *s == '\t' || *s == 0 )  // Ende des Eintrags
+                    CreateUniqueObjectName( tempstring, cpuobject->descriptor );
+                    sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
+
+                    cpuobject->type = POBJ_CPU;
+                    sprintf( descriptor, "CD=\"%s\"", cpuobject->descriptor );
+                    result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
+                    if( result == 0 )
                     {
-                        *d = 0; // String mit 0 abschliessen
-                        sscanf( ipaddress, "%3u%s", &node, ipaddress );
-                        d = ipaddress;
-                        //
-                        memset( cpuobject, 0, sizeof(PVIOBJECT) );
-                        sprintf( cpuobject->descriptor, "/DAIP=%s /DA=%u", ipaddress, node );
-
-                        CreateDefiniteObjectName( tempstring, cpuobject->descriptor );
-                        sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
-
-                        cpuobject->type = POBJ_CPU;
-                        sprintf( descriptor, "CD=\"%s\"", cpuobject->descriptor );
-                        result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
-                        if( result == 0 )
-                        {
-
-                            if( result == 0 )
-                            {
-                                AddPviObject( cpuobject, 1 );
-                                //MessageBox( NULL, "CPU gefunden!", "Hinweis", MB_OK );
-                            }
-                        }
-
-                        //
-                        if( *s == 0 )
-                            break;
-                        else
-                            ++s;
+                        AddPviObject( cpuobject, 1 );
                     }
                 }
+                free(ethernetCpuInfo);
             }
+
+
+//            char ipaddress[20];
+//            int node;  // Knotennummer
+//
+//            if( object->ex.dev.allow_icmp && object->ex.dev.broadcast != 0 )
+//            {
+//                object->ex.dev.allow_icmp = 0;
+//                //if( Ping( object->ex.dev.broadcast, pbuffer, 65535 ) != 0 ){
+//                if( SearchCpuViaUDP( 255, object->ex.dev.broadcast, pbuffer, 65535 ) != 0 )
+//                {
+//                    object = NULL;
+//                    break; // Fehler
+//                }
+//
+//                s = pbuffer;
+//                d = ipaddress;
+//                while( *s )
+//                {
+//                    *d++=*s++;
+//                    if( *s == '\t' || *s == 0 )  // Ende des Eintrags
+//                    {
+//                        *d = 0; // String mit 0 abschliessen
+//                        sscanf( ipaddress, "%3u%s", &node, ipaddress );
+//                        d = ipaddress;
+//                        //
+//                        memset( cpuobject, 0, sizeof(PVIOBJECT) );
+//                        sprintf( cpuobject->descriptor, "/DAIP=%s /DA=%u", ipaddress, node );
+//
+//                        CreateUniqueObjectName( tempstring, cpuobject->descriptor );
+//                        sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
+//
+//                        cpuobject->type = POBJ_CPU;
+//                        sprintf( descriptor, "CD=\"%s\"", cpuobject->descriptor );
+//                        result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
+//                        if( result == 0 )
+//                        {
+//
+//                            if( result == 0 )
+//                            {
+//                                AddPviObject( cpuobject, 1 );
+//                                //MessageBox( NULL, "CPU gefunden!", "Hinweis", MB_OK );
+//                            }
+//                        }
+//
+//                        //
+//                        if( *s == 0 )
+//                            break;
+//                        else
+//                            ++s;
+//                    }
+//                }
+//            }
 
             break;
         }
@@ -1824,6 +1857,18 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT * object)
                     newobject.ex.pv.type = BR_DATI;
                     newobject.ex.pv.length = 4;
                     newobject.ex.pv.pdatatype = "DATE_AND_TIME";
+                }
+                else if (FindToken(&s, KWPVTYPE_DATE))
+                {
+                    newobject.ex.pv.type = BR_DATE;
+                    newobject.ex.pv.length = 4;
+                    newobject.ex.pv.pdatatype = "DATE";
+                }
+                else if (FindToken(&s, KWPVTYPE_TOD))
+                {
+                    newobject.ex.pv.type = BR_TOD;
+                    newobject.ex.pv.length = 4;
+                    newobject.ex.pv.pdatatype = "TOD";
                 }
                 else if (FindToken(&s, KWPVTYPE_TIME))
                 {
@@ -2102,6 +2147,18 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object )
                     newobject.ex.pv.length = 4;
                     newobject.ex.pv.pdatatype = "DATE_AND_TIME";
                 }
+               else if (FindToken(&s, KWPVTYPE_DATE))
+                {
+                    newobject.ex.pv.type = BR_DATI;
+                    newobject.ex.pv.length = 4;
+                    newobject.ex.pv.pdatatype = "DATE";
+                }
+               else if (FindToken(&s, KWPVTYPE_TOD))
+                {
+                    newobject.ex.pv.type = BR_TOD;
+                    newobject.ex.pv.length = 4;
+                    newobject.ex.pv.pdatatype = "TOD";
+                }
                 else if (FindToken(&s, KWPVTYPE_TIME))
                 {
                     newobject.ex.pv.type = BR_TIME;
@@ -2112,7 +2169,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object )
                 {
                     newobject.ex.pv.type = BR_STRUCT;
                     if( newobject.ex.pv.pdatatype == NULL )
-                        newobject.ex.pv.pdatatype = "DATATYPE";
+                        newobject.ex.pv.pdatatype = "DATATYPE(STRUCT)";
                 }
                 else if (FindToken(&s, KWPVTYPE_STRING))
                 {
@@ -2223,31 +2280,6 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object )
 }
 
 
-/* ==================================================================================
-	Schreibfunktionen
-	===================================================================================
-*/
-
-
-int WritePviPvar(PVIOBJECT *object, void *value)
-{
-    DWORD length = object->ex.pv.length;
-    int result;
-
-    if( object->ex.pv.type == BR_STRING )
-    {
-        length--;
-        if( strlen(value) < length )
-            length = (DWORD) strlen(value);
-    }
-
-    result = PviWrite( object->linkid, POBJ_ACC_DATA, value, length, 0, 0 ) ;
-
-    if( result > 0 ) // nur PVI- Fehler anzeigen
-        AddRowToLog( "Error writing Variable", result );
-
-    return( result );
-}
 
 
 
@@ -2628,71 +2660,6 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename)
 // }
 
 
-/* ===============================================================================
-   Hilfsfunktionen zur Stringbearbeitung
-================================================================================== */
 
-static int CountToken( char *s, char token )
-{
-    int count = 0;
-    while( *s )
-    {
-        if( *s == token )
-            ++count;
-        ++s;
-    }
-    return count;
-}
-
-static BOOL FindToken( char **source, char* token )
-{
-    size_t length;
-    char *s;
-
-    length = strlen(token);
-    s = *source;
-
-    while( *s && *token )
-    {
-        if( *s++ == *token++ )
-            --length;
-        else
-            break;
-    }
-
-    if( length == 0 )
-    {
-        *source = s;
-        return TRUE;
-    }
-    return FALSE;
-}
-
-
-static int GetIntValue( char **source )
-{
-    int i;
-
-
-    i = 0;
-    while( **source && **source != ' ' && **source != '\t' && i <sizeof(tempstring) )
-    {
-        tempstring[i++] = * (*source)++;
-    }
-    tempstring[i] = 0;
-    return(atoi(tempstring));
-}
-
-
-
-
-
-// static void ReplaceChar( char * s, char old, char new ){
-// while( *s ){
-// if( *s == old )
-// *s = new;
-// ++s;
-// }
-// }
 
 
