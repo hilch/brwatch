@@ -60,8 +60,11 @@ You can load/save the watch configuration via "File" menu.
 
 ## Logger 
 If the list view contains one or more PV you can write the values into a CSV- File. **Microsoft Excel** or **Libre Office Calc** can open this file type for example (or an ordinary text editor of course).
+
 ![LoggerConfiguration](https://github.com/hilch/brwatch/blob/master/doc/LoggerConfiguration.PNG)
+
 The CSV- file size can be limited. If the entries exceeds this size, the earlier file is renamed (extended with date and time settings) and a new file will be written.
+
 If option **write only when values have changed** is checked, a row is written if at least one variable in the list view has changed its content (minimize size). 
 Otherwise, the entered cycle time is for each row no matter if values have changed in a new cycle.
 Each row in the CSV- file will contain a timestamp. This will come from the first CPU listed in the list view.
