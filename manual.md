@@ -12,6 +12,10 @@ To edit these settings use an external editor or the built-in one in menu Option
 Refer to the comments in this file and the PVI- documentation that comes with the installation package of **PVI development setup**.
 
 ![Settings](https://github.com/hilch/brwatch/blob/master/doc/Settings.PNG)
+### ANSL
+As default brwatch starts PVI with an INA Line. Set Ansl=1 in [General] if you prefer the Ansl protocol instead.
+
+![SettingsANSL](https://github.com/hilch/brwatch/blob/master/doc/ANSL.png)
 
 
 ## Scan for PLCs in network
