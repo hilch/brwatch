@@ -69,7 +69,7 @@ If the list view contains one or more PV you can write the values into a CSV- Fi
 
 The CSV- file size can be limited. If the entries exceeds this size, the earlier file is renamed (extended with date and time settings) and a new file will be written.
 
-If option **write only when values have changed** is checked, a row is written if at least one variable in the list view has changed its content (minimize size). 
+If option **write only when value change** is checked, a row is written if at least one variable in the list view has changed its content (minimize size). 
 Otherwise, the entered cycle time is for each row no matter if values have changed in a new cycle.
 Each row in the CSV- file will contain a timestamp. This will come from the first CPU listed in the list view.
 Furthermore, the CSV- files can compressed via ZIP- algorithm. Extract these files later on by BRWATCH (Menu File) or with a separate tool (WinZIP, 7zip e.g.)
