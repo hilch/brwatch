@@ -42,6 +42,9 @@ The following dialog window enables to enter a new value.
 ### Strings
 ![EditStrings](https://github.com/hilch/brwatch/blob/master/doc/EditString.PNG)
 
+## Edit Tasks
+Task can be stopped, restarted and executed for a number of specified cycles (single steps)
+![EditTasks](https://github.com/hilch/brwatch/blob/master/doc/EditTask.PNG)
 
 ## Edit CPUs
 You can execute some commands to a CPU: 
