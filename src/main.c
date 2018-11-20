@@ -15,6 +15,7 @@
 #include "resource.h"
 #include <wingdi.h>
 
+
 /** Prototypes **************************************************************/
 
 static LRESULT WINAPI WndProc(HWND, UINT, WPARAM, LPARAM);

@@ -92,7 +92,7 @@ static void ReadSettings(void)
     /* create ethernet device */
     strcpy(tempobject.descriptor, "/IF=tcpip /SA=99");
     CreateUniqueObjectName(tempstring, tempobject.descriptor);
-    sprintf(tempobject.name, "@Pvi/LN/DEV%s", tempstring);
+    sprintf(tempobject.name, "@Pvi/LNBRWATCH/DEV%s", tempstring);
     tempobject.type = POBJ_DEVICE;
     AddPviObject(&tempobject, TRUE);
 
@@ -117,7 +117,7 @@ static void ReadSettings(void)
         {
             strcpy(tempobject.descriptor, buffer);
             CreateUniqueObjectName(tempstring, tempobject.descriptor);
-            sprintf(tempobject.name, "@Pvi/LN/DEV%s", tempstring);
+            sprintf(tempobject.name, "@Pvi/LNBRWATCH/DEV%s", tempstring);
             tempobject.type = POBJ_DEVICE;
             AddPviObject(&tempobject, TRUE);
         }
@@ -144,7 +144,7 @@ static void ReadSettings(void)
         {
             // Devicenamen zusammenbasteln
             CreateUniqueObjectName(tempstring, buffer);
-            sprintf(devicename, "@Pvi/LN/DEV%s", tempstring);
+            sprintf(devicename, "@Pvi/LNBRWATCH/DEV%s", tempstring);
 
             // Device mit dem angegebenen Namen suchen
             object = GetNextPviObject(TRUE);
@@ -696,7 +696,7 @@ static void WINAPI Pvi_GlobalEvent(WPARAM wParam, LPARAM lParam, LPVOID pData, D
 
         AddRowToLog("POBJ_EVENT_PVI_ARRANGE", 0);
         ppo = &po;
-        strcpy( po.name, "@Pvi/LN");
+        strcpy( po.name, "@Pvi/LNBRWATCH");
         if( g_ansl )
         {
             strcpy( po.descriptor,"LnAnsl");
@@ -1028,8 +1028,11 @@ int StartPvi( void )
 
         memset( buffer, 0, sizeof(buffer) );
         GetPrivateProfileString( "REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), SettingsGetFileName());
-
+#ifdef _DEBUG
+        result = PviInitialize( 0, 0, NULL, NULL );
+#else
         result = PviInitialize( 0, 0, buffer, NULL );
+#endif
     }
 
     if( result )
@@ -1521,11 +1524,19 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object )
                 for( i = 0; i < noOfCpu; ++i, ++ethernetCpuInfo )
                 {
                     memset( cpuobject, 0, sizeof(PVIOBJECT) );
+                    memcpy( &cpuobject->ex.cpu.ethernetCpuInfo, (void*) ethernetCpuInfo, sizeof(struct stEthernetCpuInfo) );
                     sprintf( cpuobject->descriptor, "/DAIP=%s", ethernetCpuInfo->ipAddress );
-
-                    CreateUniqueObjectName( tempstring, cpuobject->descriptor );
-                    sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
-
+                    strcpy( cpuobject->ex.cpu.arversion, ethernetCpuInfo->arVersion );
+                    strcpy( cpuobject->ex.cpu.cputype, ethernetCpuInfo->targetTypeDescription );
+                    if( strlen(cpuobject->ex.cpu.ethernetCpuInfo.macAddress) )
+                    {   // the MAC is the better unique name
+                        sprintf( cpuobject->name, "%s/CPU%s", object->name, cpuobject->ex.cpu.ethernetCpuInfo.macAddress );
+                    }
+                    else
+                    {
+                        CreateUniqueObjectName( tempstring, cpuobject->descriptor );
+                        sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
+                    }
                     cpuobject->type = POBJ_CPU;
                     sprintf( descriptor, "CD=\"%s\"", cpuobject->descriptor );
                     result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
@@ -1536,60 +1547,6 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object )
                 }
                 free(ethernetCpuInfo);
             }
-
-
-//            char ipaddress[20];
-//            int node;  // Knotennummer
-//
-//            if( object->ex.dev.allow_icmp && object->ex.dev.broadcast != 0 )
-//            {
-//                object->ex.dev.allow_icmp = 0;
-//                //if( Ping( object->ex.dev.broadcast, pbuffer, 65535 ) != 0 ){
-//                if( SearchCpuViaUDP( 255, object->ex.dev.broadcast, pbuffer, 65535 ) != 0 )
-//                {
-//                    object = NULL;
-//                    break; // Fehler
-//                }
-//
-//                s = pbuffer;
-//                d = ipaddress;
-//                while( *s )
-//                {
-//                    *d++=*s++;
-//                    if( *s == '\t' || *s == 0 )  // Ende des Eintrags
-//                    {
-//                        *d = 0; // String mit 0 abschliessen
-//                        sscanf( ipaddress, "%3u%s", &node, ipaddress );
-//                        d = ipaddress;
-//                        //
-//                        memset( cpuobject, 0, sizeof(PVIOBJECT) );
-//                        sprintf( cpuobject->descriptor, "/DAIP=%s /DA=%u", ipaddress, node );
-//
-//                        CreateUniqueObjectName( tempstring, cpuobject->descriptor );
-//                        sprintf( cpuobject->name, "%s/CPU%s", object->name, tempstring );
-//
-//                        cpuobject->type = POBJ_CPU;
-//                        sprintf( descriptor, "CD=\"%s\"", cpuobject->descriptor );
-//                        result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
-//                        if( result == 0 )
-//                        {
-//
-//                            if( result == 0 )
-//                            {
-//                                AddPviObject( cpuobject, 1 );
-//                                //MessageBox( NULL, "CPU gefunden!", "Hinweis", MB_OK );
-//                            }
-//                        }
-//
-//                        //
-//                        if( *s == 0 )
-//                            break;
-//                        else
-//                            ++s;
-//                    }
-//                }
-//            }
-
             break;
         }
 

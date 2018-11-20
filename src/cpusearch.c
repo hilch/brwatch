@@ -196,7 +196,7 @@ int ListNetworkAdapters( struct stAdapterInfo *adapterInfo, int maxEntries )
     PVI Callback for SNMP line
     ----------------------------------------------------------------------------------------
 */
-void WINAPI PviSnmpProc (WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo)
+static void WINAPI PviSnmpProc (WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo)
 {
 
 }
@@ -252,6 +252,24 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
                                 result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
                                 PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
                                 PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
+                                PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaNodeNumber", POBJ_PVAR, "CD=inaNodeNumber", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_nodeNumber, sizeof(ethernetCpuInfo->INA_nodeNumber));
+                                PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaPortNumber", POBJ_PVAR, "CD=inaPortNumber", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_portNumber, sizeof(ethernetCpuInfo->INA_portNumber));
+                                PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
+                                PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
+                                PviUnlink( linkIdPvar);
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arVersion", POBJ_PVAR, "CD=arVersion", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->arVersion, sizeof(ethernetCpuInfo->arVersion));
+                                PviUnlink( linkIdPvar);
                                 PviUnlink(linkIdStation);
                             }
                             ++ethernetCpuInfo;
@@ -262,15 +280,17 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
                 }
                 free(buffer);
             }
-        }
         PviUnlink( linkIdDevice );
-    }
+       }
+
     result = PviUnlink(linkIdSnmpLine);
+    }
+
     return( entries);
 }
 
 /* -----------------------------------------------------------------------------------------
-    start searching CPUs connected by ethernet
+    start searching CPUs connected by Ethernet
     ----------------------------------------------------------------------------------------
 */
 int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries )
@@ -296,7 +316,9 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
             {
                 for( int i = 0; i < result; ++i )
                 {
+#ifdef _DEBUG
                     printf( "%s / %s \n", ethernetUdpCpuInfo[i].ipAddress, ethernetUdpCpuInfo[i].subnetMask );
+#endif // _DEBUG
                     int found = 0;
                     for( int n = 0; n < noOfCPUs; ++n ) /* discard dublicates */
                     {
@@ -308,7 +330,9 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
                     }
                     if( !found && (noOfCPUs < maxEntries) )
                     {
+#ifdef _DEBUG
                         puts("SNMP disabled CPU found\n");
+#endif
                         memcpy( &ethernetCpuInfo[noOfCPUs], &ethernetUdpCpuInfo[i], sizeof(struct stEthernetCpuInfo) );
                        ++noOfCPUs;
                     }

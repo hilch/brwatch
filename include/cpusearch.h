@@ -1,12 +1,12 @@
 
-struct stEthernetCpuInfo {
-    char macAddress[20];
-    char ipAddress[20];
-    char subnetMask[20];
-};
+#ifndef CPUSEARCH_H
+#define CPUSEARCH_H
+
+
 int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo , int maxEntries );
+int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
 
-
+#endif // CPUSEARCH_H
 
 
 

@@ -283,6 +283,10 @@ static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent )
                 }
                 break;
 
+            case POBJ_DEVICE:
+                sprintf( tempstring, "%s %s %s", child->ex.cpu.cputype, child->ex.cpu.arversion, child->descriptor );
+                break;
+
             default:
                 strcpy( tempstring, child->descriptor );
                 break;

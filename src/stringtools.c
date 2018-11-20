@@ -77,3 +77,25 @@ int GetIntValue( char **source )
 }
 
 
+int validate_ip4(const char* buffer)
+{
+    if (NULL == buffer) return 0;
+
+    const      char*   pos     = buffer;
+    unsigned   char    ch      = *pos;
+    unsigned   short   count   = 0;
+
+    while (ch != 0)
+    {
+        if (!((ch >= '0' && ch <= '9') || ch == '.')) return 0;
+
+        if (ch == '.')
+            if (++count > 3) return 0;
+
+        ch = *++pos;
+    }
+
+    if (count == 3 && *--pos != '.') return 1;
+
+    return 0;
+}

@@ -92,6 +92,13 @@
 #define IDR_EDIT_OBJECT_COUNT           8208
 #define IDC_CHECK_ZIP                   8209
 #define IDR_SETTINGS                    8210
+#define IDR_EDIT_IPADDRESS              8211
+#define IDR_EDIT_SUBNETMASK             8212
+#define IDR_BUTTON_CHANGEIP             8213
+#define IDR_CHECK_DHCP_CLIENT           8214
+#define IDR_INA_ACTIVATED               8215
+#define IDR_MAC_ADDRESS                 8216
+#define IDR_INA_SETTINGS                8217
 
 #define IDM_LOGGER_UNZIPLOGGERFILE      40002
 #define IDM_OPTIONS_SETTINGS            40004

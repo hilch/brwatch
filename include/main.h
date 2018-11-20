@@ -23,9 +23,6 @@
 #include <crtdbg.h>
 #include "resource.h"
 
-#include "pvi_interface.h"
-#include "logger.h"
-
 #define NOTIFY_ICON_MESSAGE		(WM_USER + 100)
 #define NOTIFY_LOGGER_STATUS    (WM_USER + 101)
 #define APPLICATION_NAME		"BRWATCH"

@@ -53,11 +53,25 @@ typedef struct PVIDEVICEOBJECT{
 } PVIDEVICEOBJECT;
 
 
+struct stEthernetCpuInfo {
+    char macAddress[20+1];
+    char ipAddress[16+1];
+    char subnetMask[16+1];
+    int ipMethod;  /* 0 = fixed IP, 1 = DHCP-Client */
+    int INA_activated;
+    int INA_nodeNumber;
+    int INA_portNumber;
+    char targetTypeDescription[32+1];
+    char arVersion[8+1];
+};
+
+
 /* erweiterte Info CPU - objekt */
 typedef struct PVICPUOBJECT{
-	char						arversion[5];		// Version Automation Runtime
-	char						cputype[10];		// SPS- Typ
+	char						arversion[8+1];		// Version Automation Runtime
+	char						cputype[32+1];		// SPS- Typ
 	char						status[15];			//
+    struct stEthernetCpuInfo    ethernetCpuInfo;
 	struct tm					rtc_time;		    // Uhrzeit und Datum
 	BOOL						running;			// im "RUN"
 } PVICPUOBJECT;

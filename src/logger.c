@@ -9,9 +9,9 @@
 #include <process.h>
 #include "main.h"
 #include "settings.h"
-//#include "pvi_interface.h"
+#include "pvi_interface.h"
 #include "zip.h"
-//#include "logger.h"
+#include "logger.h"
 
 #include "resource.h"
 
