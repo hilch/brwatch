@@ -22,6 +22,7 @@ brwatch needs a previously installed [PVI Development Setup](https://www.br-auto
 Beware: if you do not own a PVI license **1TG0500.02** (+ TG Guard e.t. 0TG1000.02) PVI will run for two hours only. After this period brwatch will stop working and PVI-Manager must be stopped and restarted again. So, do not blame brwatch for that and contact your local B&R office to buy it.
 
 # Development
+The project is done in plain old 'C' language (not C++).
 ## Compiler
    Mingw32 (32-Bit)
    http://www.mingw.org/
