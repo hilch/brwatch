@@ -11,16 +11,23 @@ After first start, BRWATCH creates a **BRWATCH.ini** file in the current folder 
 To edit these settings use an external editor or the built-in one in menu Options/Settings. 
 Refer to the comments in this file and the PVI- documentation that comes with the installation package of **PVI development setup**.
 
+![Settings](https://github.com/hilch/brwatch/blob/master/doc/Settings.PNG)
+
+
 ## Scan for PLCs in network
 since V1.1 a click on the tcpip device starts the scanning via SNMP and UDP to find B&R PLCs.
 If SNMP ist not supported (old PVI version, old AR) there is UDP only.
 CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead.
+
+![NetworkScan](https://github.com/hilch/brwatch/blob/master/doc/network_scan.gif)
 
 ## Scan vor PV (process variables)
 To scan variables, left-click on each node-entry of the tree view control.
 To watch a selected variable just drag it to the list view control at the right. 
 The entries can be freely arranged by drag and drop operations. 
 If you drag an entry outside BRWATCH, it will removed from the list view. 
+
+![BrowseForVariables](https://github.com/hilch/brwatch/blob/master/doc/browse_for_variables.gif)
 
 ## Change number representation
 Right-Click on an entry in the list view opens a context menu for further settings (e.g. 
@@ -30,14 +37,27 @@ TODO screenshot
 ## Edit values
 To change a value double click the entry in the list view. 
 The following dialog window enables to enter a new value.
-TODO screenshot Edit dialogs
+### Numbers
+![EditNumbers](https://github.com/hilch/brwatch/blob/master/doc/EditNumber.PNG)
+### Strings
+![EditStrings](https://github.com/hilch/brwatch/blob/master/doc/EditString.PNG)
+
+
+## Edit CPUs
+You can execute some commands to a CPU: 
+- Warmstart
+- Coldstart
+- Stop
+- Diagnose
+Further one can change the IP settings (since V1.2)
+![IpSettings](https://github.com/hilch/brwatch/blob/master/doc/change_ip_settings.gif)
 
 ## File operations
 You can load/save the watch configuration via "File" menu.
 
 ## Logger 
 If the list view contains one or more PV you can write the values into a CSV- File. **Microsoft Excel** or **Libre Office Calc** can open this file type for example (or an ordinary text editor of course).
-TODO screenshot Logger configuration
+![LoggerConfiguration](https://github.com/hilch/brwatch/blob/master/doc/LoggerConfiguration.PNG)
 The CSV- file size can be limited. If the entries exceeds this size, the earlier file is renamed (extended with date and time settings) and a new file will be written.
 If option **write only when values have changed** is checked, a row is written if at least one variable in the list view has changed its content (minimize size). 
 Otherwise, the entered cycle time is for each row no matter if values have changed in a new cycle.
