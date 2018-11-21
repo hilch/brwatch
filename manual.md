@@ -56,7 +56,8 @@ You can execute some commands to a CPU:
 - Coldstart
 - Stop
 - Diagnose
-Further one can change the IP settings (since V1.2)
+- Change the IP settings (since V1.2)
+
 ![IpSettings](https://github.com/hilch/brwatch/blob/master/doc/change_ip_settings.gif)
 
 ## File operations
