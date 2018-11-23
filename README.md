@@ -1,6 +1,6 @@
 # brwatch [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-brwatch ist a small and portable service tool for [B&amp;R](https://www.br-automation.com) controls (PLC).
+brwatch ist a small and portable service tool for [B&amp;R](https://www.br-automation.com) automation controls (PLC).
 It runs on Microsoft Windows and enables you to list, watch and change process variables, start and stop task, search and reboot CPUs, change IP-settings.
 Additionaly it enables to log PV values into CSV- Files.
 
