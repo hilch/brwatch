@@ -11,17 +11,16 @@ It makes heavily use of PVI ('process visualisation interface') package from [B&
 ![Video](https://github.com/hilch/brwatch/blob/master/how_to_use.gif)
 
 # Disclaimer
-BRWATCH comes „as is“, e.g. without support and warranty.
+brwatch comes „as is“, e.g. without support and warranty.
 You can freely copy it but use it at your own risk.
-
-# INA/ANSL
-brwatch requires **INA** protocol enabled. 
-since V1.1/PVI4.x the new **ANSL** protocol could be an alternative.
 
 # PVI
 brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
-
-Beware: if you do not own a PVI license **1TG0500.02** (+ TG Guard e.t. 0TG1000.02) PVI will run for two hours only. After this period brwatch will stop working and PVI-Manager must be stopped and restarted again. So, do not blame brwatch for that and contact your local B&R office to buy it.
+## INA/ANSL
+brwatch requires **INA** protocol enabled. 
+since V1.1/PVI4.x the new **ANSL** protocol could be an alternative.
+## License
+Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run for two hours. After this period brwatch will stop working and PVI-Manager must be stopped and restarted again. Do not blame brwatch for that and contact your local B&R office to buy a valid license.
 
 # Development
 The project is done in plain old 'C' language (not C++) and makes use of pure Win32-API-calls.
