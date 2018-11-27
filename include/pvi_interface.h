@@ -63,6 +63,7 @@ struct stEthernetCpuInfo {
     int INA_portNumber;
     char targetTypeDescription[32+1];
     char arVersion[8+1];
+    char arState[10+1];
 };
 
 

@@ -26,7 +26,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
             SetDlgItemText( hDlg, IDC_STATIC_CPU, tempstring );
             sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.macAddress );
             SetDlgItemText( hDlg, IDR_MAC_ADDRESS, tempstring );
-            SetDlgItemText( hDlg, IDR_STATIC_CPU_STATUS, object->ex.cpu.status );
+            SetDlgItemText( hDlg, IDR_STATIC_CPU_STATUS, object->ex.cpu.ethernetCpuInfo.arState );
             sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.ipAddress );
             SetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, tempstring );
             sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.subnetMask );

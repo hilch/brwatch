@@ -26,7 +26,7 @@ LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 #else
 #define VERSION ""
 #endif
-        SetDlgItemText( hDlg, IDC_STATIC_VERSION, "BRWATCH V1.2 (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
+        SetDlgItemText( hDlg, IDC_STATIC_VERSION, "BRWATCH V1.3 (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
 
        // PviGetVersion( versiontext, sizeof(versiontext) );
         SetDlgItemText( hDlg, IDC_STATIC_PVIVERSION, g_PVIVersionString );

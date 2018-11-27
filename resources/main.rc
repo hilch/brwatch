@@ -110,7 +110,7 @@ BEGIN
     LTEXT           "?????",IDC_STATIC_CPU,42,6,240,12
     LTEXT           "MAC:",IDC_STATIC,6,18,34,12
     LTEXT           "?????",IDR_MAC_ADDRESS,42,18,240,12
-    LTEXT           "booted by:",IDC_STATIC,6,27,34,12
+    LTEXT           "AR-STATE:",IDC_STATIC,6,27,34,12
     LTEXT           "??????",IDR_STATIC_CPU_STATUS,42,27,276,12
     LTEXT           "IP:",IDC_STATIC,6,39,34,12
     EDITTEXT        IDR_EDIT_IPADDRESS,20,38,60,12, 0
@@ -294,8 +294,8 @@ BEGIN
     BEGIN
         BLOCK "04070000"
         BEGIN
-            VALUE "FileVersion", "1.2.0.0"
-            VALUE "ProductVersion", "1.2.0.0"
+            VALUE "FileVersion", "1.3.0.0"
+            VALUE "ProductVersion", "1.3.0.0"
         END
     END
     BLOCK "VarFileInfo"

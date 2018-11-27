@@ -264,6 +264,33 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
                                 result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
                                 PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
                                 PviUnlink( linkIdPvar);
+                                int arState;
+                                result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arState", POBJ_PVAR, "CD=arState", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+                                PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &arState, sizeof(arState));
+                                PviUnlink( linkIdPvar);
+                                switch( arState )
+                                {
+                                case 1:
+                                    strcpy( ethernetCpuInfo->arState, "BOOT");
+                                    break;
+
+                                case 2:
+                                    strcpy( ethernetCpuInfo->arState, "DIAG");
+                                    break;
+
+                                case 3:
+                                    strcpy( ethernetCpuInfo->arState, "SERVICE");
+                                    break;
+
+                                case 4:
+                                    strcpy( ethernetCpuInfo->arState, "RUN");
+                                    break;
+
+                                default:
+                                    strcpy( ethernetCpuInfo->arState, "(undefined)");
+                                    break;
+                                }
+
                                 result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
                                 PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
                                 PviUnlink( linkIdPvar);
