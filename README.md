@@ -16,10 +16,10 @@ You can freely copy it but use it at your own risk.
 
 ## PVI
 brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
-### INA/ANSL
+- ### INA/ANSL
 brwatch requires **INA** protocol enabled in the PLC. 
 since V1.1/PVI4.x the new **ANSL** protocol could be an alternative.
-### PVI License
+- ### PVI License
 Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run for two hours. After this period brwatch will stop working and PVI-Manager must be stopped and restarted again. Do not blame brwatch for that and contact your local B&R office to buy a valid license.
 
 ## Usage
