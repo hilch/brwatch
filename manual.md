@@ -4,7 +4,7 @@ we need to store an *.ini file and a log file int the same place.
 brwatch.exe requires PVI development to be preinstalled on the target pc.
 
 With Runtime Utility Center (RUC) it is possible to create an "installation package", which contains your project binaries but also PVI binaries (*.exe, *.dll).
-Just copy brwatch.exe to this installation package to get a fully portable version.
+Just copy brwatch.exe to this installation package to get a complete portable version.
 
 ## Settings
 After first start, BRWATCH creates a **BRWATCH.ini** file in the current folder if it does not exist.
