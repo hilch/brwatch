@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <crtdbg.h>
 #include "resource.h"
 
 #define NOTIFY_ICON_MESSAGE		(WM_USER + 100)
