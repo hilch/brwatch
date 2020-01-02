@@ -5,6 +5,8 @@ brwatch ist a small and portable service tool for [B&amp;R](https://www.br-autom
 It runs on Microsoft Windows and enables you to list, watch and change process variables, start and stop task, search and reboot CPUs, change IP-settings.
 Additionaly it logs PV values to CSV- Files.
 
+[Download](https://github.com/hilch/brwatch/releases)
+
 It makes heavy use of PVI ('process visualisation interface') package from [B&amp;R](https://www.br-automation.com). 
 
 ![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
