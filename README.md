@@ -1,7 +1,7 @@
 # brwatch
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-brwatch ist a small and portable service tool for [B&amp;R](https://www.br-automation.com) automation controls (PLC).
+[brwatch](http://hilch.github.io/brwatch) ist a small and portable service tool for [B&amp;R](https://www.br-automation.com) automation controls (PLC).
 It runs on Microsoft Windows and enables you to list, watch and change process variables, start and stop task, search and reboot CPUs, change IP-settings.
 Additionaly it logs PV values to CSV- Files.
 
@@ -31,7 +31,7 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 ## Usage
 
 1. [download EXE](https://github.com/hilch/brwatch/releases) 
-2. [see brief manual](https://github.com/hilch/brwatch/blob/master/manual.md)
+2. [see brief manual](http://hilch.github.io/brwatch/manual)
 
 ## Development
 The project is done in plain old 'C' language (not C++) and makes use of pure Win32-API-calls.
