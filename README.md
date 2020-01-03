@@ -9,9 +9,9 @@ Additionaly it logs PV values to CSV- Files.
 
 It makes heavy use of PVI ('process visualisation interface') package from [B&amp;R](https://www.br-automation.com). 
 
-![Screenshot 1](https://github.com/hilch/brwatch/blob/master/screenshot1.PNG)
-![Screenshot 2](https://github.com/hilch/brwatch/blob/master/screenshot2.PNG)
-![Video](https://github.com/hilch/brwatch/blob/master/how_to_use.gif)
+![Screenshot 1](/doc/screenshot1.PNG)
+![Screenshot 2](/doc/screenshot2.PNG)
+![Video](/doc/how_to_use.gif)
 
 # Disclaimer
 brwatch comes „as is“, e.g. without support and warranty.
