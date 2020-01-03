@@ -27,7 +27,7 @@ CPUs outside your network cannot be found with these methods. The communication 
 
 ![NetworkScan](/doc/network_scan.gif)
 
-## Scan vor PV (process variables)
+## Searching for PV (process variables)
 To scan variables, left-click on each node-entry of the tree view control.
 To watch a selected variable just drag it to the list view control at the right. 
 The entries can be freely arranged by drag and drop operations. 
