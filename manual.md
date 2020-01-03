@@ -77,7 +77,7 @@ Otherwise, the entered cycle time is for each row no matter if values have chang
 Each row in the CSV- file will contain a timestamp. This will come from the first CPU listed in the list view.
 Furthermore, the CSV- files can compressed via ZIP- algorithm. Extract these files later on by BRWATCH (Menu File) or with a separate tool (WinZIP, 7zip e.g.)
 Pressing **OK** will save these settings in the BRWATCH.ini file.
-# Starting and Stopping the Logger
+### Starting and Stopping the Logger
 Menu Logger enables to start the logger or to stop a started logging. If logging has started, the BRWATCH main window is grey colored to signal this state.
 TODO Screenshot
 You can save space on your Window desktop by minimizing the window. BRWATCH will then be visible only as an icon in the taskbar. Moving the mouse over this icon gives the option to maximize the main window again.
