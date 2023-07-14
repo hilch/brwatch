@@ -9,7 +9,7 @@ Libs=.\libraries
 PrivateResource=brwatch_private.rc
 ResourceIncludes=.\resources
 MakeIncludes=
-Compiler=-std=c99_@@_-Os_@@__@@__@@_
+Compiler=-std=c99_@@_-Os_@@_-Wall_@@__@@__@@_
 CppCompiler=
 Linker=-s_@@_-static-libgcc_@@_-lws2_32_@@_-liphlpapi_@@_-lnetapi32_@@_-lcomdlg32_@@_-lgdi32_@@_-luser32_@@_-lkernel32_@@_-lcomctl32_@@_libraries/PviCom.lib_@@_libraries/libz.a_@@_
 IsCpp=0
