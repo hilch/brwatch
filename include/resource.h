@@ -4,6 +4,7 @@
 
 
 #include "pvi_interface.h"
+#include <commctrl.h>
 // Used by main.rc
 //
 #define DLG_SETTINGS                    100
@@ -40,6 +41,8 @@
 #define IDR_BUTTON_START                1033
 #define IDR_BUTTON_DIAGNOSIS            1034
 #define IDR_BUTTON_RESUME               1035
+#define IDR_BUTTON_DEVICE1				1036
+#define IDR_BUTTON_DEVICE2				1037
 #define IDR_STATIC_CPU_STATUS           1040
 #define IDR_STATIC_TASK_STATUS          1041
 #define IDR_EDIT_NUMBER_OF_CYCLES       1042

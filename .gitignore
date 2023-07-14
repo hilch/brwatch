@@ -4,3 +4,6 @@ obj
 /*.depend
 /brwatch.ini
 /pvilog.txt
+build/
+brwatch_private.h
+brwatch_private.rc

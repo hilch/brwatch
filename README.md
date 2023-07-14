@@ -38,12 +38,14 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 The project is done in plain old 'C' language (not C++) and makes use of pure Win32-API-calls.
 Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 
-### Compiler
-   Mingw32 (32-Bit)
-   http://www.mingw.org/
-   
-### IDE
-   Code::Blocks
-   http://www.codeblocks.org/
+
+### IDE / Compiler
+
+[Embarcadero Dev-C++](https://www.embarcadero.com/de/free-tools/dev-cpp)
+it is shipped in a package with TDM-GCC 9.2.0 32/64bit
+
+
+
+
    
 
