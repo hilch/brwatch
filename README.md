@@ -49,8 +49,8 @@ mingw32-make.exe -f Makefile.win clean all
 [Embarcadero Dev-C++](https://www.embarcadero.com/de/free-tools/dev-cpp)
 it is shipped in a package with TDM-GCC 9.2.0 32/64bit
 
-
-
+A short hint from Koen (Thanks!):
+*"Note: To anyone trying, best to install DevC in a folder without brackets. The default location in Windows 11 is 'C:\Program Files (x86)". However the 'Clean' command fails on the round brackets in the path. If you install under 'C:\DevC' for example, there is no issue. This seems to be a bug with DevC DEL command."*
 
    
 
