@@ -41,7 +41,7 @@ Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 ### Build
 
 ```
-mingw32-make.exe -f "C:\projects\brwatch\Makefile.win" clean all
+mingw32-make.exe -f Makefile.win clean all
 ```
 
 ### IDE / Compiler
