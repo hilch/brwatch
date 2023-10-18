@@ -10,8 +10,8 @@
 #include "main.h"
 #include "settings.h"
 #include "pvi_interface.h"
-#include "zip.h"
 #include "logger.h"
+#include "compressfile.h"
 
 #include "resource.h"
 
@@ -160,9 +160,6 @@ static BOOL ValidateSettings( void ) {
 		return FALSE;
 	}
 
-	if( !ZipDllFound() ) {
-		zip_the_files = FALSE;
-	}
 	return TRUE;
 
 }
@@ -821,13 +818,7 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	switch (uMsg) {
 		case WM_INITDIALOG:
 			ReadSettings();
-			if( !ZipDllFound() ) {
-				EnableWindow( GetDlgItem( hDlg, IDC_CHECK_ZIP), FALSE );
-				SetDlgItemText( hDlg, IDC_CHECK_ZIP, "zlib1d.dll not found ! " );
-				CheckDlgButton( hDlg, IDC_CHECK_ZIP, BST_UNCHECKED );
-			} else {
-				CheckDlgButton( hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED );
-			}
+			CheckDlgButton( hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED );
 			SetDlgItemText( hDlg, IDR_EDIT_FILENAME, loggerfile );
 			SetDlgItemInt( hDlg, IDR_EDIT_MAXSIZE, filesize, 0 );
 			SetDlgItemInt( hDlg, IDR_EDIT_CYCLETIME, cycletime, 0 );

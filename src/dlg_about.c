@@ -6,7 +6,7 @@
 #include "main.h"
 #include "resource.h"
 #include "pvicom.h"
-#include "zip.h"
+
 
 LRESULT WINAPI AboutDlgProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -28,7 +28,6 @@ LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 			// PviGetVersion( versiontext, sizeof(versiontext) );
 			SetDlgItemText( hDlg, IDC_STATIC_PVIVERSION, g_PVIVersionString );
-			SetDlgItemText( hDlg, IDS_ZLIB1, GetZibLibVersion() );
 			return TRUE;
 
 		case WM_COMMAND:

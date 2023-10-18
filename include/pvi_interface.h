@@ -38,16 +38,16 @@ typedef struct PVIPVAROBJECT{
 	PVIPVARTYPE					type;				// Variablentyp
 	char						*pdatatype;			// Zeiger auf Datentypnamen
 	int							dimension;			// dimension (bei Arrays)
-	DWORD						length;				// Variablenl‰nge
+	DWORD						length;				// Variablenl√§nge
 	void						*pvalue;			// Zeiger auf Watchdaten
-	BOOL						value_changed;		// Wert wurde ge‰ndert
-	char						scope[2];			// G¸ltigkeitsbereich (global, lokal, dynamisch)
+	BOOL						value_changed;		// Wert wurde ge√§ndert
+	char						scope[2];			// G√ºltigkeitsbereich (global, lokal, dynamisch)
 	struct PVIOBJECT			*task;				// Zeiger auf das Task-Objekt (oder auf das CPU -Objekt bei globalen Variablen)
 	struct PVIOBJECT			*cpu;				// Zeiger auf das CPU- Objekt
 } PVIPVAROBJECT;
 
 
-/* erweiterte Info Ger‰teobjekt */
+/* erweiterte Info Ger√§teobjekt */
 typedef struct PVIDEVICEOBJECT{
 	unsigned long				broadcast;			// Broadcast IP
 } PVIDEVICEOBJECT;

@@ -675,8 +675,8 @@ static void WINAPI PviCallback (WPARAM wParam, LPARAM lParam, LPVOID pData, DWOR
  Created  : Tue Mar 14 10:00:02 2006
  Modified : Tue Mar 14 10:00:02 2006
 
- Synopsys : wird benutzt, um zyklische Requests abzusetzen, da nicht fÃ¼r
-            alle Zugriffsarten Events unterstÃ¼tzt werden
+ Synopsys : wird benutzt, um zyklische Requests abzusetzen, da nicht fÃƒÆ’Ã‚Â¼r
+            alle Zugriffsarten Events unterstÃƒÆ’Ã‚Â¼tzt werden
  Input    :
  Output   :
  Errors   :
@@ -815,7 +815,7 @@ int StartPvi( void ) {
 	}
 
 
-	// Timer fÃ¼r zyklische Requests
+	// Timer fÃƒÆ’Ã‚Â¼r zyklische Requests
 	timerid_cyclic_requests = SetTimer( NULL, 0, 500, (TIMERPROC) PviCyclicRequests );
 
 
@@ -840,7 +840,7 @@ int StopPvi(void) {
 	int result;
 	PVIOBJECT *prevobject;
 
-	// Timer fÃ¼r zyklische Requests killen
+	// Timer fÃƒÆ’Ã‚Â¼r zyklische Requests killen
 	KillTimer( NULL, timerid_cyclic_requests );
 
 	// alle Objekte loeschen
@@ -870,7 +870,7 @@ static char *AddPviDatatype( char * t ) {
 	size_t length;
 	PVISTRUCTNAMES *p, *kill;
 
-	if( t == NULL ) { // alle Datentypen lÃ¶schen ...
+	if( t == NULL ) { // alle Datentypen lÃƒÆ’Ã‚Â¶schen ...
 		p = structnamesroot.next	;
 		while( p != NULL ) {
 			kill = p;
@@ -883,7 +883,7 @@ static char *AddPviDatatype( char * t ) {
 		return ("nil!");
 	}
 
-	length = strlen(t); // LÃ¤nge des neuen Datentypnames
+	length = strlen(t); // LÃƒÆ’Ã‚Â¤nge des neuen Datentypnames
 
 	// Datentypen suchen
 	p = &structnamesroot;
@@ -902,7 +902,7 @@ static char *AddPviDatatype( char * t ) {
 	p->next = malloc( sizeof(PVISTRUCTNAMES) );
 	if( p->next != NULL ) {
 		p = p->next;
-		p->pname = malloc( length + 1); // Speicher fÃ¼r Name
+		p->pname = malloc( length + 1); // Speicher fÃƒÆ’Ã‚Â¼r Name
 		p->next = NULL;
 		if( p->pname != NULL ) {
 			return( strcpy( p->pname, t ) );
@@ -914,7 +914,7 @@ static char *AddPviDatatype( char * t ) {
 }
 
 /* ===================================================================================
-	Funktionen zum Extrahieren von Informationen Ã¼ber PVI- Objekte
+	Funktionen zum Extrahieren von Informationen ÃƒÆ’Ã‚Â¼ber PVI- Objekte
 	==================================================================================
 */
 
@@ -931,7 +931,7 @@ static void PviReadDataType( PVIOBJECT *object ) {
 
 		while ( *s ) {
 			if (*s == ' ') {	// Leerzeichen
-				++s;			// Ãœberlesen
+				++s;			// ÃƒÆ’Ã…â€œberlesen
 				continue;
 			}
 
@@ -939,7 +939,7 @@ static void PviReadDataType( PVIOBJECT *object ) {
 				break;
 			}
 
-			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃ¤nge der Variable
+			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃƒÆ’Ã‚Â¤nge der Variable
 				object->ex.pv.length = GetIntValue(&s);
 				continue;
 			}
@@ -1008,16 +1008,16 @@ static void PviReadDataType( PVIOBJECT *object ) {
 					object->ex.pv.type = 0;	// unbekannt
 					object->ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
-						++s;	// Rest Ã¼berlesen
+						++s;	// Rest ÃƒÆ’Ã‚Â¼berlesen
 				}
 				continue;
 			}
 
-			if (FindToken(&s, KWDESC_SCOPE "=")) {  // GÃ¼ltigkeitsbereich der Variable
+			if (FindToken(&s, KWDESC_SCOPE "=")) {  // GÃƒÆ’Ã‚Â¼ltigkeitsbereich der Variable
 				object->ex.pv.scope[0] = *s++;
 				object->ex.pv.scope[1] = 0;
 				while (*s != ' ' && *s != 0)
-					++s;	// Rest Ã¼berlesen
+					++s;	// Rest ÃƒÆ’Ã‚Â¼berlesen
 				continue;
 			}
 
@@ -1119,29 +1119,23 @@ PVIOBJECT *ExpandPviObject( PVIOBJECT * object ) {
 
 
 
+/* searches for reachable CPUs
+	input: pointer to device object
+	result : pointer to device object or NULL in case of error
 
+*/
 
-/*-@@+@@--------------------------------[Do not edit manually]------------
- Procedure: PviReadCPUList
- Created  : Wed Feb 22 08:17:03 2006
- Modified : Tue Feb 28 12:48:28 2006
-
- Synopsys : ermittelt die erreichbaren CPUs
- Input    : Zeiger auf Device- Objekt
- Output   : Zeiger auf Device- Objekt
- Errors   : NULL
- ------------------------------------------------------------------@@-@@-*/
-static PVIOBJECT *PviReadCPUList(PVIOBJECT *object ) {
-	PVIOBJECT *cpuobject;
+static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject ) {
+	PVIOBJECT *cpuObject;
 	char *s;
 	char descriptor[256];
 	int result;
 	char *pbuffer;
 
-	if( object == NULL )
+	if( deviceObject == NULL )
 		return NULL;
 
-	if( object->type != POBJ_DEVICE )
+	if( deviceObject->type != POBJ_DEVICE )
 		return NULL;
 
 
@@ -1152,33 +1146,31 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object ) {
 	}
 
 
-	cpuobject = malloc(sizeof(PVIOBJECT) );
-	if( cpuobject == NULL ) {
+	cpuObject = calloc( 1, sizeof(PVIOBJECT) );
+	if( cpuObject == NULL ) {
 		free(pbuffer);
 		AddRowToLog( "PviReadCPUList():malloc(PVIOBJECT)", -1 );
 		return NULL;
 	}
 
 
-	s= _strupr(object->descriptor);
+	s= _strupr(deviceObject->descriptor);
 	while( *s ) {
 		// search for CPUs connected to a serial port
 		if( FindToken( &s, "/IF=COM" ) ) {
-			memset( cpuobject, 0, sizeof(PVIOBJECT) );
-			//strcpy( cpuobject->descriptor, "/RT=10000" );
 
-			CreateUniqueObjectName( tempstring, cpuobject->descriptor );
-			snprintf( cpuobject->name, sizeof(cpuobject->name), "%s/CPU%s", object->name, tempstring  );
+			CreateUniqueObjectName( tempstring, cpuObject->descriptor );
+			snprintf( cpuObject->name, sizeof(cpuObject->name), "%s/CPU%s", deviceObject->name, tempstring  );
 
-			cpuobject->type = POBJ_CPU;
-			snprintf( descriptor, sizeof(descriptor), "CD=\"%s\"", cpuobject->descriptor );
+			cpuObject->type = POBJ_CPU;
+			snprintf( descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject->descriptor );
 
-			result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=e" );
+			result = PviCreate(&cpuObject->linkid, cpuObject->name, cpuObject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=e" );
 			if( result == 0 ) {
-				result = PviRead(cpuobject->linkid, POBJ_ACC_VERSION, NULL, 0, pbuffer, 65535 );
+				result = PviRead(cpuObject->linkid, POBJ_ACC_VERSION, NULL, 0, pbuffer, 65535 );
 				if( result == 0 ) {
-					if( AddPviObject( cpuobject, 1 ) == NULL ) {
-						object = NULL; //Fehler
+					if( AddPviObject( cpuObject, 1 ) == NULL ) {
+						deviceObject = NULL; //Fehler
 					}
 					break;
 				}
@@ -1202,31 +1194,34 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object ) {
 
 		// search for CPUs connected via ethernet
 		if( FindToken( &s, "/IF=TCPIP" ) ) {
-			struct stEthernetCpuInfo *ethernetCpuInfo = malloc(256*sizeof(struct stEthernetCpuInfo) );
+			struct stEthernetCpuInfo *buffer = calloc(256, sizeof(struct stEthernetCpuInfo) );
+			struct stEthernetCpuInfo *ethernetCpuInfo = buffer;
+
 			if( ethernetCpuInfo != NULL ) {
+
 				int i;
 				int noOfCpu = SearchEthernetCpus( ethernetCpuInfo, 256 );
 				for( i = 0; i < noOfCpu; ++i, ++ethernetCpuInfo ) {
-					memset( cpuobject, 0, sizeof(PVIOBJECT) );
-					memcpy( &cpuobject->ex.cpu.ethernetCpuInfo, (void*) ethernetCpuInfo, sizeof(struct stEthernetCpuInfo) );
-					sprintf( cpuobject->descriptor, "/DAIP=%s", ethernetCpuInfo->ipAddress );
-					strcpy( cpuobject->ex.cpu.arversion, ethernetCpuInfo->arVersion );
-					strcpy( cpuobject->ex.cpu.cputype, ethernetCpuInfo->targetTypeDescription );
-					if( strlen(cpuobject->ex.cpu.ethernetCpuInfo.macAddress) ) {
+					memset( cpuObject, 0, sizeof(PVIOBJECT) );
+					memcpy( &cpuObject->ex.cpu.ethernetCpuInfo, (void*) ethernetCpuInfo, sizeof(struct stEthernetCpuInfo) );
+					sprintf( cpuObject->descriptor, "/DAIP=%s", ethernetCpuInfo->ipAddress );
+					strcpy( cpuObject->ex.cpu.arversion, ethernetCpuInfo->arVersion );
+					strcpy( cpuObject->ex.cpu.cputype, ethernetCpuInfo->targetTypeDescription );
+					if( strlen(cpuObject->ex.cpu.ethernetCpuInfo.macAddress) ) {
 						// the MAC is the better unique name
-						snprintf( cpuobject->name, sizeof(cpuobject->name), "%s/CPU%s", object->name, cpuobject->ex.cpu.ethernetCpuInfo.macAddress );
+						snprintf( cpuObject->name, sizeof(cpuObject->name), "%s/CPU%s", deviceObject->name, cpuObject->ex.cpu.ethernetCpuInfo.macAddress );
 					} else {
-						CreateUniqueObjectName( tempstring, cpuobject->descriptor );
-						snprintf( cpuobject->name, sizeof(cpuobject->name), "%s/CPU%s", object->name, tempstring );
+						CreateUniqueObjectName( tempstring, cpuObject->descriptor );
+						snprintf( cpuObject->name, sizeof(cpuObject->name), "%s/CPU%s", deviceObject->name, tempstring );
 					}
-					cpuobject->type = POBJ_CPU;
-					snprintf( descriptor, sizeof(descriptor), "CD=\"%s\"", cpuobject->descriptor );
-					result = PviCreate(&cpuobject->linkid, cpuobject->name, cpuobject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
+					cpuObject->type = POBJ_CPU;
+					snprintf( descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject->descriptor );
+					result = PviCreate(&cpuObject->linkid, cpuObject->name, cpuObject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=s" );
 					if( result == 0 ) {
-						AddPviObject( cpuobject, 1 );
+						AddPviObject( cpuObject, 1 );
 					}
 				}
-				free(ethernetCpuInfo);
+				free(buffer);
 			}
 			break;
 		}
@@ -1235,8 +1230,8 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object ) {
 	}
 
 	free(pbuffer);
-	free(cpuobject);
-	return object;
+	free(cpuObject);
+	return deviceObject;
 }
 
 
@@ -1245,7 +1240,7 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *object ) {
  Created  : Wed Feb  1 16:58:28 2006
  Modified : Wed Feb  8 10:01:46 2006
 
- Synopsys : Liest eine Liste der auf der Steuerung verfÃ¼gbaren Tasks
+ Synopsys : Liest eine Liste der auf der Steuerung verfÃƒÆ’Ã‚Â¼gbaren Tasks
  Input    : Zeiger auf CPU- Object
  Output   : Zeiger auf CPU- Objekt
  Errors   : NULL = kein CPU- Object gefunden
@@ -1323,7 +1318,7 @@ static PVIOBJECT * PviReadTaskList(PVIOBJECT *object) {
 			do {
 				*d++ = *s++;
 			} while ((*s != 0) && (*s != '\t'));
-			++s;					// Tab Ã¼berlesen
+			++s;					// Tab ÃƒÆ’Ã‚Â¼berlesen
 			*d = 0;					// Name mit Null abschliessen
 			strcpy( tempobject->name, object->name );
 			strcat( tempobject->name, "/" );
@@ -1393,7 +1388,7 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT * object) {
 		memset(&newobject, 0, sizeof(PVIOBJECT));
 		while ( *s ) {
 			if (*s == ' ') {	// Leerzeichen
-				++s;			// Ãœberlesen
+				++s;			// ÃƒÆ’Ã…â€œberlesen
 				continue;
 			}
 
@@ -1406,7 +1401,7 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT * object) {
 				continue;
 			}
 
-			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃ¤nge der Variable
+			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃƒÆ’Ã‚Â¤nge der Variable
 				newobject.ex.pv.length = GetIntValue(&s);
 				continue;
 			}
@@ -1475,16 +1470,16 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT * object) {
 					newobject.ex.pv.type = 0;	// unbekannt
 					newobject.ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
-						++s;	// Rest Ã¼berlesen
+						++s;	// Rest ÃƒÆ’Ã‚Â¼berlesen
 				}
 				continue;
 			}
 
-			if (FindToken(&s, KWDESC_SCOPE "=")) {  // GÃ¼ltigkeitsbereich der Variable
+			if (FindToken(&s, KWDESC_SCOPE "=")) {  // GÃƒÆ’Ã‚Â¼ltigkeitsbereich der Variable
 				newobject.ex.pv.scope[0] = *s++;
 				newobject.ex.pv.scope[1] = 0;
 				while (*s != ' ' && *s != 0)
-					++s;	// Rest Ã¼berlesen
+					++s;	// Rest ÃƒÆ’Ã‚Â¼berlesen
 				continue;
 			}
 
@@ -1585,7 +1580,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 
 		while( *s != 0 ) {
 			if( *s == ' ' ) {  // Leerzeichen
-				++s;		// Ãœberlesen
+				++s;		// ÃƒÆ’Ã…â€œberlesen
 				continue;
 			}
 
@@ -1605,7 +1600,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 				memset( &newobject, 0, sizeof(PVIOBJECT) );
 				memset( tempstring, 0, sizeof(tempstring) );
 				d = tempstring;
-				while( *s && *s == ' ' ) // Leerzeichen Ã¼berlesen
+				while( *s && *s == ' ' ) // Leerzeichen ÃƒÆ’Ã‚Â¼berlesen
 					++s;
 				while( *s && *s!=' ' )
 					*d++ = *s++;
@@ -1615,10 +1610,10 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 				strcpy( newobject.name, object->name );		// name erstellen
 				strcat( newobject.name, tempstring );
 				newobject.type =POBJ_PVAR;
-				// Anzahl der Punkte zÃ¤hlen, wenn > 1, dann ist Elementdefinition eine Unterstruktur
+				// Anzahl der Punkte zÃƒÆ’Ã‚Â¤hlen, wenn > 1, dann ist Elementdefinition eine Unterstruktur
 				if( CountToken( tempstring, '.' ) > 1 ) {
 					while( !FindToken( &s, "}" ) )
-						++s;  // alles Ã¼berlesen
+						++s;  // alles ÃƒÆ’Ã‚Â¼berlesen
 					element_definition = FALSE;
 				}
 				continue;
@@ -1633,7 +1628,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 
 
 
-			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃ¤nge der Variable
+			if (FindToken(&s, KWDESC_PVLEN "=" )) { 	// LÃƒÆ’Ã‚Â¤nge der Variable
 				newobject.ex.pv.length = GetIntValue(&s);
 				continue;
 			}
@@ -1709,7 +1704,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 					newobject.ex.pv.type = 0;	// unbekannt
 					newobject.ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
-						++s;	// Rest Ã¼berlesen
+						++s;	// Rest ÃƒÆ’Ã‚Â¼berlesen
 				}
 				continue;
 			}
@@ -1760,11 +1755,11 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 						}
 #endif
 
-						strncpy( newelement.ex.pv.scope, object->ex.pv.scope, 1 ); // GÃ¼ltigkeitsbereich wird geerbt
+						strncpy( newelement.ex.pv.scope, object->ex.pv.scope, 1 ); // GÃƒÆ’Ã‚Â¼ltigkeitsbereich wird geerbt
 						newelement.ex.pv.task = object->ex.pv.task;  // Task wird geerbt
 						newelement.ex.pv.cpu = object->ex.pv.cpu;  // Task wird geerbt
 						if( (o = AddPviObject( &newelement, FALSE )) != NULL ) {
-							//object->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde fÃ¼r das Objekt angelegt
+							//object->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde fÃƒÆ’Ã‚Â¼r das Objekt angelegt
 							//
 							//if( o->ex.pv.type == BR_STRUCT ){
 							//	o->gui_info.has_childs = 1; // Strukturen haben mind. 1 Kind
@@ -1940,7 +1935,7 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 				}
 
 				if( !found ) { // Eintrag noch nicht vorhanden
-					// Anzahl der EintrÃ¤ge erhÃ¶hen
+					// Anzahl der EintrÃƒÆ’Ã‚Â¤ge erhÃƒÆ’Ã‚Â¶hen
 					++entries;
 					sprintf( tempstring, "%u", entries );
 					WritePrivateProfileString( section, section, tempstring, filename );
@@ -1975,7 +1970,7 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 	if( section != NULL ) {
 		char keyname[80];
 		tempstring[0] = 0;
-		// Anzahl der EintrÃ¤ge erhÃ¶hen
+		// Anzahl der EintrÃƒÆ’Ã‚Â¤ge erhÃƒÆ’Ã‚Â¶hen
 		GetPrivateProfileString( section, section, "0", tempstring, sizeof(tempstring), filename );
 		entries = atoi(tempstring);
 		++entries;
@@ -2003,16 +1998,16 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
  Created  : Thu Mar  9 09:22:26 2006
  Modified : Thu Mar  9 09:22:26 2006
 
- Synopsys : lÃ¤dt alle Objekte des angegebenen Typs aus der Watchdatei
+ Synopsys : lÃƒÆ’Ã‚Â¤dt alle Objekte des angegebenen Typs aus der Watchdatei
  Input    :
- Output   : Anzahl der eingelesenen Objekte oder - 1 fÃ¼r Fehler
+ Output   : Anzahl der eingelesenen Objekte oder - 1 fÃƒÆ’Ã‚Â¼r Fehler
  Errors   :
  ------------------------------------------------------------------@@-@@-*/
 int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 	char *section="";
 	PVIOBJECT tempobject, *object, *parent;
 	int entries, i, sort;
-	int n = 0;  // Anzahl der Objekte, die im Watch eingefÃ¼gt werden sollen
+	int n = 0;  // Anzahl der Objekte, die im Watch eingefÃƒÆ’Ã‚Â¼gt werden sollen
 
 	switch( typefilter ) {
 		case POBJ_DEVICE:
@@ -2080,7 +2075,7 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 		}
 
 
-		// bei PVs die dazugehÃ¶rige CPU und den Task suchen...
+		// find the corresponding task and CPU
 		if( object->type == POBJ_PVAR ) {
 
 			parent = GetNextPviObject(TRUE);
@@ -2103,7 +2098,7 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 		}
 
 
-		// bei Tasks die dazugehÃ¶rige CPU suchen
+		// find the corresponding CPU 
 		if( object->type == POBJ_TASK ) {
 
 			parent = GetNextPviObject(TRUE);
@@ -2120,27 +2115,6 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 	return n;
 }
 
-
-
-
-
-
-// static void DeleteDirectory( char *name ){
-// _DIR * dir;
-// struct _dirent *entry;
-
-// dir = _opendir(name);
-
-// if( dir != NULL ){
-// while( (entry = _readdir(dir)) != NULL ){
-// remove( entry->d_name );
-// }
-// _closedir(dir);
-// _rmdir( name );
-// }
-
-
-// }
 
 
 

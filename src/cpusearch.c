@@ -200,7 +200,7 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 	if( result == 0 ) {
 		result = PviCreate( &linkIdDevice, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\"", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 		if( result == 0 ) {
-			char *buffer = malloc(65536);
+			char *buffer = (char* ) malloc(65536);
 			if( buffer != NULL ) {
 				result = PviRead( linkIdDevice, POBJ_ACC_LIST_EXTERN, NULL, 0, buffer, 65536);
 				if( result == 0 ) { /* get list of MAC addresses */

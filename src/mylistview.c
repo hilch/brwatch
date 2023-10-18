@@ -123,11 +123,11 @@ LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM * lv, UINT wMsg, WPARA
 void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 	LVITEM lvitem;
 	char *text;
-	BOOL found;
+	BOOL found = FALSE;
 	int i;
 
 	if( object != NULL ) {
-		// but not if already exists
+		// do not insert if item already exists
 		found = FALSE;
 		i= ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
 		while( i!= -1 ) {
@@ -150,6 +150,7 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 			return;
 		}
 
+		/* insert a process variable */
 		if( object->type == POBJ_PVAR) {
 			if( object->ex.pv.type == BR_STRUCT || object->ex.pv.dimension > 1 )
 				return;  // not structures or arrays
@@ -163,145 +164,146 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 					strcat( tempstring, ":" );
 				} else {
 					strcpy( tempstring, "" ); // should never happen
-
-					strcat( tempstring, object->descriptor );
-
-					memset(&lvitem, 0, sizeof(lvitem));
-					lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-					lvitem.pszText = tempstring;
-					lvitem.lParam = (LPARAM) object->name;
-					lvitem.iImage = ResourcesGetImageIndex(IDR_ICO_VARIABLE);
-					lvitem.iItem = object->watchsort;
-
-					/* name */
-					ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
-					ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
-
-
-					/* data type */
-					if( object->ex.pv.type == BR_STRING ) {
-						sprintf( tempstring, "%1s%s(%lu)", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype, object->ex.pv.length-1 );
-					} else {
-						sprintf( tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype );
-					}
-					text = tempstring;
-					ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, text ); // data type
-					memset(&lvitem, 0, sizeof(lvitem));
-					lvitem.mask = LVIF_IMAGE;
-					lvitem.iImage = ResourcesGetPviObjectImage(object);
-					lvitem.iSubItem = 1;
-					lvitem.iItem = object->watchsort;
-					ListView_SetItem( mylistviewparam.hwndLV, &lvitem ); // set icon
-					ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
-
-					/* value range */
-					switch( object->ex.pv.scope[0] ) {
-						case 'g':
-							text = "<GLOBAL>";
-							break;
-						case 'l':
-							text = "<LOCAL >";
-							break;
-						case 'd':
-							text = "<DYNAM.>";
-							break;
-					}
-					ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, text ); // Scope
-					ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE );
-
-					/* value */
-					text = " ";
-					ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, text );	// value
-					//
-					ListView_EnsureVisible( mylistviewparam.hwndLV, lvitem.iItem, TRUE );
-					ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
 				}
-
-			} else if( object->type == POBJ_CPU ) {
-				char tempstring[512];
-
-				sprintf( tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor );
-				memset(&lvitem, 0, sizeof(lvitem));
-				lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-				lvitem.pszText = tempstring;
-				lvitem.lParam = (LPARAM) object->name;
-				lvitem.iImage = ResourcesGetPviObjectImage(object);
-				lvitem.iItem = object->watchsort;
-
-				/* name */
-				ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
-				ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE_USEHEADER );
-
-				/* type */
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "CPU " );
-				ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE_USEHEADER );
-
-				/* scope */
-				ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE_USEHEADER );
-
-				/* value */
-				switch( object->error ) {
-					case 0:
-						strcpy( tempstring, "(running) RTC:0000/00/00-00:00:00" );
-						break;
-
-					case 4808: // no connection to plc
-					case 11022:
-						sprintf( tempstring, "(OFFLINE)" );
-						break;
-
-					default:
-						sprintf( tempstring, "Err:%i", object->error );
-						break;
-				}
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// value
-				ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
-
-			} else if( object->type == POBJ_TASK ) {
-				char tempstring[256];
-
-				strcpy( tempstring, object->descriptor );
+				strcat( tempstring, object->descriptor );
 
 				memset(&lvitem, 0, sizeof(lvitem));
 				lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
 				lvitem.pszText = tempstring;
 				lvitem.lParam = (LPARAM) object->name;
-				lvitem.iImage = ResourcesGetPviObjectImage(object);
+				lvitem.iImage = ResourcesGetImageIndex(IDR_ICO_VARIABLE);
 				lvitem.iItem = object->watchsort;
 
 				/* name */
 				ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
 
-				/* type */
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "TASK" );
+
+				/* data type */
+				if( object->ex.pv.type == BR_STRING ) {
+					sprintf( tempstring, "%1s%s(%lu)", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype, object->ex.pv.length-1 );
+				} else {
+					sprintf( tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype );
+				}
+				text = tempstring;
+				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, text ); // data type
+				memset(&lvitem, 0, sizeof(lvitem));
+				lvitem.mask = LVIF_IMAGE;
+				lvitem.iImage = ResourcesGetPviObjectImage(object);
+				lvitem.iSubItem = 1;
+				lvitem.iItem = object->watchsort;
+				ListView_SetItem( mylistviewparam.hwndLV, &lvitem ); // set icon
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
 
-				/* scope */
-				// strcpy( tempstring, ((PVIOBJECT*) object->ex.task.cpu)->descriptor );
-				// ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, tempstring );
-				// ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
-			}
-
-
-			// save list index of element into object information
-			i = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
-			while( i != -1 ) {
-				memset( &lvitem, 0, sizeof(lvitem) );
-				lvitem.mask = LVIF_PARAM;
-				lvitem.iItem = i;
-				ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-				if( lvitem.lParam != 0 ) {
-					object = FindPviObjectByName( (char*) lvitem.lParam );
-					if( object != NULL ) {
-						object->watchsort = lvitem.iItem;
-					}
+				/* value range */
+				switch( object->ex.pv.scope[0] ) {
+					case 'g':
+						text = "<GLOBAL>";
+						break;
+					case 'l':
+						text = "<LOCAL >";
+						break;
+					case 'd':
+						text = "<DYNAM.>";
+						break;
 				}
-				i = ListView_GetNextItem( mylistviewparam.hwndLV, i, LVNI_ALL );
+				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, text ); // Scope
+				ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE );
+
+				/* value */
+				text = " ";
+				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, text );	// value
+				//
+				ListView_EnsureVisible( mylistviewparam.hwndLV, lvitem.iItem, TRUE );
+				ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
 			}
 
+		/* insert a CPU */
+		} else if( object->type == POBJ_CPU ) {
+			char tempstring[512];
 
+			sprintf( tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor );
+			memset(&lvitem, 0, sizeof(lvitem));
+			lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
+			lvitem.pszText = tempstring;
+			lvitem.lParam = (LPARAM) object->name;
+			lvitem.iImage = ResourcesGetPviObjectImage(object);
+			lvitem.iItem = object->watchsort;
+
+			/* name */
+			ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE_USEHEADER );
+
+			/* type */
+			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "CPU " );
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE_USEHEADER );
+
+			/* scope */
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE_USEHEADER );
+
+			/* value */
+			switch( object->error ) {
+				case 0:
+					strcpy( tempstring, "(running) RTC:0000/00/00-00:00:00" );
+					break;
+
+				case 4808: // no connection to plc
+				case 11022:
+					sprintf( tempstring, "(OFFLINE)" );
+					break;
+
+				default:
+					sprintf( tempstring, "Err:%i", object->error );
+					break;
+			}
+			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// value
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
+
+		/* insert a task */
+		} else if( object->type == POBJ_TASK ) {
+			char tempstring[256];
+
+			strcpy( tempstring, object->descriptor );
+
+			memset(&lvitem, 0, sizeof(lvitem));
+			lvitem.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
+			lvitem.pszText = tempstring;
+			lvitem.lParam = (LPARAM) object->name;
+			lvitem.iImage = ResourcesGetPviObjectImage(object);
+			lvitem.iItem = object->watchsort;
+
+			/* name */
+			ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
+
+			/* type */
+			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "TASK" );
+			ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
+
+			/* scope */
+			// strcpy( tempstring, ((PVIOBJECT*) object->ex.task.cpu)->descriptor );
+			// ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, tempstring );
+			// ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
 		}
+
+
+		// save list index of element into object information
+		i = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
+		while( i != -1 ) {
+			memset( &lvitem, 0, sizeof(lvitem) );
+			lvitem.mask = LVIF_PARAM;
+			lvitem.iItem = i;
+			ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
+			if( lvitem.lParam != 0 ) {
+				object = FindPviObjectByName( (char*) lvitem.lParam );
+				if( object != NULL ) {
+					object->watchsort = lvitem.iItem;
+				}
+			}
+			i = ListView_GetNextItem( mylistviewparam.hwndLV, i, LVNI_ALL );
+		}
+
+
 	}
 }
 

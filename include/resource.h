@@ -22,7 +22,6 @@
 #define IDC_STATIC_TASK                 1007
 #define IDC_STATIC_CPU                  1008
 #define IDC_STATIC_VERSION              1009
-#define IDS_ZLIB1                       1010
 #define IDC_STATIC_VARTYPE              1011
 #define IDC_EDIT_YEAR                   1013
 #define IDC_EDIT_MONTH                  1014

@@ -21,7 +21,6 @@ BEGIN
     LTEXT           "https://github.com/hilch/brwatch", IDC_STATIC,20,30,180,10
     LTEXT           "Statisch",IDC_STATIC_PVIVERSION,20,50,180,10
 	LTEXT			"note: parts of this software from www.zlib.net", IDC_STATIC,20,60,180,10
-    LTEXT           "Statisch",IDS_ZLIB1,20,70,185,8
     PUSHBUTTON      "OK",IDOK,20,100,45,15,BS_FLAT
 END
 
