@@ -49,6 +49,7 @@ typedef struct PVIPVAROBJECT{
 
 /* erweiterte Info Geräteobjekt */
 typedef struct PVIDEVICEOBJECT{
+	unsigned					number;				// number in INI file
 	unsigned long				broadcast;			// Broadcast IP
 } PVIDEVICEOBJECT;
 
