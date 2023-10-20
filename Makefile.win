@@ -5,14 +5,14 @@ CPP      = g++.exe
 CC       = gcc.exe
 WINDRES  = windres.exe
 RES      = build/brwatch_private.res
-OBJ      = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/adler32.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
-LINKOBJ  = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/adler32.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
-LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib32" -static-libgcc -L"./libraries" -mwindows -static-libgcc -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 libraries/PviCom.lib -m32
+OBJ      = build/cpusearch.o build/dlg_about.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/uncompr.o build/zutil.o build/adler32.o build/trees.o $(RES)
+LINKOBJ  = build/cpusearch.o build/dlg_about.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/uncompr.o build/zutil.o build/adler32.o build/trees.o $(RES)
+LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib32" -static-libgcc -L"./libraries" -mwindows -static-libgcc -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 libraries/PviCom.lib -m32 -s
 INCS     = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"./include"
 CXXINCS  = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include/c++" -I"./include"
 BIN      = build/brwatch.exe
-CXXFLAGS = $(CXXINCS) -m32
-CFLAGS   = $(INCS) -m32
+CXXFLAGS = $(CXXINCS) -Os -m32
+CFLAGS   = $(INCS) -Os -m32
 DEL      = C:\Program Files (x86)\Embarcadero\Dev-Cpp\devcpp.exe INTERNAL_DEL
 
 .PHONY: all all-before all-after clean clean-custom
@@ -30,9 +30,6 @@ build/cpusearch.o: src/cpusearch.c
 
 build/dlg_about.o: src/dlg_about.c
 	$(CC) -c src/dlg_about.c -o build/dlg_about.o $(CFLAGS)
-
-build/dlg_axtraceconfig.o: src/dlg_axtraceconfig.c
-	$(CC) -c src/dlg_axtraceconfig.c -o build/dlg_axtraceconfig.o $(CFLAGS)
 
 build/dlg_busy.o: src/dlg_busy.c
 	$(CC) -c src/dlg_busy.c -o build/dlg_busy.o $(CFLAGS)
@@ -79,9 +76,6 @@ build/stringtools.o: src/stringtools.c
 build/compressfile.o: src/compressfile.c
 	$(CC) -c src/compressfile.c -o build/compressfile.o $(CFLAGS)
 
-build/adler32.o: src/zlib/adler32.c
-	$(CC) -c src/zlib/adler32.c -o build/adler32.o $(CFLAGS)
-
 build/compress.o: src/zlib/compress.c
 	$(CC) -c src/zlib/compress.c -o build/compress.o $(CFLAGS)
 
@@ -115,14 +109,17 @@ build/inflate.o: src/zlib/inflate.c
 build/inftrees.o: src/zlib/inftrees.c
 	$(CC) -c src/zlib/inftrees.c -o build/inftrees.o $(CFLAGS)
 
-build/trees.o: src/zlib/trees.c
-	$(CC) -c src/zlib/trees.c -o build/trees.o $(CFLAGS)
-
 build/uncompr.o: src/zlib/uncompr.c
 	$(CC) -c src/zlib/uncompr.c -o build/uncompr.o $(CFLAGS)
 
 build/zutil.o: src/zlib/zutil.c
 	$(CC) -c src/zlib/zutil.c -o build/zutil.o $(CFLAGS)
+
+build/adler32.o: src/zlib/adler32.c
+	$(CC) -c src/zlib/adler32.c -o build/adler32.o $(CFLAGS)
+
+build/trees.o: src/zlib/trees.c
+	$(CC) -c src/zlib/trees.c -o build/trees.o $(CFLAGS)
 
 build/brwatch_private.res: brwatch_private.rc 
 	$(WINDRES) -i brwatch_private.rc -F pe-i386 --input-format=rc -o build/brwatch_private.res -O coff  --include-dir ./RESOUR~1
