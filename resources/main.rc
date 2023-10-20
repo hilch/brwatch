@@ -4,6 +4,8 @@
 #include "richedit.h"
 #include "../include/resource.h"
 
+
+
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
 //
@@ -268,7 +270,9 @@ IDR_ICO_VARIABLE_U16    ICON                    "u16.ico"
 IDR_ICO_VARIABLE_I16    ICON                    "i16.ico"
 IDR_ICO_VARIABLE_BOOL   ICON                    "boolean.ico"
 IDR_ICO_VARIABLE_STRING ICON                    "string.ico"
+IDR_ICO_VARIABLE_WSTRING ICON					"wstring.ico"
 IDR_ICO_VARIABLE_REAL   ICON                    "real.ico"
+IDR_ICO_VARIABLE_LREAL   ICON                   "lreal.ico"
 IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "daten_and_time.ico"
 IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
 
@@ -281,24 +285,27 @@ A ICON "auge.ico"
 
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,3,1,0
- PRODUCTVERSION 1,3,1,0
+ FILEVERSION 1,4,0,0
+ PRODUCTVERSION 1,4,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
- FILEFLAGS 0x1L
+ FILEFLAGS VS_FF_DEBUG
 #else
  FILEFLAGS 0x0L
 #endif
- FILEOS 0x4L
- FILETYPE 0x1L
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_APP
  FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
         BLOCK "04070000"
         BEGIN
-            VALUE "FileVersion", "1.3.1.0"
-            VALUE "ProductVersion", "1.3.1.0"
+        	VALUE "CompanyName", "github.com/hilch"
+        	VALUE "LegalCopyright", "2006-2023 C.Hilchenbach"
+        	VALUE "FileDescription", "Small and portable service tool for B&R automation controls (PLC)"
+        	VALUE "ProductName", "BRWATCH"
+            VALUE "ProductVersion", VER_PRODUCTVERSION_STR
         END
     END
     BLOCK "VarFileInfo"

@@ -13,9 +13,10 @@ HWND MyListViewCreateWindow( MYLISTVIEWPARAM * param ) {
 	LV_COLUMN lvcolumn;
 	int i;
 
-	param->hwndLV = CreateWindowEx(WS_EX_CLIENTEDGE, WC_LISTVIEW, NULL, WS_CHILD | WS_VISIBLE
+	param->hwndLV = CreateWindowExW(WS_EX_CLIENTEDGE, L""WC_LISTVIEW, NULL, WS_CHILD | WS_VISIBLE
 	                               | WS_TABSTOP | LVS_REPORT,
 	                               0, 0, 0, 0, param->hwndParent, 0, param->hinstance, NULL);
+	//ListView_SetUnicodeFormat(param->hwndLV, TRUE );
 
 	for (i = 0; i < MAX_MYLISTVIEW_COLS; ++i) {
 		if (param->column[i].name == NULL)
@@ -182,6 +183,8 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 				/* data type */
 				if( object->ex.pv.type == BR_STRING ) {
 					sprintf( tempstring, "%1s%s(%lu)", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype, object->ex.pv.length-1 );
+				} else if( object->ex.pv.type == BR_WSTRING ) {
+					sprintf( tempstring, "%1s%s(%lu)", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype, object->ex.pv.length/2 -1 );
 				} else {
 					sprintf( tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype );
 				}
@@ -218,7 +221,7 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
 			}
 
-		/* insert a CPU */
+			/* insert a CPU */
 		} else if( object->type == POBJ_CPU ) {
 			char tempstring[512];
 
@@ -259,7 +262,7 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// value
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
 
-		/* insert a task */
+			/* insert a task */
 		} else if( object->type == POBJ_TASK ) {
 			char tempstring[256];
 
@@ -320,7 +323,7 @@ void MyListViewUpdateValue( PVIOBJECT *object ) {
 	char *text_binary=NULL;
 	long long intval=0;
 	int hours, minutes, seconds, milliseconds;
-	char value[256];
+	char value[2048];
 	char tempstring[256];
 
 	memset( &lvfindinfo, 0, sizeof(lvfindinfo) );
@@ -460,6 +463,15 @@ void MyListViewUpdateValue( PVIOBJECT *object ) {
 						}
 						break;
 
+
+					case BR_WSTRING:
+						if( object->ex.pv.pvalue != NULL ) {
+							LV_ITEMW item; 
+							item.iSubItem = 3; 
+							item.pszText = object->ex.pv.pvalue; 
+							SendMessageW( mylistviewparam.hwndLV, LVM_SETITEMTEXTW, index, (LPARAM)(LV_ITEMW *)&item);	
+						}
+						return;
 
 					case BR_DATI:
 					case BR_DATE:

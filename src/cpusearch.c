@@ -310,9 +310,9 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
 			int result = SearchCpuViaUDP( &adapters[i], ethernetUdpCpuInfo, 256 );
 			if( result > 0 ) {
 				for( int i = 0; i < result; ++i ) {
-#ifdef _DEBUG
+#ifdef __DEBUG__
 					printf( "%s / %s \n", ethernetUdpCpuInfo[i].ipAddress, ethernetUdpCpuInfo[i].subnetMask );
-#endif // _DEBUG
+#endif // __DEBUG__
 					int found = 0;
 					for( int n = 0; n < noOfCPUs; ++n ) { /* discard dublicates */
 						if( strcmp( ethernetUdpCpuInfo[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0 ) {
@@ -321,7 +321,7 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
 						}
 					}
 					if( !found && (noOfCPUs < maxEntries) ) {
-#ifdef _DEBUG
+#ifdef __DEBUG__
 						puts("SNMP disabled CPU found\n");
 #endif
 						memcpy( &ethernetCpuInfo[noOfCPUs], &ethernetUdpCpuInfo[i], sizeof(struct stEthernetCpuInfo) );

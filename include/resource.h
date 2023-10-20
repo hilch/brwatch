@@ -5,6 +5,10 @@
 
 #include "pvi_interface.h"
 #include <commctrl.h>
+
+#define VER_PRODUCTVERSION          1,4,0,0
+#define VER_PRODUCTVERSION_STR      "1.4.0"
+
 // Used by main.rc
 //
 #define DLG_SETTINGS                    100
@@ -84,6 +88,8 @@
 #define IDR_ICO_VARIABLE_TIME           8019
 #define IDR_ICO_DEVICE                  8020
 #define IDR_ICO_PLOT                    8021
+#define IDR_ICO_VARIABLE_WSTRING        8022
+#define IDR_ICO_VARIABLE_LREAL          8023
 #define IDR_STATIC_NAME                 8201
 #define IDR_EDIT_VALUE                  8202
 #define IDR_EDIT_FILENAME               8203

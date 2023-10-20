@@ -1,4 +1,4 @@
-//#define WIN32_LEAN_AND_MEAN  /* speed up compilations */
+
 #include <windows.h>
 #include <commctrl.h>
 #include <string.h>
@@ -22,7 +22,9 @@ static  WORD images[] = {
 	IDR_ICO_VARIABLE_I8,
 	IDR_ICO_VARIABLE_BOOL,
 	IDR_ICO_VARIABLE_REAL,
+	IDR_ICO_VARIABLE_LREAL,	
 	IDR_ICO_VARIABLE_STRING,
+	IDR_ICO_VARIABLE_WSTRING,	
 	IDR_ICO_VARIABLE_TIME,
 	IDR_ICO_VARIABLE_DATE_AND_TIME,
 	0
@@ -108,12 +110,17 @@ int ResourcesGetPviObjectImage( PVIOBJECT *object ) {
 					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_BOOL);
 					break;
 				case BR_REAL:
-				case BR_LREAL:
 					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_REAL);
-					break;
+					break;				
+				case BR_LREAL:
+					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_LREAL);
+					break;									
 				case BR_STRING:
 					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_STRING);
 					break;
+				case BR_WSTRING:
+					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_WSTRING);
+					break;					
 				case BR_TIME:
 				case BR_TOD:
 					imageindex = ResourcesGetImageIndex(IDR_ICO_VARIABLE_TIME);

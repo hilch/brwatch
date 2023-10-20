@@ -1,18 +1,18 @@
 # Project: brwatch
 # Makefile created by Embarcadero Dev-C++ 6.3
 
-CPP      = g++.exe -D__DEBUG__
-CC       = gcc.exe -D__DEBUG__
+CPP      = g++.exe
+CC       = gcc.exe
 WINDRES  = windres.exe
 RES      = build/brwatch_private.res
 OBJ      = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compress.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/compressfile.o build/adler32.o build/crc32.o build/deflate.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
 LINKOBJ  = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compress.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/compressfile.o build/adler32.o build/crc32.o build/deflate.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
-LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib32" -static-libgcc -L"./libraries" -mwindows -static-libgcc -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 libraries/PviCom.lib -m32 -g3
+LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib32" -static-libgcc -L"./libraries" -mwindows -static-libgcc -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 libraries/PviCom.lib -m32
 INCS     = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"./include"
 CXXINCS  = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include/c++" -I"./include"
 BIN      = build/brwatch.exe
-CXXFLAGS = $(CXXINCS) -m32 -g3
-CFLAGS   = $(INCS) -m32 -g3
+CXXFLAGS = $(CXXINCS) -m32
+CFLAGS   = $(INCS) -m32
 DEL      = C:\Program Files (x86)\Embarcadero\Dev-Cpp\devcpp.exe INTERNAL_DEL
 
 .PHONY: all all-before all-after clean clean-custom
