@@ -33,7 +33,7 @@ static void SaveWatchFile( char *filename );
 
 
 static char application_path[MAX_PATH];
-
+static LPSTR commandLine;
 
 
 
@@ -78,6 +78,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	MSG msg;
 	char windowname[30];
 
+	commandLine = lpCmdLine;
 
 	HMODULE m_user32Dll = LoadLibrary("User32.dll");
 	if(m_user32Dll) {
@@ -688,6 +689,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (StartPvi())
 				MessageBox(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
 			EnableMenuItem( GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED );
+			
 			return (0);
 
 		case WM_DESTROY:
