@@ -5,8 +5,8 @@ CPP      = g++.exe
 CC       = gcc.exe
 WINDRES  = windres.exe
 RES      = build/brwatch_private.res
-OBJ      = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compress.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/compressfile.o build/adler32.o build/crc32.o build/deflate.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
-LINKOBJ  = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compress.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/compressfile.o build/adler32.o build/crc32.o build/deflate.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
+OBJ      = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/adler32.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
+LINKOBJ  = build/cpusearch.o build/dlg_about.o build/dlg_axtraceconfig.o build/dlg_busy.o build/dlg_editcpu.o build/dlg_edittask.o build/dlg_settings.o build/dlg_showpviobjects.o build/dlg_writepvar.o build/logger.o build/main.o build/mylistview.o build/mytreeview.o build/pvi_interface.o build/resource.o build/settings.o build/stringtools.o build/compressfile.o build/adler32.o build/compress.o build/crc32.o build/deflate.o build/gzclose.o build/gzlib.o build/gzread.o build/gzwrite.o build/infback.o build/inffast.o build/inflate.o build/inftrees.o build/trees.o build/uncompr.o build/zutil.o $(RES)
 LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib32" -static-libgcc -L"./libraries" -mwindows -static-libgcc -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 libraries/PviCom.lib -m32
 INCS     = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"./include"
 CXXINCS  = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include/c++" -I"./include"
@@ -76,53 +76,53 @@ build/settings.o: src/settings.c
 build/stringtools.o: src/stringtools.c
 	$(CC) -c src/stringtools.c -o build/stringtools.o $(CFLAGS)
 
-build/compress.o: src/compress.c
-	$(CC) -c src/compress.c -o build/compress.o $(CFLAGS)
-
-build/gzclose.o: src/gzclose.c
-	$(CC) -c src/gzclose.c -o build/gzclose.o $(CFLAGS)
-
-build/gzlib.o: src/gzlib.c
-	$(CC) -c src/gzlib.c -o build/gzlib.o $(CFLAGS)
-
-build/gzread.o: src/gzread.c
-	$(CC) -c src/gzread.c -o build/gzread.o $(CFLAGS)
-
-build/gzwrite.o: src/gzwrite.c
-	$(CC) -c src/gzwrite.c -o build/gzwrite.o $(CFLAGS)
-
 build/compressfile.o: src/compressfile.c
 	$(CC) -c src/compressfile.c -o build/compressfile.o $(CFLAGS)
 
-build/adler32.o: src/adler32.c
-	$(CC) -c src/adler32.c -o build/adler32.o $(CFLAGS)
+build/adler32.o: src/zlib/adler32.c
+	$(CC) -c src/zlib/adler32.c -o build/adler32.o $(CFLAGS)
 
-build/crc32.o: src/crc32.c
-	$(CC) -c src/crc32.c -o build/crc32.o $(CFLAGS)
+build/compress.o: src/zlib/compress.c
+	$(CC) -c src/zlib/compress.c -o build/compress.o $(CFLAGS)
 
-build/deflate.o: src/deflate.c
-	$(CC) -c src/deflate.c -o build/deflate.o $(CFLAGS)
+build/crc32.o: src/zlib/crc32.c
+	$(CC) -c src/zlib/crc32.c -o build/crc32.o $(CFLAGS)
 
-build/infback.o: src/infback.c
-	$(CC) -c src/infback.c -o build/infback.o $(CFLAGS)
+build/deflate.o: src/zlib/deflate.c
+	$(CC) -c src/zlib/deflate.c -o build/deflate.o $(CFLAGS)
 
-build/inffast.o: src/inffast.c
-	$(CC) -c src/inffast.c -o build/inffast.o $(CFLAGS)
+build/gzclose.o: src/zlib/gzclose.c
+	$(CC) -c src/zlib/gzclose.c -o build/gzclose.o $(CFLAGS)
 
-build/inflate.o: src/inflate.c
-	$(CC) -c src/inflate.c -o build/inflate.o $(CFLAGS)
+build/gzlib.o: src/zlib/gzlib.c
+	$(CC) -c src/zlib/gzlib.c -o build/gzlib.o $(CFLAGS)
 
-build/inftrees.o: src/inftrees.c
-	$(CC) -c src/inftrees.c -o build/inftrees.o $(CFLAGS)
+build/gzread.o: src/zlib/gzread.c
+	$(CC) -c src/zlib/gzread.c -o build/gzread.o $(CFLAGS)
 
-build/trees.o: src/trees.c
-	$(CC) -c src/trees.c -o build/trees.o $(CFLAGS)
+build/gzwrite.o: src/zlib/gzwrite.c
+	$(CC) -c src/zlib/gzwrite.c -o build/gzwrite.o $(CFLAGS)
 
-build/uncompr.o: src/uncompr.c
-	$(CC) -c src/uncompr.c -o build/uncompr.o $(CFLAGS)
+build/infback.o: src/zlib/infback.c
+	$(CC) -c src/zlib/infback.c -o build/infback.o $(CFLAGS)
 
-build/zutil.o: src/zutil.c
-	$(CC) -c src/zutil.c -o build/zutil.o $(CFLAGS)
+build/inffast.o: src/zlib/inffast.c
+	$(CC) -c src/zlib/inffast.c -o build/inffast.o $(CFLAGS)
+
+build/inflate.o: src/zlib/inflate.c
+	$(CC) -c src/zlib/inflate.c -o build/inflate.o $(CFLAGS)
+
+build/inftrees.o: src/zlib/inftrees.c
+	$(CC) -c src/zlib/inftrees.c -o build/inftrees.o $(CFLAGS)
+
+build/trees.o: src/zlib/trees.c
+	$(CC) -c src/zlib/trees.c -o build/trees.o $(CFLAGS)
+
+build/uncompr.o: src/zlib/uncompr.c
+	$(CC) -c src/zlib/uncompr.c -o build/uncompr.o $(CFLAGS)
+
+build/zutil.o: src/zlib/zutil.c
+	$(CC) -c src/zlib/zutil.c -o build/zutil.o $(CFLAGS)
 
 build/brwatch_private.res: brwatch_private.rc 
 	$(WINDRES) -i brwatch_private.rc -F pe-i386 --input-format=rc -o build/brwatch_private.res -O coff  --include-dir ./RESOUR~1
