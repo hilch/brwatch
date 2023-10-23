@@ -225,6 +225,9 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
 								PviUnlink( linkIdPvar);
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
+								PviUnlink( linkIdPvar);								
 								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
 								PviUnlink( linkIdPvar);

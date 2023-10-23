@@ -59,6 +59,7 @@ struct stEthernetCpuInfo {
     char macAddress[20+1];
     char ipAddress[16+1];
     char subnetMask[16+1];
+    char gateway[16+1];
     int ipMethod;  /* 0 = fixed IP, 1 = DHCP-Client */
     int INA_activated;
     int INA_nodeNumber;

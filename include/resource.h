@@ -107,6 +107,7 @@
 #define IDR_INA_ACTIVATED               8215
 #define IDR_MAC_ADDRESS                 8216
 #define IDR_INA_SETTINGS                8217
+#define IDR_EDIT_GATEWAY				8218
 
 #define IDM_LOGGER_UNZIPLOGGERFILE      40002
 #define IDM_OPTIONS_SETTINGS            40004
