@@ -68,7 +68,6 @@
 #define IDM_LOGGER_CONFIG               6201
 #define IDM_LOGGER_START                6202
 #define IDR_ICO_MAIN                    8001
-#define IDR_ICO_PVI                     8002
 #define IDR_ICO_TASK                    8003
 #define IDR_ICO_STRUCT                  8004
 #define IDR_ICO_CPU                     8005
@@ -87,7 +86,6 @@
 #define IDR_ICO_VARIABLE_DATE_AND_TIME  8018
 #define IDR_ICO_VARIABLE_TIME           8019
 #define IDR_ICO_DEVICE                  8020
-#define IDR_ICO_PLOT                    8021
 #define IDR_ICO_VARIABLE_WSTRING        8022
 #define IDR_ICO_VARIABLE_LREAL          8023
 #define IDR_STATIC_NAME                 8201

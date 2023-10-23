@@ -254,9 +254,7 @@ IDR_DEFAULT_INI1        DEFAULT_INI             "default_brwatch.ini"
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_ICO_MAIN            ICON                    "auge.ico"
-IDR_ICO_PLOT            ICON                    "plot.ico"
-IDR_ICO_PVI             ICON                    "pvi.ico"
+IDR_ICO_MAIN            ICON                    "brwatch.ico"
 IDR_ICO_TASK            ICON                    "task.ico"
 IDR_ICO_STRUCT          ICON                    "struct.ico"
 IDR_ICO_DEVICE          ICON                    "device.ico"
@@ -279,7 +277,7 @@ IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "daten_and_time.ico"
 IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
 
 
-A ICON "auge.ico"
+A ICON "brwatch.ico"
 
 //
 // Version

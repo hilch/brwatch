@@ -140,7 +140,7 @@ int ResourcesGetPviObjectImage( PVIOBJECT *object ) {
 			break;
 
 		case POBJ_DEVICE:
-			imageindex = ResourcesGetImageIndex(IDR_ICO_PVI);
+			imageindex = ResourcesGetImageIndex(IDR_ICO_DEVICE);
 			break;
 
 		case POBJ_TASK:

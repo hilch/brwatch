@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=0;0;0;0;0;0;5;1;0;0;0;0;0;0;0;0;0;0;0;0;0;1;2;0;0;0
-UnitCount=86
+UnitCount=83
 
 [VersionInfo]
 Major=1
@@ -250,18 +250,8 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit36]
-FileName=resources\auge.ico
-CompileCpp=0
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
 [Unit42]
-FileName=resources\device.ico
+FileName=resources\i8.ico
 Folder=resources
 Compile=0
 Link=0
@@ -270,7 +260,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit43]
-FileName=resources\global.ico
+FileName=resources\i16.ico
 Folder=resources
 Compile=0
 Link=0
@@ -419,7 +409,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit37]
-FileName=resources\boolean.ico
+FileName=resources\cpu.ico
 CompileCpp=0
 Folder=resources
 Compile=0
@@ -429,24 +419,6 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit38]
-FileName=resources\brwatchlogo.png
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit39]
-FileName=resources\cpu.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit40]
 FileName=resources\daten_and_time.ico
 Folder=resources
 Compile=0
@@ -455,7 +427,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit41]
+[Unit39]
 FileName=resources\default_brwatch.ini
 Folder=resources
 Compile=0
@@ -464,25 +436,25 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
+[Unit40]
+FileName=resources\device.ico
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit41]
+FileName=resources\global.ico
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
 [Unit44]
-FileName=resources\i8.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit45]
-FileName=resources\i16.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit46]
 FileName=resources\i32.ico
 Folder=resources
 Compile=0
@@ -491,25 +463,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit47]
-FileName=resources\plot.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit48]
-FileName=resources\pvi.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit49]
+[Unit45]
 FileName=resources\real.ico
 Folder=resources
 Compile=0
@@ -518,16 +472,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit51]
-FileName=resources\struct.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit52]
+[Unit48]
 FileName=resources\task.ico
 Folder=resources
 Compile=0
@@ -536,7 +481,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit53]
+[Unit49]
 FileName=resources\time.ico
 Folder=resources
 Compile=0
@@ -545,16 +490,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit54]
-FileName=resources\u8.ico
-Folder=resources
-Compile=0
-Link=0
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit55]
+[Unit51]
 FileName=resources\u16.ico
 Folder=resources
 Compile=0
@@ -563,7 +499,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit56]
+[Unit52]
 FileName=resources\u32.ico
 Folder=resources
 Compile=0
@@ -572,7 +508,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit57]
+[Unit53]
 FileName=resources\variable.ico
 Folder=resources
 Compile=0
@@ -581,7 +517,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit58]
+[Unit54]
 FileName=resources\main.rc
 Folder=resources
 Compile=1
@@ -590,7 +526,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit59]
+[Unit55]
 FileName=include\compressfile.h
 Folder=include
 Compile=1
@@ -600,7 +536,7 @@ OverrideBuildCmd=0
 BuildCmd=
 CompileCpp=0
 
-[Unit60]
+[Unit56]
 FileName=include\gzguts.h
 Folder=include
 Compile=1
@@ -610,7 +546,17 @@ OverrideBuildCmd=0
 BuildCmd=
 CompileCpp=0
 
-[Unit62]
+[Unit57]
+FileName=src\compressfile.c
+Folder=src
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+CompileCpp=0
+
+[Unit58]
 FileName=include\crc32.h
 Folder=include
 Compile=1
@@ -620,8 +566,38 @@ OverrideBuildCmd=0
 BuildCmd=
 CompileCpp=0
 
+[Unit59]
+FileName=include\deflate.h
+Folder=include
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+CompileCpp=0
+
+[Unit60]
+FileName=include\inffast.h
+Folder=include
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+CompileCpp=0
+
+[Unit62]
+FileName=include\inflate.h
+Folder=include
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+CompileCpp=0
+
 [Unit50]
-FileName=resources\string.ico
+FileName=resources\u8.ico
 Folder=resources
 Compile=0
 Link=0
@@ -630,8 +606,8 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit61]
-FileName=src\compressfile.c
-Folder=src
+FileName=include\inffixed.h
+Folder=include
 Compile=1
 Link=1
 Priority=1000
@@ -650,46 +626,6 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit63]
-FileName=include\deflate.h
-CompileCpp=0
-Folder=include
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit64]
-FileName=include\inffast.h
-CompileCpp=0
-Folder=include
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit65]
-FileName=include\inffixed.h
-CompileCpp=0
-Folder=include
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit66]
-FileName=include\inflate.h
-CompileCpp=0
-Folder=include
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit67]
 FileName=include\inftrees.h
 CompileCpp=0
 Folder=include
@@ -699,7 +635,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit68]
+[Unit64]
 FileName=include\trees.h
 CompileCpp=0
 Folder=include
@@ -709,7 +645,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit69]
+[Unit65]
 FileName=include\zutil.h
 CompileCpp=0
 Folder=include
@@ -719,7 +655,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit70]
+[Unit66]
 FileName=resources\wstring.ico
 CompileCpp=0
 Folder=resources
@@ -729,7 +665,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit71]
+[Unit67]
 FileName=resources\lreal.ico
 CompileCpp=0
 Folder=resources
@@ -739,7 +675,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit72]
+[Unit68]
 FileName=src\zlib\adler32.c
 CompileCpp=0
 Folder=src/zlib
@@ -749,7 +685,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit73]
+[Unit69]
 FileName=src\zlib\compress.c
 CompileCpp=0
 Folder=src/zlib
@@ -759,7 +695,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit74]
+[Unit70]
 FileName=src\zlib\crc32.c
 CompileCpp=0
 Folder=src/zlib
@@ -769,7 +705,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit75]
+[Unit71]
 FileName=src\zlib\deflate.c
 CompileCpp=0
 Folder=src/zlib
@@ -779,7 +715,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit76]
+[Unit72]
 FileName=src\zlib\gzclose.c
 CompileCpp=0
 Folder=src/zlib
@@ -789,7 +725,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit77]
+[Unit73]
 FileName=src\zlib\gzlib.c
 CompileCpp=0
 Folder=src/zlib
@@ -799,7 +735,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit78]
+[Unit74]
 FileName=src\zlib\gzread.c
 CompileCpp=0
 Folder=src/zlib
@@ -809,7 +745,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit79]
+[Unit75]
 FileName=src\zlib\gzwrite.c
 CompileCpp=0
 Folder=src/zlib
@@ -819,7 +755,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit80]
+[Unit76]
 FileName=src\zlib\infback.c
 CompileCpp=0
 Folder=src/zlib
@@ -829,7 +765,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit81]
+[Unit77]
 FileName=src\zlib\inffast.c
 CompileCpp=0
 Folder=src/zlib
@@ -839,7 +775,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit82]
+[Unit78]
 FileName=src\zlib\inflate.c
 CompileCpp=0
 Folder=src/zlib
@@ -849,7 +785,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit83]
+[Unit79]
 FileName=src\zlib\inftrees.c
 CompileCpp=0
 Folder=src/zlib
@@ -859,7 +795,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit84]
+[Unit80]
 FileName=src\zlib\trees.c
 CompileCpp=0
 Folder=src/zlib
@@ -869,7 +805,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit85]
+[Unit81]
 FileName=src\zlib\uncompr.c
 CompileCpp=0
 Folder=src/zlib
@@ -879,11 +815,51 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit86]
+[Unit82]
 FileName=src\zlib\zutil.c
+CompileCpp=0
 Folder=src/zlib
 Compile=1
 Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit83]
+FileName=resources\brwatch.ico
+CompileCpp=0
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit84]
+FileName=resources\brwatch.ico
+CompileCpp=0
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit85]
+FileName=src\zlib\zutil.c
+CompileCpp=0
+Folder=src/zlib
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit86]
+FileName=resources\brwatch.ico
+Folder=resources
+Compile=0
+Link=0
 Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
@@ -891,6 +867,33 @@ CompileCpp=0
 
 [Unit87]
 FileName=resources\lreal.ico
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit36]
+FileName=resources\boolean.ico
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit46]
+FileName=resources\string.ico
+Folder=resources
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit47]
+FileName=resources\struct.ico
 Folder=resources
 Compile=0
 Link=0
