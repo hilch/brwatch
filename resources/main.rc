@@ -4,6 +4,8 @@
 #include "richedit.h"
 #include "../include/resource.h"
 
+
+
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
 //
@@ -21,7 +23,6 @@ BEGIN
     LTEXT           "https://github.com/hilch/brwatch", IDC_STATIC,20,30,180,10
     LTEXT           "Statisch",IDC_STATIC_PVIVERSION,20,50,180,10
 	LTEXT			"note: parts of this software from www.zlib.net", IDC_STATIC,20,60,180,10
-    LTEXT           "Statisch",IDS_ZLIB1,20,70,185,8
     PUSHBUTTON      "OK",IDOK,20,100,45,15,BS_FLAT
 END
 
@@ -99,7 +100,7 @@ BEGIN
 END
 
 
-DLG_EDIT_CPU DIALOGEX 6, 30, 250, 112
+DLG_EDIT_CPU DIALOGEX 6, 30, 340, 112
 STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_CONTEXTHELP | WS_POPUP |
     WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "Edit CPU"
@@ -116,15 +117,17 @@ BEGIN
     EDITTEXT        IDR_EDIT_IPADDRESS,20,38,60,12, 0
     LTEXT           "SUBNET:",IDC_STATIC,84,39,34,12
     EDITTEXT        IDR_EDIT_SUBNETMASK,120,38,60,12, 0
-    PUSHBUTTON      "CHANGE",IDR_BUTTON_CHANGEIP,186,37,50,14,BS_CENTER | BS_FLAT
+    LTEXT           "GATEWAY:",IDC_STATIC,184,39,34,12
+    EDITTEXT        IDR_EDIT_GATEWAY,220,38,60,12, 0    
+    PUSHBUTTON      "CHANGE",IDR_BUTTON_CHANGEIP,285,37,50,14,BS_CENTER | BS_FLAT
     CONTROL         "DHCP-Client",IDR_CHECK_DHCP_CLIENT,"Button", BS_AUTOCHECKBOX | WS_TABSTOP,6,50,168,10
     CONTROL         "INA activated",IDR_INA_ACTIVATED,"Button", BS_AUTOCHECKBOX | WS_TABSTOP,6,60,50,10
     LTEXT           "(Ina-Settings)",IDR_INA_SETTINGS,66,60,100,12
-    PUSHBUTTON      "STOP",IDR_BUTTON_STOP,6,72,50,14,BS_CENTER | BS_FLAT
-    PUSHBUTTON      "WARMSTART",IDR_BUTTON_WARMSTART,66,72,50,14,BS_CENTER | BS_FLAT
-    PUSHBUTTON      "COLDSTART",IDR_BUTTON_COLDSTART,126,72,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "SERV",IDR_BUTTON_STOP,6,72,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Warmstart",IDR_BUTTON_WARMSTART,66,72,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Coldstart",IDR_BUTTON_COLDSTART,126,72,50,14,BS_CENTER | BS_FLAT
     PUSHBUTTON      "DIAG",IDR_BUTTON_DIAGNOSIS,186,72,50,14,BS_CENTER | BS_FLAT
-    PUSHBUTTON      "Cancel",IDCANCEL,6,92,50,14,BS_CENTER | BS_FLAT
+    PUSHBUTTON      "Hide",IDCANCEL,6,92,50,14,BS_CENTER | BS_FLAT
 END
 
 
@@ -251,9 +254,7 @@ IDR_DEFAULT_INI1        DEFAULT_INI             "default_brwatch.ini"
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_ICO_MAIN            ICON                    "auge.ico"
-IDR_ICO_PLOT            ICON                    "plot.ico"
-IDR_ICO_PVI             ICON                    "pvi.ico"
+IDR_ICO_MAIN            ICON                    "brwatch.ico"
 IDR_ICO_TASK            ICON                    "task.ico"
 IDR_ICO_STRUCT          ICON                    "struct.ico"
 IDR_ICO_DEVICE          ICON                    "device.ico"
@@ -269,12 +270,14 @@ IDR_ICO_VARIABLE_U16    ICON                    "u16.ico"
 IDR_ICO_VARIABLE_I16    ICON                    "i16.ico"
 IDR_ICO_VARIABLE_BOOL   ICON                    "boolean.ico"
 IDR_ICO_VARIABLE_STRING ICON                    "string.ico"
+IDR_ICO_VARIABLE_WSTRING ICON					"wstring.ico"
 IDR_ICO_VARIABLE_REAL   ICON                    "real.ico"
+IDR_ICO_VARIABLE_LREAL   ICON                   "lreal.ico"
 IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "daten_and_time.ico"
 IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
 
 
-A ICON "auge.ico"
+A ICON "brwatch.ico"
 
 //
 // Version
@@ -282,24 +285,27 @@ A ICON "auge.ico"
 
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,3,1,0
- PRODUCTVERSION 1,3,1,0
+ FILEVERSION 1,4,0,0
+ PRODUCTVERSION 1,4,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
- FILEFLAGS 0x1L
+ FILEFLAGS VS_FF_DEBUG
 #else
  FILEFLAGS 0x0L
 #endif
- FILEOS 0x4L
- FILETYPE 0x1L
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_APP
  FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
         BLOCK "04070000"
         BEGIN
-            VALUE "FileVersion", "1.3.1.0"
-            VALUE "ProductVersion", "1.3.1.0"
+        	VALUE "CompanyName", "github.com/hilch"
+        	VALUE "LegalCopyright", "2006-2023 C.Hilchenbach"
+        	VALUE "FileDescription", "Small and portable service tool for B&R automation controls (PLC)"
+        	VALUE "ProductName", "BRWATCH"
+            VALUE "ProductVersion", VER_PRODUCTVERSION_STR
         END
     END
     BLOCK "VarFileInfo"

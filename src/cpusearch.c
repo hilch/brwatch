@@ -200,7 +200,7 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 	if( result == 0 ) {
 		result = PviCreate( &linkIdDevice, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\"", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 		if( result == 0 ) {
-			char *buffer = malloc(65536);
+			char *buffer = (char* ) malloc(65536);
 			if( buffer != NULL ) {
 				result = PviRead( linkIdDevice, POBJ_ACC_LIST_EXTERN, NULL, 0, buffer, 65536);
 				if( result == 0 ) { /* get list of MAC addresses */
@@ -225,6 +225,9 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
 								PviUnlink( linkIdPvar);
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
+								PviUnlink( linkIdPvar);								
 								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
 								PviUnlink( linkIdPvar);
@@ -310,9 +313,9 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
 			int result = SearchCpuViaUDP( &adapters[i], ethernetUdpCpuInfo, 256 );
 			if( result > 0 ) {
 				for( int i = 0; i < result; ++i ) {
-#ifdef _DEBUG
+#ifdef __DEBUG__
 					printf( "%s / %s \n", ethernetUdpCpuInfo[i].ipAddress, ethernetUdpCpuInfo[i].subnetMask );
-#endif // _DEBUG
+#endif // __DEBUG__
 					int found = 0;
 					for( int n = 0; n < noOfCPUs; ++n ) { /* discard dublicates */
 						if( strcmp( ethernetUdpCpuInfo[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0 ) {
@@ -321,7 +324,7 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
 						}
 					}
 					if( !found && (noOfCPUs < maxEntries) ) {
-#ifdef _DEBUG
+#ifdef __DEBUG__
 						puts("SNMP disabled CPU found\n");
 #endif
 						memcpy( &ethernetCpuInfo[noOfCPUs], &ethernetUdpCpuInfo[i], sizeof(struct stEthernetCpuInfo) );

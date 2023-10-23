@@ -5,6 +5,10 @@
 
 #include "pvi_interface.h"
 #include <commctrl.h>
+
+#define VER_PRODUCTVERSION          1,4,0,0
+#define VER_PRODUCTVERSION_STR      "1.4.0"
+
 // Used by main.rc
 //
 #define DLG_SETTINGS                    100
@@ -22,7 +26,6 @@
 #define IDC_STATIC_TASK                 1007
 #define IDC_STATIC_CPU                  1008
 #define IDC_STATIC_VERSION              1009
-#define IDS_ZLIB1                       1010
 #define IDC_STATIC_VARTYPE              1011
 #define IDC_EDIT_YEAR                   1013
 #define IDC_EDIT_MONTH                  1014
@@ -65,7 +68,6 @@
 #define IDM_LOGGER_CONFIG               6201
 #define IDM_LOGGER_START                6202
 #define IDR_ICO_MAIN                    8001
-#define IDR_ICO_PVI                     8002
 #define IDR_ICO_TASK                    8003
 #define IDR_ICO_STRUCT                  8004
 #define IDR_ICO_CPU                     8005
@@ -84,7 +86,8 @@
 #define IDR_ICO_VARIABLE_DATE_AND_TIME  8018
 #define IDR_ICO_VARIABLE_TIME           8019
 #define IDR_ICO_DEVICE                  8020
-#define IDR_ICO_PLOT                    8021
+#define IDR_ICO_VARIABLE_WSTRING        8022
+#define IDR_ICO_VARIABLE_LREAL          8023
 #define IDR_STATIC_NAME                 8201
 #define IDR_EDIT_VALUE                  8202
 #define IDR_EDIT_FILENAME               8203
@@ -102,6 +105,7 @@
 #define IDR_INA_ACTIVATED               8215
 #define IDR_MAC_ADDRESS                 8216
 #define IDR_INA_SETTINGS                8217
+#define IDR_EDIT_GATEWAY				8218
 
 #define IDM_LOGGER_UNZIPLOGGERFILE      40002
 #define IDM_OPTIONS_SETTINGS            40004

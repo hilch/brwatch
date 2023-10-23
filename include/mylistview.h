@@ -19,7 +19,7 @@ typedef struct {
 	HWND					hwndParent;									// Handle des Elternfenster
 	HWND					hwndLV;										// Handle auf Listview-Fenster
 	MYLISTVIEWCOLUMN		column[MAX_MYLISTVIEW_COLS];
-	void					(* cbkeydown)(	WORD vkey );				// Zeiger auf Callback "Taste bet‰tigt"
+	void					(* cbkeydown)(	WORD vkey );				// Zeiger auf Callback "Taste bet√§tigt"
 	void					(* cbbegindrag) (int iItem);				// Zeiger auf Callback "Begin Dragging"
 	void					(* cbdblclick)( LPNMLISTVIEW );				// Zeiger auf Callback "Doppelclick"
 	void					(* cbrclick) ( LPNMLISTVIEW );				// Zeiger auf Callback "Rechtsclick"

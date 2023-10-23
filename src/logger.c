@@ -10,8 +10,8 @@
 #include "main.h"
 #include "settings.h"
 #include "pvi_interface.h"
-#include "zip.h"
 #include "logger.h"
+#include "compressfile.h"
 
 #include "resource.h"
 
@@ -98,7 +98,7 @@ static void ReadSettings( void ) {
 	int last_watchsort;
 
 
-	GetPrivateProfileString( "Logger", "Filename", "C:\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName() );
+	GetPrivateProfileString( "Logger", "Filename", "C:\\temp\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName() );
 	filesize = GetPrivateProfileInt( "Logger", "maxfilesize", 10, SettingsGetFileName() );
 	cycletime = GetPrivateProfileInt( "Logger", "cycletime", 500, SettingsGetFileName() );
 	zip_the_files = GetPrivateProfileInt( "Logger", "zip", 0, SettingsGetFileName() );
@@ -160,9 +160,6 @@ static BOOL ValidateSettings( void ) {
 		return FALSE;
 	}
 
-	if( !ZipDllFound() ) {
-		zip_the_files = FALSE;
-	}
 	return TRUE;
 
 }
@@ -424,7 +421,14 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 											}
 										}
 										*d = 0;
-										result = fprintf( f, ",\"%.80s\"", value );
+										result = fprintf( f, ",\"%.120s\"", value );
+									}
+									break;
+
+
+								case BR_WSTRING:
+									if( object->ex.pv.pvalue != NULL ) {
+										fwprintf( f, L",\"%.120s\"", object->ex.pv.pvalue );
 									}
 									break;
 
@@ -723,7 +727,13 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 										}
 									}
 									*d = 0;
-									result = fprintf( f, ";\"%.80s\"", value );
+									result = fprintf( f, ";\"%.120s\"", value );
+								}
+								break;
+								
+							case BR_WSTRING:
+								if( logged_object[i]->ex.pv.pvalue != NULL ) {
+									result = fwprintf( f, L";\"%.120s\"", logged_object[i]->ex.pv.pvalue );
 								}
 								break;
 
@@ -821,13 +831,7 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	switch (uMsg) {
 		case WM_INITDIALOG:
 			ReadSettings();
-			if( !ZipDllFound() ) {
-				EnableWindow( GetDlgItem( hDlg, IDC_CHECK_ZIP), FALSE );
-				SetDlgItemText( hDlg, IDC_CHECK_ZIP, "zlib1d.dll not found ! " );
-				CheckDlgButton( hDlg, IDC_CHECK_ZIP, BST_UNCHECKED );
-			} else {
-				CheckDlgButton( hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED );
-			}
+			CheckDlgButton( hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED );
 			SetDlgItemText( hDlg, IDR_EDIT_FILENAME, loggerfile );
 			SetDlgItemInt( hDlg, IDR_EDIT_MAXSIZE, filesize, 0 );
 			SetDlgItemInt( hDlg, IDR_EDIT_CYCLETIME, cycletime, 0 );

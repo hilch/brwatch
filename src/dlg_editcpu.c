@@ -28,6 +28,8 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				SetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, tempstring );
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.subnetMask );
 				SetDlgItemText( hDlg, IDR_EDIT_SUBNETMASK, tempstring );
+				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.gateway );
+				SetDlgItemText( hDlg, IDR_EDIT_GATEWAY, tempstring );				
 				sprintf( tempstring, "INA-node:%u  INA-port:%u", object->ex.cpu.ethernetCpuInfo.INA_nodeNumber, object->ex.cpu.ethernetCpuInfo.INA_portNumber );
 				SetDlgItemText( hDlg, IDR_INA_SETTINGS, tempstring );
 
@@ -41,9 +43,11 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				if( object->ex.cpu.ethernetCpuInfo.ipMethod || (haveMAC == 0) ) {
 					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_IPADDRESS), FALSE );
 					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_SUBNETMASK), FALSE );
+					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_GATEWAY), FALSE );
 				} else {
 					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_IPADDRESS), TRUE );
 					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_SUBNETMASK), TRUE );
+					EnableWindow( GetDlgItem(hDlg, IDR_EDIT_GATEWAY), TRUE );					
 				}
 				EnableWindow( GetDlgItem(hDlg, IDR_BUTTON_WARMSTART), object->error == 0 );
 				EnableWindow( GetDlgItem(hDlg, IDR_BUTTON_COLDSTART), object->error == 0 );
@@ -70,6 +74,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 						int result;
 						GetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, cpuInfo.ipAddress, sizeof(cpuInfo.ipAddress) );
 						GetDlgItemText( hDlg, IDR_EDIT_SUBNETMASK, cpuInfo.subnetMask, sizeof(cpuInfo.subnetMask) );
+						GetDlgItemText( hDlg, IDR_EDIT_GATEWAY, cpuInfo.gateway, sizeof(cpuInfo.gateway) );						
 						cpuInfo.ipMethod = Button_GetCheck(GetDlgItem(hDlg, IDR_CHECK_DHCP_CLIENT ));
 						strcpy( cpuInfo.macAddress, object->ex.cpu.ethernetCpuInfo.macAddress );
 						if( validate_ip4(cpuInfo.ipAddress) && validate_ip4(cpuInfo.subnetMask)) {
@@ -128,10 +133,12 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 							if( Button_GetCheck(hwndButton) ) {
 								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_IPADDRESS), FALSE );
 								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_SUBNETMASK), FALSE );
+								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_GATEWAY), FALSE );								
 								object->ex.cpu.ethernetCpuInfo.ipMethod = 1;
 							} else {
 								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_IPADDRESS), TRUE );
 								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_SUBNETMASK), TRUE );
+								EnableWindow( GetDlgItem(hDlg, IDR_EDIT_GATEWAY), TRUE );								
 								object->ex.cpu.ethernetCpuInfo.ipMethod = 0;
 							}
 						}
@@ -201,6 +208,13 @@ int SetCPUIpParameters( struct stEthernetCpuInfo *cpuInfo ) {
 					error = 1;
 				PviUnlink( linkIdPvar);
 				if( cpuInfo->ipMethod == 0 ) { /* fixed IP ? */
+					/* set gateway */
+					result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+					result = PviWrite( linkIdPvar, POBJ_ACC_DATA, (void*) cpuInfo->gateway, strlen(cpuInfo->gateway), NULL, 0);
+					if( result != 0 )
+						error = 1;
+					PviUnlink( linkIdPvar);
+									
 					/* set subnet mask */
 					result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 					result = PviWrite( linkIdPvar, POBJ_ACC_DATA, (void*) cpuInfo->subnetMask, strlen(cpuInfo->subnetMask), NULL, 0);

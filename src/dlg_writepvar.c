@@ -41,6 +41,18 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 					}
 					break;
 
+					case BR_WSTRING: {
+						wchar_t tempstring[256];
+
+						_swprintf( tempstring, L"WSTRING(%lu) = %lu Bytes", object->ex.pv.length/2 -1, object->ex.pv.length );
+						SetDlgItemTextW( hDlg, IDC_STATIC_VARTYPE, tempstring );
+						if( object->ex.pv.pvalue != NULL ) {
+							SetDlgItemTextW( hDlg, IDR_EDIT_VALUE, object->ex.pv.pvalue );
+						}
+					}
+					break;
+
+
 					case BR_BOOL:
 						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "BOOL (0 ... 1)" );
 						if( object->ex.pv.pvalue != NULL )
@@ -231,6 +243,16 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 								result = WritePviPvar( object, tempstring );
 								SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 								break;
+
+							case BR_WSTRING: 
+							{
+								wchar_t tempstring[256];
+								memset( tempstring, 0, sizeof(tempstring));
+								SendDlgItemMessageW(hDlg, IDR_EDIT_VALUE, WM_GETTEXT, sizeof(tempstring)/sizeof(wchar_t), (long) tempstring );
+								result = WritePviPvar( object, tempstring );
+								SendMessageW( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+							}
+							break;
 
 							case BR_BOOL: {
 								unsigned char byte;
@@ -490,6 +512,10 @@ void DlgWritePvarShowDialog( PVIOBJECT *object ) {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_STRINGS), g_hwndMainWindow,
 			                (DLGPROC) DlgProc, (LPARAM) object );
+		} else if( object->ex.pv.type == BR_WSTRING ) {
+
+			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_STRINGS), g_hwndMainWindow,
+			                (DLGPROC) DlgProc, (LPARAM) object );			                
 		} else {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_NUMBERS), g_hwndMainWindow,

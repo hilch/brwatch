@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="brwatch" />
+		<Option pch_mode="2" />
+		<Option compiler="mingw" />
+		<Build>
+			<Target title="default">
+				<Option output="build/brwatch" prefix_auto="1" extension_auto="1" />
+				<Option object_output="build" />
+				<Option type="0" />
+				<Option compiler="mingw" />
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-std=c99" />
+			<Add option="-Os" />
+			<Add option="-Wall" />
+			<Add directory="./include" />
+		</Compiler>
+		<Linker>
+			<Add option="-s" />
+			<Add option="-static-libgcc" />
+			<Add option="libraries/PviCom.lib" />
+			<Add option="libraries/libz.a" />
+			<Add library="ws2_32" />
+			<Add library="iphlpapi" />
+			<Add library="netapi32" />
+			<Add library="comdlg32" />
+			<Add library="gdi32" />
+			<Add library="user32" />
+			<Add library="kernel32" />
+			<Add library="comctl32" />
+			<Add directory="./libraries" />
+		</Linker>
+		<Unit filename="include/PviCom.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/PviCom_supp.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/cpusearch.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/dlg_about.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/dlg_editcpu.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/dlg_edittask.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/dlg_showpviobjects.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/dlg_writepar.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/logger.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/main.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/mylistview.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/mytreeview.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/pvi_interface.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/resource.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/settings.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/stringtools.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/zconf.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/zip.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include/zlib.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="resources/array.ico" />
+		<Unit filename="resources/auge.ico" />
+		<Unit filename="resources/boolean.ico" />
+		<Unit filename="resources/brwatchlogo.png" />
+		<Unit filename="resources/cpu.ico" />
+		<Unit filename="resources/daten_and_time.ico" />
+		<Unit filename="resources/default_brwatch.ini" />
+		<Unit filename="resources/device.ico" />
+		<Unit filename="resources/global.ico" />
+		<Unit filename="resources/i16.ico" />
+		<Unit filename="resources/i32.ico" />
+		<Unit filename="resources/i8.ico" />
+		<Unit filename="resources/main.rc">
+			<Option compilerVar="CPP" />
+		</Unit>
+		<Unit filename="resources/plot.ico" />
+		<Unit filename="resources/pvi.ico" />
+		<Unit filename="resources/real.ico" />
+		<Unit filename="resources/string.ico" />
+		<Unit filename="resources/struct.ico" />
+		<Unit filename="resources/task.ico" />
+		<Unit filename="resources/time.ico" />
+		<Unit filename="resources/u16.ico" />
+		<Unit filename="resources/u32.ico" />
+		<Unit filename="resources/u8.ico" />
+		<Unit filename="resources/variable.ico" />
+		<Unit filename="src/cpusearch.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_about.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_axtraceconfig.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_busy.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_editcpu.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_edittask.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_settings.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_showpviobjects.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/dlg_writepvar.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/logger.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/mylistview.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/mytreeview.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/pvi_interface.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/resource.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/settings.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/stringtools.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/zip.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>

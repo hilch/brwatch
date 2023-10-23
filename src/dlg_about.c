@@ -6,7 +6,7 @@
 #include "main.h"
 #include "resource.h"
 #include "pvicom.h"
-#include "zip.h"
+
 
 LRESULT WINAPI AboutDlgProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -19,16 +19,18 @@ LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			/*
 			 * Nothing special to initialize.
 			 */
-#ifdef _DEBUG
+			 
+#ifdef __DEBUG__
+#warning debug version !!!
 #define VERSION "Debug!!!"
 #else
 #define VERSION ""
 #endif
-			SetDlgItemText( hDlg, IDC_STATIC_VERSION, "BRWATCH V1.3.1 (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
+
+			SetDlgItemText( hDlg, IDC_STATIC_VERSION, "BRWATCH " VER_PRODUCTVERSION_STR " (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
 
 			// PviGetVersion( versiontext, sizeof(versiontext) );
 			SetDlgItemText( hDlg, IDC_STATIC_PVIVERSION, g_PVIVersionString );
-			SetDlgItemText( hDlg, IDS_ZLIB1, GetZibLibVersion() );
 			return TRUE;
 
 		case WM_COMMAND:
