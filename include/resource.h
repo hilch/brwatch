@@ -72,7 +72,6 @@
 #define IDR_ICO_STRUCT                  8004
 #define IDR_ICO_CPU                     8005
 #define IDR_ICO_VARIABLE                8006
-#define IDR_ICO_GLOBAL                  8007
 #define IDR_ICO_ARRAY                   8008
 #define IDR_ICO_VARIABLE_U32            8009
 #define IDR_ICO_VARIABLE_I32            8010
