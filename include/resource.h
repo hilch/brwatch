@@ -6,8 +6,8 @@
 #include "pvi_interface.h"
 #include <commctrl.h>
 
-#define VER_PRODUCTVERSION          1,4,0,0
-#define VER_PRODUCTVERSION_STR      "1.4.0"
+#define VER_PRODUCTVERSION          1,4,1,0
+#define VER_PRODUCTVERSION_STR      "1.4.1"
 
 // Used by main.rc
 //
@@ -49,6 +49,7 @@
 #define IDR_STATIC_CPU_STATUS           1040
 #define IDR_STATIC_TASK_STATUS          1041
 #define IDR_EDIT_NUMBER_OF_CYCLES       1042
+#define IDR_STATIC_SNMP_MODE            1043
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001

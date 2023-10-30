@@ -21,9 +21,26 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				object = (PVIOBJECT *) lParam;
 				sprintf( tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor );
 				SetDlgItemText( hDlg, IDC_STATIC_CPU, tempstring );
-				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.macAddress );
+				if( strlen(object->ex.cpu.ethernetCpuInfo.macAddress) == 0 )
+					strcpy( tempstring, "00-00-00-00-00-00-00");
+				else
+					strcpy( tempstring, object->ex.cpu.ethernetCpuInfo.macAddress );
 				SetDlgItemText( hDlg, IDR_MAC_ADDRESS, tempstring );
-				SetDlgItemText( hDlg, IDR_STATIC_CPU_STATUS, object->ex.cpu.ethernetCpuInfo.arState );
+				
+				if( strlen(object->ex.cpu.ethernetCpuInfo.arState) == 0)
+					strcpy( tempstring, object->ex.cpu.status);
+				else
+					strcpy( tempstring, object->ex.cpu.ethernetCpuInfo.arState );
+				SetDlgItemText( hDlg, IDR_STATIC_CPU_STATUS, tempstring );
+				
+				if( object->ex.cpu.ethernetCpuInfo.SNMP_mode == 0)
+					strcpy( tempstring, "deactivated");
+				else if( object->ex.cpu.ethernetCpuInfo.SNMP_mode == 1)
+					strcpy( tempstring, "read only");					
+				else if( object->ex.cpu.ethernetCpuInfo.SNMP_mode == 2)
+					strcpy( tempstring, "activated");									
+				SetDlgItemText( hDlg, IDR_STATIC_SNMP_MODE, tempstring );				
+				
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.ipAddress );
 				SetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, tempstring );
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.subnetMask );
@@ -53,7 +70,6 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				EnableWindow( GetDlgItem(hDlg, IDR_BUTTON_COLDSTART), object->error == 0 );
 				EnableWindow( GetDlgItem(hDlg, IDR_BUTTON_STOP), object->error == 0 );
 				EnableWindow( GetDlgItem(hDlg, IDR_BUTTON_DIAGNOSIS), object->error == 0 );
-
 				EnableWindow( GetDlgItem(hDlg, IDR_INA_ACTIVATED), FALSE );
 
 
