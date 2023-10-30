@@ -153,8 +153,6 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 
 		/* insert a process variable */
 		if( object->type == POBJ_PVAR) {
-			if( object->ex.pv.type == BR_STRUCT || object->ex.pv.dimension > 1 )
-				return;  // not structures or arrays
 			if( WatchPviObject( object, TRUE ) != NULL ) {
 				char tempstring[256];
 

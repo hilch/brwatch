@@ -116,7 +116,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 			}
 
 			switch (pnmtv->hdr.code) {
-				case NM_DBLCLK:  // Doppel- Klick
+				case NM_DBLCLK:  // double click
 					if( tv->cbdblclick != NULL ) {
 						hti = TreeView_GetSelection(tv->hwndTV);
 						memset( &item, 0, sizeof(item) );
@@ -132,7 +132,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 					break;
 
 
-				case NM_RCLICK:  // Rechts- Klick
+				case NM_RCLICK:  // right click
 					if( tv->cbrclick != NULL ) {
 						hti = TreeView_GetDropHilight(tv->hwndTV);
 						if( hti == NULL )
@@ -297,6 +297,12 @@ void MyTreeViewDblClick(HTREEITEM hti, LPARAM lParam) {
 	PVIOBJECT *object;
 	object = FindPviObjectByName( (char*) lParam );
 	if( object != NULL ) {
+		if( object->type == POBJ_PVAR) {
+			if( object->ex.pv.type == BR_STRUCT || object->ex.pv.dimension > 1 ){
+				object->watchsort = -1;
+				return; // do not insert structures or arrays
+			}
+		}
 		object->watchsort = ListView_GetItemCount( mylistviewparam.hwndLV );
 		MyListViewInsertPVIObjects( object);
 	}
