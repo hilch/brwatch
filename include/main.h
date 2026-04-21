@@ -31,10 +31,10 @@ HWND MainWindowGetHandle( void );
 int ResourcesGetImageIndex( WORD resource );
 int ResourcesGetPviObjectImage( PVIOBJECT *object );
 
-HWND g_hwndMainWindow;
-HINSTANCE g_hInstance;
-PVIOBJECT *g_draggedPVIObject;
-PVIOBJECT *g_selectedPVIObject;
-char g_PVIVersionString[50];
+extern HWND g_hwndMainWindow;
+extern HINSTANCE g_hInstance;
+extern PVIOBJECT *g_draggedPVIObject;
+extern PVIOBJECT *g_selectedPVIObject;
+extern char g_PVIVersionString[50];
 
 #endif

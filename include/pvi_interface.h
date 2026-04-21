@@ -121,7 +121,7 @@ typedef struct {
 	void		(* cberror_changed)(PVIOBJECT *object, int error );
 } PVIOBJECTNOTIFICATION;
 
-PVIOBJECTNOTIFICATION pvi_interface_notify;
+extern PVIOBJECTNOTIFICATION pvi_interface_notify;
 
 /* Prototypen */
 int StartPvi( void );

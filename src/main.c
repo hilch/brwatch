@@ -35,6 +35,22 @@ static void SaveWatchFile( char *filename );
 static char application_path[MAX_PATH];
 static LPSTR commandLine;
 
+/* Global variables (extern in main.h) */
+HWND g_hwndMainWindow = NULL;
+HINSTANCE g_hInstance = NULL;
+PVIOBJECT *g_draggedPVIObject = NULL;
+PVIOBJECT *g_selectedPVIObject = NULL;
+char g_PVIVersionString[50] = {0};
+
+/* Global variables (extern in mylistview.h) */
+MYLISTVIEWPARAM mylistviewparam = {0};
+
+/* Global variables (extern in mytreeview.h) */
+MYTREEVIEWPARAM mytreeviewparam = {0};
+
+/* Global variables (extern in pvi_interface.h) */
+PVIOBJECTNOTIFICATION pvi_interface_notify = {0};
+
 
 
 

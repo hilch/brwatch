@@ -26,7 +26,7 @@ typedef struct {
 	void					(* cbactivate) (LPNMLISTVIEW );				// Zeiger auf Callback "aktiviert"
 } MYLISTVIEWPARAM;
 
-MYLISTVIEWPARAM mylistviewparam;
+extern MYLISTVIEWPARAM mylistviewparam;
 
 HWND MyListViewCreateWindow( MYLISTVIEWPARAM * );
 void MyListViewKeydown( WORD vkey );

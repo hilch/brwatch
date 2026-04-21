@@ -18,7 +18,7 @@ typedef struct {
 	void					(* cbrclick) (HTREEITEM, LPARAM );			// Zeiger auf Callback "Rechts-click"
 } MYTREEVIEWPARAM;
 
-MYTREEVIEWPARAM mytreeviewparam;
+extern MYTREEVIEWPARAM mytreeviewparam;
 HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index );
 HWND MyTreeViewCreateWindow( MYTREEVIEWPARAM * );
 LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM* , UINT, WPARAM , LPARAM );
