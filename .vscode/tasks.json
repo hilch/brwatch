@@ -1,0 +1,139 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "brwatch: Build Release",
+            "type": "shell",
+            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "args": [
+                "SHELL=cmd",
+                "all"
+            ],
+            "options": {
+                "env": {
+                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "brwatch: Build Debug",
+            "type": "shell",
+            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "args": [
+                "SHELL=cmd",
+                "CFLAGS=-m32 -Wall -Wextra -Iinclude -g -O0",
+                "LDFLAGS=-m32 -mwindows -static-libgcc -g",
+                "all"
+            ],
+            "options": {
+                "env": {
+                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "brwatch: Clean and Build Debug",
+            "type": "shell",
+            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "args": [
+                "SHELL=cmd",
+                "clean",
+                "CFLAGS=-m32 -Wall -Wextra -Iinclude -g -O0",
+                "LDFLAGS=-m32 -mwindows -static-libgcc -g",
+                "all"
+            ],
+            "options": {
+                "env": {
+                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "brwatch: Clean",
+            "type": "shell",
+            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "args": [
+                "SHELL=cmd",
+                "clean"
+            ],
+            "options": {
+                "env": {
+                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                }
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "brwatch: Clean and Build Release",
+            "type": "shell",
+            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "args": [
+                "SHELL=cmd",
+                "clean",
+                "all"
+            ],
+            "options": {
+                "env": {
+                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "brwatch: Run Release",
+            "type": "shell",
+            "command": "build\\brwatch.exe",
+            "args": [
+                "--help"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOn": [
+                "brwatch: Build Release"
+            ]
+        }
+    ]
+}
