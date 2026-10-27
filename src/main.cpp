@@ -1,5 +1,5 @@
 
-#define WIN32_LEAN_AND_MEAN  /* speed up compilations */
+#define WIN32_LEAN_AND_MEAN /* speed up compilations */
 
 #include "main.h"
 #include "mytreeview.h"
@@ -15,22 +15,19 @@
 #include "resource.h"
 #include <wingdi.h>
 
-
 /** Prototypes **************************************************************/
 
 static LRESULT WINAPI WndProc(HWND, UINT, WPARAM, LPARAM);
-//static void Main_OnDestroy(HWND);
+// static void Main_OnDestroy(HWND);
 static void PviObjectsValid(void);
-static void PviObjectErrorChanged( PVIOBJECT *object, int errcode );
-//static void PviObjectDataChanged(PVIOBJECT *object, char* value );
-//static void PviObjectStatusChanged( PVIOBJECT *object, char* status );
+static void PviObjectErrorChanged(PVIOBJECT *object, int errcode);
+// static void PviObjectDataChanged(PVIOBJECT *object, char* value );
+// static void PviObjectStatusChanged( PVIOBJECT *object, char* status );
 
-static void LoadWatchFile( char *filename );
-static void SaveWatchFile( char *filename );
-
+static void LoadWatchFile(char *filename);
+static void SaveWatchFile(char *filename);
 
 /** Global variables ********************************************************/
-
 
 static char application_path[MAX_PATH];
 static LPSTR commandLine;
@@ -51,45 +48,39 @@ MYTREEVIEWPARAM mytreeviewparam = {};
 /* Global variables (extern in pvi_interface.h) */
 PVIOBJECTNOTIFICATION pvi_interface_notify = {};
 
+// static HTREEITEM hselected_treeitem;
 
-
-
-
-//static HTREEITEM hselected_treeitem;
-
-static int	drop_target_index;
+static int drop_target_index;
 static int instance_counter;
 
 static NOTIFYICONDATAA notifyicondata;
 
-
-
-
-
-char *GetApplicationPath(void) {
+char *GetApplicationPath(void)
+{
 	return application_path;
 }
 
-HWND MainWindowGetHandle( void ) {
-	return( g_hwndMainWindow );
+HWND MainWindowGetHandle(void)
+{
+	return (g_hwndMainWindow);
 }
 /* ============================================================================================== */
 
-
-BOOL CALLBACK EnumWindowsProc( HWND hwnd, LPARAM /*lParam*/ ) {
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM /*lParam*/)
+{
 	char windowname[256];
 
-	GetWindowTextA( hwnd, windowname, sizeof(windowname) );
-	if( !strncmp( windowname, APPLICATION_NAME, lstrlenA(APPLICATION_NAME) ) )
+	GetWindowTextA(hwnd, windowname, sizeof(windowname));
+	if (!strncmp(windowname, APPLICATION_NAME, lstrlenA(APPLICATION_NAME)))
 		instance_counter++;
 
 	return TRUE;
 }
 
-
 /* main entry point */
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmdLine, int nCmdShow)
+{
 	WNDCLASSA wc;
 	MSG msg;
 	char windowname[30];
@@ -97,9 +88,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	commandLine = lpCmdLine;
 
 	HMODULE m_user32Dll = LoadLibraryA("User32.dll");
-	if(m_user32Dll) {
+	if (m_user32Dll)
+	{
 		FARPROC pFunc = GetProcAddress(m_user32Dll, "SetProcessDPIAware");
-		if(pFunc) {
+		if (pFunc)
+		{
 			pFunc();
 		}
 		FreeLibrary(m_user32Dll);
@@ -107,9 +100,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	}
 
 	// save application path
-	if (GetCurrentDirectoryA(sizeof(application_path), application_path)) {
-	} else {
-		MessageBoxA( NULL, "GetCurrentDirectory", "Error", MB_OK );
+	if (GetCurrentDirectoryA(sizeof(application_path), application_path))
+	{
+	}
+	else
+	{
+		MessageBoxA(NULL, "GetCurrentDirectory", "Error", MB_OK);
 		return -1;
 	}
 
@@ -117,9 +113,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 
 	// instance counter
 	instance_counter = 1;
-	EnumWindows( EnumWindowsProc, 0 );
+	EnumWindows(EnumWindowsProc, 0);
 
-	sprintf( windowname, APPLICATION_NAME " {%u. instance}", instance_counter );
+	sprintf(windowname, APPLICATION_NAME " {%u. instance}", instance_counter);
 
 	InitCommonControls();
 
@@ -131,8 +127,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	wc.cbWndExtra = 0;
 	wc.hInstance = hInstance;
 	wc.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDR_ICO_MAIN));
-	//wc.hCursor    = LoadCursor(NULL, IDC_ARROW);
-	wc.hCursor = LoadCursor(NULL, IDC_SIZEWE);	//for splitter
+	// wc.hCursor    = LoadCursor(NULL, IDC_ARROW);
+	wc.hCursor = LoadCursor(NULL, IDC_SIZEWE); // for splitter
 	wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
 	wc.lpszMenuName = MAKEINTRESOURCEA(IDR_MNU_MAIN);
 	wc.lpszClassName = "brwatchClass";
@@ -140,19 +136,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	if (!RegisterClassA(&wc))
 		return 0;
 
-	g_hwndMainWindow = CreateWindowA("brwatchClass", windowname, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+	g_hwndMainWindow = CreateWindowA("brwatchClass", windowname, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
 	if (!g_hwndMainWindow)
 		return 0;
 	ShowWindow(g_hwndMainWindow, nCmdShow);
 	UpdateWindow(g_hwndMainWindow);
 
-
 	// Notify area
-	memset( &notifyicondata, 0, sizeof(notifyicondata) );
+	memset(&notifyicondata, 0, sizeof(notifyicondata));
 	notifyicondata.cbSize = sizeof(notifyicondata);
 	notifyicondata.hWnd = g_hwndMainWindow;
-	strcpy( notifyicondata.szTip, windowname );
-	strcat( notifyicondata.szTip, " - Click here to size up" );
+	strcpy(notifyicondata.szTip, windowname);
+	strcat(notifyicondata.szTip, " - Click here to size up");
 	notifyicondata.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDR_ICO_MAIN));
 	notifyicondata.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	notifyicondata.uCallbackMessage = NOTIFY_ICON_MESSAGE;
@@ -162,79 +157,84 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	pvi_interface_notify.cberror_changed = PviObjectErrorChanged;
 	pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
 
-
-	while (GetMessageA(&msg, NULL, 0, 0)) {
+	while (GetMessageA(&msg, NULL, 0, 0))
+	{
 		TranslateMessage(&msg);
 		DispatchMessageA(&msg);
 	}
 
 	StopPvi();
-	return (int) msg.wParam;
+	return (int)msg.wParam;
 }
-
 
 /* is called when app is connected to PVI manager and device objects were created */
 
-static void PviObjectsValid(void) {
+static void PviObjectsValid(void)
+{
 	PVIOBJECT *object;
 	char logger_watch_file[MAX_PATH];
 
 	object = GetNextPviObject(TRUE);
-	while (object->next != NULL) {
+	while (object->next != NULL)
+	{
 		object = object->next;
-		if (object->type == POBJ_DEVICE) {
+		if (object->type == POBJ_DEVICE)
+		{
 			MyTreeViewAddItem(&mytreeviewparam, TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
 		}
 	}
 
 	// if logger was active when program ended it will be started again.
-	if( GetPrivateProfileIntA( "General", "LoggerActive", 0, SettingsGetFileName() ) ) { // was logger active ?
-		strcpy( logger_watch_file, GetApplicationPath() );
-		strcat( logger_watch_file, "\\_logger.wtc" );
-		LoadWatchFile( logger_watch_file );
+	if (GetPrivateProfileIntA("General", "LoggerActive", 0, SettingsGetFileName()))
+	{ // was logger active ?
+		strcpy(logger_watch_file, GetApplicationPath());
+		strcat(logger_watch_file, "\\_logger.wtc");
+		LoadWatchFile(logger_watch_file);
 		Logger();
-		SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
-		Shell_NotifyIconA(NIM_ADD, &notifyicondata );
-		ShowWindow( g_hwndMainWindow, SW_HIDE );
+		SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
+		Shell_NotifyIconA(NIM_ADD, &notifyicondata);
+		ShowWindow(g_hwndMainWindow, SW_HIDE);
 	}
 }
 
-
 /* is called when error status of object has changed */
 
-static void PviObjectErrorChanged( PVIOBJECT *object, int errcode ) {
+static void PviObjectErrorChanged(PVIOBJECT *object, int errcode)
+{
 	LVFINDINFO lvfindinfo;
 	int index;
 	char errtext[80];
 
-	memset( &lvfindinfo, 0, sizeof(lvfindinfo) );
+	memset(&lvfindinfo, 0, sizeof(lvfindinfo));
 
 	lvfindinfo.flags = LVFI_PARAM;
-	lvfindinfo.lParam = (LPARAM) object->name;
+	lvfindinfo.lParam = (LPARAM)object->name;
 
-	index = ListView_FindItem( mylistviewparam.hwndLV, -1, &lvfindinfo );
-	if( index >= 0 ) {
-		switch( errcode ) {
-			case 0:
-				strcpy( errtext, "" );
-				break;
+	index = ListView_FindItem(mylistviewparam.hwndLV, -1, &lvfindinfo);
+	if (index >= 0)
+	{
+		switch (errcode)
+		{
+		case 0:
+			strcpy(errtext, "");
+			break;
 
-			case 4177: // not initialized dynamic variable
-				strcpy( errtext, "(NULL)" );
-				break;
+		case 4177: // not initialized dynamic variable
+			strcpy(errtext, "(NULL)");
+			break;
 
-			case 4808: // no connection to plc (INA2000)
-			case 11022: // no connection to plc (ANSL)
-				strcpy( errtext, "(OFFLINE)" );
-				break;
+		case 4808:	// no connection to plc (INA2000)
+		case 11022: // no connection to plc (ANSL)
+			strcpy(errtext, "(OFFLINE)");
+			break;
 
-			case 4813: // object not found
-				strcpy( errtext, "(Object not found)");
-				break;
+		case 4813: // object not found
+			strcpy(errtext, "(Object not found)");
+			break;
 
-			default:
-				sprintf( errtext, "Error:%u", errcode );
-				break;
+		default:
+			sprintf(errtext, "Error:%u", errcode);
+			break;
 		}
 		LVITEMA item = {};
 		item.iSubItem = 3;
@@ -243,39 +243,40 @@ static void PviObjectErrorChanged( PVIOBJECT *object, int errcode ) {
 	}
 }
 
-
 /* save watch file */
 
-static void SaveWatchFile( char *filename ) {
+static void SaveWatchFile(char *filename)
+{
 	int index;
 	LVITEM lvitem;
 	PVIOBJECT *object;
 
 	remove(filename);
-	index = ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
-	while( index != -1 ) {
-		memset( &lvitem, 0, sizeof(lvitem) );
+	index = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+	while (index != -1)
+	{
+		memset(&lvitem, 0, sizeof(lvitem));
 		lvitem.mask = LVIF_PARAM;
 		lvitem.iItem = index;
-		ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-		if( lvitem.lParam != 0 ) {
-			object = FindPviObjectByName( (char*) lvitem.lParam );
-			if( object != NULL ) {
+		ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+		if (lvitem.lParam != 0)
+		{
+			object = FindPviObjectByName((char *)lvitem.lParam);
+			if (object != NULL)
+			{
 				object->watchsort = lvitem.iItem;
-				AddToPviWatchFile( object, filename );
+				AddToPviWatchFile(object, filename);
 			}
 		}
-		index = ListView_GetNextItem( mylistviewparam.hwndLV, index, LVNI_ALL );
+		index = ListView_GetNextItem(mylistviewparam.hwndLV, index, LVNI_ALL);
 	}
-
 }
-
-
 
 /* load watch file */
 
-static void LoadWatchFile( char *filename ) {
-	const T_POBJ_TYPE objectTypes[] = { POBJ_DEVICE, POBJ_CPU, POBJ_TASK, POBJ_PVAR };
+static void LoadWatchFile(char *filename)
+{
+	const T_POBJ_TYPE objectTypes[] = {POBJ_DEVICE, POBJ_CPU, POBJ_TASK, POBJ_PVAR};
 	PVIOBJECT *object;
 	HCURSOR oldcursor;
 	int result, n;
@@ -285,448 +286,475 @@ static void LoadWatchFile( char *filename ) {
 
 	// load objects from file
 	n = 0;
-	for( const T_POBJ_TYPE objectType : objectTypes ) {
-		result = LoadPviObjectsFromWatchFile( objectType, filename );
-		if( result > 0 ) {
+	for (const T_POBJ_TYPE objectType : objectTypes)
+	{
+		result = LoadPviObjectsFromWatchFile(objectType, filename);
+		if (result > 0)
+		{
 			n += result;
 		}
 	}
 
 	// add objects to tree view
 
-
-	while( n ) {
+	while (n)
+	{
 		object = GetNextPviObject(TRUE);
-		while ( (object = GetNextPviObject(FALSE)) != NULL ) {
-			if(object->gui_info.loaded_from_file && object->watchsort == sort ) {
+		while ((object = GetNextPviObject(FALSE)) != NULL)
+		{
+			if (object->gui_info.loaded_from_file && object->watchsort == sort)
+			{
 				object->gui_info.loaded_from_file = 0;
 				++sort;
 				--n;
-				MyListViewInsertPVIObjects( object );
+				MyListViewInsertPVIObjects(object);
 			}
 		}
 	}
 
 	UpdateWindow(mylistviewparam.hwndLV);
-	SetCursor( oldcursor );
+	SetCursor(oldcursor);
 }
-
-
 
 /* window procedure */
 
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lParam) {
-	static BOOL drag_splitter = FALSE;	//for splitter
-	static UINT splitter_xpos = 250;	//for splitter
-	static UINT	writewnd_height = 0;   // height of write window
-//	static HWND hwndSettings=NULL; // settings- window
+static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lParam)
+{
+	static BOOL drag_splitter = FALSE;	 // for splitter
+	static UINT splitter_xpos = 250;	 // for splitter
+	static UINT writewnd_height = 0;	 // height of write window
+										 //	static HWND hwndSettings=NULL; // settings- window
 	static HFONT hfont_watchlist = NULL; // font for ListView
 	RECT rect;
 	HIMAGELIST himl;
 
-	if( MyListViewHandleMessages( &mylistviewparam, wMsg, wParam, lParam ) == 0 )
-		return(0);
+	if (MyListViewHandleMessages(&mylistviewparam, wMsg, wParam, lParam) == 0)
+		return (0);
 
-	if( MyTreeViewHandleMessages(&mytreeviewparam, wMsg, wParam, lParam) == 0 )
-		return(0);
+	if (MyTreeViewHandleMessages(&mytreeviewparam, wMsg, wParam, lParam) == 0)
+		return (0);
 
-	switch (wMsg) {
+	switch (wMsg)
+	{
 
-		case WM_COMMAND:
-			switch (wParam) {
-				case IDM_ABOUT:
-					DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_ABOUT), hWnd, AboutDlgProc);
-					break;
+	case WM_COMMAND:
+		switch (wParam)
+		{
+		case IDM_ABOUT:
+			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_ABOUT), hWnd, AboutDlgProc);
+			break;
 
-				case IDM_STATUSPVIOBJEKTE:
-					//DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, ShowPviObjectsDlgProc);
-					ShowWindowPviObjects(  );
-					break;
-				case IDM_MNU_REFRESH:
-					if( MessageBoxA( hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING ) == IDYES ) {
-						HCURSOR oldcursor;
+		case IDM_STATUSPVIOBJEKTE:
+			// DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, ShowPviObjectsDlgProc);
+			ShowWindowPviObjects();
+			break;
+		case IDM_MNU_REFRESH:
+			if (MessageBoxA(hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING) == IDYES)
+			{
+				HCURSOR oldcursor;
 
-						oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
-						TreeView_DeleteAllItems(mytreeviewparam.hwndTV);
-						ListView_DeleteAllItems(mylistviewparam.hwndLV);
-						StopPvi();
-						Sleep(1000);
-						StartPvi();
-						SetCursor(oldcursor);
-					}
-					break;
-				case IDM_SAVE_WATCH_FILE: {
-					char filename[MAX_PATH];
-					OPENFILENAMEA ofn;
-					strcpy(filename, "default");
-					memset(&ofn, 0, sizeof(ofn));
-					ofn.lStructSize = sizeof(ofn);
-					ofn.hwndOwner = hWnd;
-					ofn.lpstrFilter = "WatchFile\0*.wtc\0\0";
-					ofn.lpstrFile = filename;
-					ofn.lpstrDefExt = "wtc";
-					ofn.nMaxFile = sizeof(filename);
-					ofn.Flags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-					if (GetSaveFileNameA(&ofn)) {
-						SaveWatchFile(filename);
+				oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+				TreeView_DeleteAllItems(mytreeviewparam.hwndTV);
+				ListView_DeleteAllItems(mylistviewparam.hwndLV);
+				StopPvi();
+				Sleep(1000);
+				StartPvi();
+				SetCursor(oldcursor);
+			}
+			break;
+		case IDM_SAVE_WATCH_FILE:
+		{
+			char filename[MAX_PATH];
+			OPENFILENAMEA ofn;
+			strcpy(filename, "default");
+			memset(&ofn, 0, sizeof(ofn));
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = hWnd;
+			ofn.lpstrFilter = "WatchFile\0*.wtc\0\0";
+			ofn.lpstrFile = filename;
+			ofn.lpstrDefExt = "wtc";
+			ofn.nMaxFile = sizeof(filename);
+			ofn.Flags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
+			if (GetSaveFileNameA(&ofn))
+			{
+				SaveWatchFile(filename);
+			}
+		}
+		break;
+
+		case IDM_LOAD_WATCH_FILE:
+		{
+			char filename[MAX_PATH];
+			OPENFILENAMEA ofn;
+			memset(&ofn, 0, sizeof(ofn));
+			strcpy(filename, "default");
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = hWnd;
+			ofn.lpstrFilter = "WatchFile\0*.wtc\0\0";
+			ofn.lpstrFile = filename;
+			ofn.lpstrDefExt = "wtc";
+			ofn.nMaxFile = sizeof(filename);
+			ofn.Flags = OFN_HIDEREADONLY;
+			if (GetOpenFileNameA(&ofn))
+			{
+				LoadWatchFile(filename);
+			}
+		}
+		break;
+
+		case IDM_LOGGER_CONFIG:
+			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_LOGGER_CONFIG), hWnd, LoggerConfigDlgProc);
+			break;
+			break;
+
+		case IDM_LOGGER_START:
+			Logger();
+			SendMessageA(hWnd, NOTIFY_LOGGER_STATUS, 0, 0);
+			break;
+
+		case IDM_LOGGER_UNZIPLOGGERFILE:
+		{
+			char filename[MAX_PATH];
+			int result;
+			char tempstring[80];
+
+			OPENFILENAMEA ofn;
+			memset(&ofn, 0, sizeof(ofn));
+			strcpy(filename, "");
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = hWnd;
+			ofn.lpstrFilter = "ZippedLoggerFile(*.gz)\0*.gz\0\0";
+			ofn.lpstrFile = filename;
+			ofn.lpstrDefExt = "gz";
+			ofn.nMaxFile = sizeof(filename);
+			ofn.Flags = OFN_HIDEREADONLY;
+			if (GetOpenFileNameA(&ofn))
+			{
+				result = DecompressFile(filename);
+				if (result == 0)
+				{
+					MessageBoxA(hWnd, "File was successfully unzipped !", "Unzip Logger file", MB_OK);
+				}
+				else
+				{
+					sprintf(tempstring, "Error unzipping file: %i", result);
+					MessageBoxA(hWnd, tempstring, "Unzip Logger file", MB_OK | MB_ICONERROR);
+				}
+			}
+		}
+		break;
+
+		case IDM_CHANGE_VIEW_DECIMAL:
+			if (g_selectedPVIObject != NULL)
+			{
+				g_selectedPVIObject->gui_info.display_as_decimal ^= 1;
+				MyListViewUpdateValue(g_selectedPVIObject);
+			}
+			break;
+
+		case IDM_CHANGE_VIEW_HEX:
+			if (g_selectedPVIObject != NULL)
+			{
+				g_selectedPVIObject->gui_info.display_as_hex ^= 1;
+				MyListViewUpdateValue(g_selectedPVIObject);
+			}
+			break;
+
+		case IDM_CHANGE_VIEW_BINARY:
+			if (g_selectedPVIObject != NULL)
+			{
+				g_selectedPVIObject->gui_info.display_as_binary ^= 1;
+				MyListViewUpdateValue(g_selectedPVIObject);
+			}
+			break;
+
+		case IDM_CHANGE_VIEW_CHAR:
+			if (g_selectedPVIObject != NULL)
+			{
+				g_selectedPVIObject->gui_info.display_as_char ^= 1;
+				MyListViewUpdateValue(g_selectedPVIObject);
+			}
+			break;
+
+		case IDM_CHANGE_VIEW_OEMCHAR:
+			if (g_selectedPVIObject != NULL)
+			{
+				g_selectedPVIObject->gui_info.interpret_as_oem ^= 1;
+				MyListViewUpdateValue(g_selectedPVIObject);
+			}
+			break;
+
+		case IDM_DELETE_OBJECT_FROM_LIST:
+		{
+			LVITEM lvitem;
+			int i;
+			// char *temp;
+
+			i = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+			while (i != -1)
+			{
+				memset(&lvitem, 0, sizeof(lvitem));
+				lvitem.mask = LVIF_PARAM;
+				lvitem.iItem = i;
+				ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+				if (lvitem.lParam != 0)
+				{
+					// temp = (char*) lvitem.lParam;
+					if (strcmp(g_selectedPVIObject->name, (char *)lvitem.lParam) == 0)
+					{
+						WatchPviObject(g_selectedPVIObject, FALSE);		// remove from watch
+						ListView_DeleteItem(mylistviewparam.hwndLV, i); // remove from list view
+						break;
 					}
 				}
-				break;
+				i = ListView_GetNextItem(mylistviewparam.hwndLV, i, LVNI_ALL);
+			}
+		}
+		break;
 
-				case IDM_LOAD_WATCH_FILE: {
-					char filename[MAX_PATH];
-					OPENFILENAMEA ofn;
-					memset(&ofn, 0, sizeof(ofn));
-					strcpy(filename, "default");
-					ofn.lStructSize = sizeof(ofn);
-					ofn.hwndOwner = hWnd;
-					ofn.lpstrFilter = "WatchFile\0*.wtc\0\0";
-					ofn.lpstrFile = filename;
-					ofn.lpstrDefExt = "wtc";
-					ofn.nMaxFile = sizeof(filename);
-					ofn.Flags = OFN_HIDEREADONLY;
-					if (GetOpenFileNameA(&ofn)) {
-						LoadWatchFile(filename);
-					}
-				}
-				break;
+		case IDM_VIEW_SETDEFAULTFONT:
+		{
+			HFONT hfont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+			SendMessage(mylistviewparam.hwndLV, WM_SETFONT, (WPARAM)hfont, TRUE);
+			if (hfont_watchlist != NULL)
+			{
+				DeleteObject(hfont_watchlist);
+				hfont_watchlist = NULL;
+			}
+		}
+		break;
 
+		case IDM_VIEW_SELECT_FONT:
+		{
+			CHOOSEFONTA cf;
+			LOGFONTA font;
 
-				case IDM_LOGGER_CONFIG:
-					DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_LOGGER_CONFIG), hWnd, LoggerConfigDlgProc);
-					break;
-					break;
-
-				case IDM_LOGGER_START:
-					Logger();
-					SendMessageA( hWnd, NOTIFY_LOGGER_STATUS, 0, 0 );
-					break;
-
-				case IDM_LOGGER_UNZIPLOGGERFILE: {
-					char filename[MAX_PATH];
-					int result;
-					char tempstring[80];
-
-					OPENFILENAMEA ofn;
-					memset(&ofn, 0, sizeof(ofn));
-					strcpy(filename, "");
-					ofn.lStructSize = sizeof(ofn);
-					ofn.hwndOwner = hWnd;
-					ofn.lpstrFilter = "ZippedLoggerFile(*.gz)\0*.gz\0\0";
-					ofn.lpstrFile = filename;
-					ofn.lpstrDefExt = "gz";
-					ofn.nMaxFile = sizeof(filename);
-					ofn.Flags = OFN_HIDEREADONLY;
-					if (GetOpenFileNameA(&ofn)) {
-						result = DecompressFile(filename);
-						if( result == 0 ) {
-							MessageBoxA( hWnd, "File was successfully unzipped !", "Unzip Logger file", MB_OK );
-						} else {
-							sprintf( tempstring, "Error unzipping file: %i", result );
-							MessageBoxA( hWnd, tempstring, "Unzip Logger file", MB_OK | MB_ICONERROR );
-						}
-					}
-				}
-				break;
-
-
-				case IDM_CHANGE_VIEW_DECIMAL:
-					if (g_selectedPVIObject != NULL) {
-						g_selectedPVIObject->gui_info.display_as_decimal ^= 1;
-						MyListViewUpdateValue( g_selectedPVIObject );
-					}
-					break;
-
-				case IDM_CHANGE_VIEW_HEX:
-					if (g_selectedPVIObject != NULL) {
-						g_selectedPVIObject->gui_info.display_as_hex ^= 1;
-						MyListViewUpdateValue( g_selectedPVIObject );
-					}
-					break;
-
-				case IDM_CHANGE_VIEW_BINARY:
-					if (g_selectedPVIObject != NULL) {
-						g_selectedPVIObject->gui_info.display_as_binary ^= 1;
-						MyListViewUpdateValue( g_selectedPVIObject );
-					}
-					break;
-
-				case IDM_CHANGE_VIEW_CHAR:
-					if (g_selectedPVIObject != NULL) {
-						g_selectedPVIObject->gui_info.display_as_char ^= 1;
-						MyListViewUpdateValue( g_selectedPVIObject );
-					}
-					break;
-
-				case IDM_CHANGE_VIEW_OEMCHAR:
-					if (g_selectedPVIObject != NULL) {
-						g_selectedPVIObject->gui_info.interpret_as_oem ^= 1;
-						MyListViewUpdateValue( g_selectedPVIObject );
-					}
-					break;
-
-
-				case IDM_DELETE_OBJECT_FROM_LIST: {
-					LVITEM lvitem;
-					int i;
-					//char *temp;
-
-					i= ListView_GetNextItem( mylistviewparam.hwndLV, -1, LVNI_ALL );
-					while( i!= -1 ) {
-						memset( &lvitem, 0, sizeof(lvitem) );
-						lvitem.mask = LVIF_PARAM;
-						lvitem.iItem = i;
-						ListView_GetItem( mylistviewparam.hwndLV, &lvitem );
-						if( lvitem.lParam != 0 ) {
-							//temp = (char*) lvitem.lParam;
-							if( strcmp( g_selectedPVIObject->name, (char*) lvitem.lParam ) == 0 ) {
-								WatchPviObject( g_selectedPVIObject, FALSE ); // remove from watch
-								ListView_DeleteItem( mylistviewparam.hwndLV, i ); // remove from list view
-								break;
-							}
-						}
-						i = ListView_GetNextItem( mylistviewparam.hwndLV, i, LVNI_ALL );
-					}
-				}
-				break;
-
-
-				case IDM_VIEW_SETDEFAULTFONT: {
-					HFONT hfont = static_cast<HFONT>(GetStockObject( DEFAULT_GUI_FONT ));
-					SendMessage( mylistviewparam.hwndLV, WM_SETFONT, (WPARAM) hfont, TRUE );
-					if( hfont_watchlist != NULL ) {
-						DeleteObject( hfont_watchlist );
-						hfont_watchlist = NULL;
-					}
-				}
-				break;
-
-				case IDM_VIEW_SELECT_FONT: {
-					CHOOSEFONTA cf;
-					LOGFONTA font;
-
-
-					if( hfont_watchlist != NULL ) {
-						DeleteObject( hfont_watchlist );
-						hfont_watchlist = NULL;
-					}
-
-					ZeroMemory(&font, sizeof(font) );
-					font.lfCharSet = ANSI_CHARSET;
-					font.lfWeight = FW_THIN;
-					strncpy( font.lfFaceName,"System", LF_FACESIZE );
-
-					ZeroMemory(&cf, sizeof(cf) );
-					cf.lStructSize = sizeof(cf);
-					cf.hInstance = g_hInstance;
-					cf.hwndOwner = hWnd;
-					cf.Flags = CF_SCREENFONTS | CF_NOVERTFONTS | CF_INITTOLOGFONTSTRUCT ;
-					cf.lpLogFont = &font;
-					if( ChooseFontA(&cf) ) {
-						hfont_watchlist = CreateFontIndirectA( &font );
-						SendMessage( mylistviewparam.hwndLV, WM_SETFONT, (WPARAM) hfont_watchlist, 1 );
-					}
-				}
-				break;
-
-				case IDM_OPTIONS_SETTINGS:
-					DialogBoxA( g_hInstance, MAKEINTRESOURCEA(DLG_SETTINGS), hWnd, SettingsDlg );
-					break;
-
-				case IDM_QUIT:
-					DestroyWindow( hWnd );
-					break;
+			if (hfont_watchlist != NULL)
+			{
+				DeleteObject(hfont_watchlist);
+				hfont_watchlist = NULL;
 			}
 
-			return 0;
+			ZeroMemory(&font, sizeof(font));
+			font.lfCharSet = ANSI_CHARSET;
+			font.lfWeight = FW_THIN;
+			strncpy(font.lfFaceName, "System", LF_FACESIZE);
 
+			ZeroMemory(&cf, sizeof(cf));
+			cf.lStructSize = sizeof(cf);
+			cf.hInstance = g_hInstance;
+			cf.hwndOwner = hWnd;
+			cf.Flags = CF_SCREENFONTS | CF_NOVERTFONTS | CF_INITTOLOGFONTSTRUCT;
+			cf.lpLogFont = &font;
+			if (ChooseFontA(&cf))
+			{
+				hfont_watchlist = CreateFontIndirectA(&font);
+				SendMessage(mylistviewparam.hwndLV, WM_SETFONT, (WPARAM)hfont_watchlist, 1);
+			}
+		}
+		break;
 
-		case WM_SIZE: {
-			int nWidth = LOWORD(lParam);  // width of client area
-			int nHeight = HIWORD(lParam); // height of client area
+		case IDM_OPTIONS_SETTINGS:
+			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_SETTINGS), hWnd, SettingsDlg);
+			break;
 
-			// für Splitter
-			MoveWindow(mytreeviewparam.hwndTV, 0, 0, splitter_xpos - 1, nHeight, TRUE);
-			MoveWindow(mylistviewparam.hwndLV, splitter_xpos + 1, 0, nWidth - 101, nHeight -writewnd_height, TRUE);
-//		MoveWindow(mywritelistviewparam.hwndLV, splitter_xpos + 1, nHeight-writewnd_height, nWidth - 101, writewnd_height, TRUE);
+		case IDM_QUIT:
+			DestroyWindow(hWnd);
+			break;
+		}
+
+		return 0;
+
+	case WM_SIZE:
+	{
+		int nWidth = LOWORD(lParam);  // width of client area
+		int nHeight = HIWORD(lParam); // height of client area
+
+		// für Splitter
+		MoveWindow(mytreeviewparam.hwndTV, 0, 0, splitter_xpos - 1, nHeight, TRUE);
+		MoveWindow(mylistviewparam.hwndLV, splitter_xpos + 1, 0, nWidth - 101, nHeight - writewnd_height, TRUE);
+		//		MoveWindow(mywritelistviewparam.hwndLV, splitter_xpos + 1, nHeight-writewnd_height, nWidth - 101, writewnd_height, TRUE);
+	}
+		return 0;
+
+	case WM_LBUTTONDOWN:
+		// for splitter
+		SetCapture(hWnd);
+		drag_splitter = TRUE;
+		return 0;
+
+	case WM_LBUTTONUP:
+		// for splitter
+		ReleaseCapture();
+		drag_splitter = FALSE;
+
+		// drop object
+		if (g_draggedPVIObject != NULL)
+		{
+			ImageList_EndDrag();
+			ImageList_DragLeave(g_hwndMainWindow);
+			ReleaseCapture();
+			g_draggedPVIObject->watchsort = drop_target_index;
+			MyListViewInsertPVIObjects(g_draggedPVIObject);
+			g_draggedPVIObject = NULL;
+			TreeView_Select(mytreeviewparam.hwndTV, 0, TVGN_DROPHILITE); // only for nicer view
 		}
 		return 0;
 
+	case WM_KEYDOWN:
+		switch (wParam)
+		{
+		case VK_TAB:
+			SetFocus(mytreeviewparam.hwndTV);
+			break;
+		}
+		return 0;
+
+	case WM_MOUSEMOVE:
+		if (drag_splitter)
+		{
+			GetClientRect(hWnd, &rect);
+			if ((LOWORD(lParam) > 50) && (LOWORD(lParam) < (rect.right) - 50))
+			{
+				MoveWindow(mytreeviewparam.hwndTV, 0, 0, LOWORD(lParam) - 1, rect.bottom, TRUE);
+				MoveWindow(mylistviewparam.hwndLV, LOWORD(lParam) + 1, 0, rect.right - LOWORD(lParam) + 1, rect.bottom - writewnd_height, TRUE);
+				//				MoveWindow(mywritelistviewparam.hwndLV, LOWORD(lParam) + 1, rect.bottom - writewnd_height, rect.right - LOWORD(lParam) + 1, writewnd_height, TRUE);
+				splitter_xpos = LOWORD(lParam);
+			}
+		}
+		if (g_draggedPVIObject != NULL)
+		{ // drag object from tree view to list view
+			POINTS Pos;
+			LVHITTESTINFO lvht;
+			Pos.x = GET_X_LPARAM(lParam);
+			Pos.y = GET_Y_LPARAM(lParam);
+			ImageList_DragMove(Pos.x, Pos.y + 40);
+			//
+			memset(&lvht, 0, sizeof(lvht));
+			lvht.pt.x = Pos.x;
+			lvht.pt.y = Pos.y;
+			ListView_HitTest(mylistviewparam.hwndLV, &lvht);
+			if (lvht.flags & LVHT_NOWHERE)
+			{																	   // drag within list view and not over other entry ?
+				drop_target_index = ListView_GetItemCount(mylistviewparam.hwndLV); // to end of list
+			}
+			else if (lvht.flags & LVHT_ONITEM)
+			{
+				drop_target_index = lvht.iItem;
+			}
+			else
+				drop_target_index = -1; // do not insert
+			ListView_SetHotItem(mylistviewparam.hwndLV, lvht.iItem);
+		}
+		return 0;
+
+	case WM_SYSCOMMAND:
+		if (wParam == SC_MINIMIZE)
+		{
+			Shell_NotifyIconA(NIM_ADD, &notifyicondata);
+			ShowWindow(g_hwndMainWindow, SW_HIDE);
+			return 0;
+		}
+		break;
+
+	case NOTIFY_ICON_MESSAGE:
+		switch (LOWORD(lParam))
+		{
 		case WM_LBUTTONDOWN:
-			// for splitter
-			SetCapture(hWnd);
-			drag_splitter = TRUE;
-			return 0;
-
-		case WM_LBUTTONUP:
-			// for splitter
-			ReleaseCapture();
-			drag_splitter = FALSE;
-
-			// drop object
-			if (g_draggedPVIObject != NULL) {
-				ImageList_EndDrag();
-				ImageList_DragLeave(g_hwndMainWindow);
-				ReleaseCapture();
-				g_draggedPVIObject->watchsort = drop_target_index;
-				MyListViewInsertPVIObjects(g_draggedPVIObject);
-				g_draggedPVIObject = NULL;
-				TreeView_Select(mytreeviewparam.hwndTV, 0, TVGN_DROPHILITE);	// only for nicer view
-			}
-			return 0;
-
-		case WM_KEYDOWN:
-			switch( wParam ) {
-				case VK_TAB:
-					SetFocus( mytreeviewparam.hwndTV );
-					break;
-			}
-			return 0;
-
-		case WM_MOUSEMOVE:
-			if (drag_splitter) {
-				GetClientRect(hWnd, &rect);
-				if ((LOWORD(lParam) > 50) && (LOWORD(lParam) < (rect.right) - 50)) {
-					MoveWindow(mytreeviewparam.hwndTV, 0, 0, LOWORD(lParam) - 1, rect.bottom, TRUE);
-					MoveWindow(mylistviewparam.hwndLV, LOWORD(lParam) + 1, 0, rect.right - LOWORD(lParam) + 1, rect.bottom - writewnd_height, TRUE);
-//				MoveWindow(mywritelistviewparam.hwndLV, LOWORD(lParam) + 1, rect.bottom - writewnd_height, rect.right - LOWORD(lParam) + 1, writewnd_height, TRUE);
-					splitter_xpos = LOWORD(lParam);
-				}
-			}
-			if (g_draggedPVIObject != NULL) {	// drag object from tree view to list view
-				POINTS Pos;
-				LVHITTESTINFO lvht;
-				Pos.x = GET_X_LPARAM(lParam);
-				Pos.y = GET_Y_LPARAM(lParam);
-				ImageList_DragMove(Pos.x, Pos.y+40);
-				//
-				memset(&lvht, 0, sizeof(lvht));
-				lvht.pt.x = Pos.x;
-				lvht.pt.y = Pos.y;
-				ListView_HitTest(mylistviewparam.hwndLV, &lvht);
-				if (lvht.flags & LVHT_NOWHERE) {	// drag within list view and not over other entry ?
-					drop_target_index = ListView_GetItemCount(mylistviewparam.hwndLV); // to end of list
-				} else if (lvht.flags & LVHT_ONITEM) {
-					drop_target_index = lvht.iItem;
-				} else
-					drop_target_index = -1; // do not insert
-				ListView_SetHotItem(mylistviewparam.hwndLV, lvht.iItem);
-			}
-			return 0;
-
-		case WM_SYSCOMMAND:
-			if( wParam == SC_MINIMIZE ) {
-				Shell_NotifyIconA(NIM_ADD, &notifyicondata );
-				ShowWindow( g_hwndMainWindow, SW_HIDE );
-				return 0;
-			}
+			ShowWindow(g_hwndMainWindow, SW_RESTORE);
+			Shell_NotifyIconA(NIM_DELETE, &notifyicondata);
 			break;
+		}
+		break;
 
+	case NOTIFY_LOGGER_STATUS:
+		if (IsLoggerRunning())
+		{
+			char logger_watch_file[MAX_PATH];
 
-		case NOTIFY_ICON_MESSAGE:
-			switch( LOWORD( lParam ) ) {
-				case WM_LBUTTONDOWN:
-					ShowWindow( g_hwndMainWindow, SW_RESTORE );
-					Shell_NotifyIconA(NIM_DELETE, &notifyicondata );
-					break;
-			}
-			break;
+			// logger was started...
+			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop");
+			EnableWindow(mylistviewparam.hwndLV, FALSE);
+			EnableWindow(mytreeviewparam.hwndTV, FALSE);
+			WritePrivateProfileStringA("General", "LoggerActive", "1", SettingsGetFileName());
+			strcpy(logger_watch_file, GetApplicationPath());
+			strcat(logger_watch_file, "\\_logger.wtc");
+			SaveWatchFile(logger_watch_file);
+		}
+		else
+		{
+			// logger was stopped
+			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start");
+			EnableWindow(mylistviewparam.hwndLV, TRUE);
+			EnableWindow(mytreeviewparam.hwndTV, TRUE);
+			WritePrivateProfileStringA("General", "LoggerActive", "0", SettingsGetFileName());
+		}
+		break;
 
+	case WM_CREATE:
+		InitCommonControls();
+		/* Imagelist */
+		himl = ResourcesCreateImageList();
 
-		case NOTIFY_LOGGER_STATUS:
-			if( IsLoggerRunning() ) {
-				char logger_watch_file[MAX_PATH];
+		g_draggedPVIObject = NULL;
 
-				// logger was started...
-				ModifyMenuA( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop" );
-				EnableWindow( mylistviewparam.hwndLV, FALSE );
-				EnableWindow( mytreeviewparam.hwndTV, FALSE );
-				WritePrivateProfileStringA( "General", "LoggerActive", "1", SettingsGetFileName() );
-				strcpy( logger_watch_file, GetApplicationPath() );
-				strcat( logger_watch_file, "\\_logger.wtc" );
-				SaveWatchFile( logger_watch_file );
-			} else {
-				// logger was stopped
-				ModifyMenuA( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start" );
-				EnableWindow( mylistviewparam.hwndLV, TRUE );
-				EnableWindow( mytreeviewparam.hwndTV, TRUE );
-				WritePrivateProfileStringA( "General", "LoggerActive", "0", SettingsGetFileName() );
-			}
-			break;
+		/* TreeView */
+		memset(&mytreeviewparam, 0, sizeof(mytreeviewparam));
+		mytreeviewparam.hinstance = g_hInstance;
+		mytreeviewparam.hwndParent = hWnd;
+		mytreeviewparam.cbselected = MyTreeViewItemSelected; // Callback
+		mytreeviewparam.cbbegindrag = MyTreeViewBeginDragging;
+		mytreeviewparam.cbdblclick = MyTreeViewDblClick;
+		mytreeviewparam.cbrclick = MyTreeViewRClick;
 
-		case WM_CREATE:
-			InitCommonControls();
-			/* Imagelist */
-			himl = ResourcesCreateImageList();
+		MyTreeViewCreateWindow(&mytreeviewparam);
+		TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_NORMAL);
+		// TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_STATE );
 
-			g_draggedPVIObject = NULL;
+		/* Listview */
+		memset(&mylistviewparam, 0, sizeof(mylistviewparam));
+		mylistviewparam.hinstance = g_hInstance;
+		mylistviewparam.hwndParent = hWnd;
+		mylistviewparam.column[0].name = "Name";
+		mylistviewparam.column[0].width = 100;
+		mylistviewparam.column[1].name = "Type";
+		mylistviewparam.column[1].width = 100;
+		mylistviewparam.column[2].name = "Scope";
+		mylistviewparam.column[2].width = 100;
+		mylistviewparam.column[3].name = "Value";
+		mylistviewparam.column[3].width = 600;
+		mylistviewparam.cbkeydown = MyListViewKeydown; // Callbacks
+		mylistviewparam.cbdblclick = MyListViewDblClick;
+		mylistviewparam.cbrclick = MyListViewRClick;
+		mylistviewparam.cbbegindrag = MyListViewBeginDragging;
+		mylistviewparam.cbactivate = MyListViewActivate;
 
-			/* TreeView */
-			memset(&mytreeviewparam, 0, sizeof(mytreeviewparam));
-			mytreeviewparam.hinstance = g_hInstance;
-			mytreeviewparam.hwndParent = hWnd;
-			mytreeviewparam.cbselected = MyTreeViewItemSelected;	// Callback
-			mytreeviewparam.cbbegindrag = MyTreeViewBeginDragging;
-			mytreeviewparam.cbdblclick = MyTreeViewDblClick;
-			mytreeviewparam.cbrclick = MyTreeViewRClick;
+		MyListViewCreateWindow(&mylistviewparam);
+		ListView_SetImageList(mylistviewparam.hwndLV, himl, LVSIL_SMALL);
 
-			MyTreeViewCreateWindow(&mytreeviewparam);
-			TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_NORMAL);
-			//TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_STATE );
+		/* Schreibfenster */
+		writewnd_height = 0;
+		// if( write_enabled ){
+		// writewnd_height = 20;
+		// mywritelistviewparam.hwndLV = CreateWindowEx( 0, "EDIT", "", WS_CHILD | WS_VISIBLE,
+		// 0, 0, 0, 0, hWnd, 0, ghInstance, NULL);
+		// }
 
-			/* Listview */
-			memset(&mylistviewparam, 0, sizeof(mylistviewparam));
-			mylistviewparam.hinstance = g_hInstance;
-			mylistviewparam.hwndParent = hWnd;
-			mylistviewparam.column[0].name = "Name";
-			mylistviewparam.column[0].width = 100;
-			mylistviewparam.column[1].name = "Type";
-			mylistviewparam.column[1].width = 100;
-			mylistviewparam.column[2].name = "Scope";
-			mylistviewparam.column[2].width = 100;
-			mylistviewparam.column[3].name = "Value";
-			mylistviewparam.column[3].width = 600;
-			mylistviewparam.cbkeydown = MyListViewKeydown;	// Callbacks
-			mylistviewparam.cbdblclick = MyListViewDblClick;
-			mylistviewparam.cbrclick = MyListViewRClick;
-			mylistviewparam.cbbegindrag = MyListViewBeginDragging;
-			mylistviewparam.cbactivate = MyListViewActivate;
+		if (StartPvi())
+			MessageBoxA(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
+		EnableMenuItem(GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED);
 
-			MyListViewCreateWindow(&mylistviewparam);
-			ListView_SetImageList(mylistviewparam.hwndLV, himl, LVSIL_SMALL);
+		return (0);
 
-			/* Schreibfenster */
-			writewnd_height = 0;
-			// if( write_enabled ){
-			// writewnd_height = 20;
-			// mywritelistviewparam.hwndLV = CreateWindowEx( 0, "EDIT", "", WS_CHILD | WS_VISIBLE,
-			// 0, 0, 0, 0, hWnd, 0, ghInstance, NULL);
-			// }
-
-			if (StartPvi())
-				MessageBoxA(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
-			EnableMenuItem( GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED );
-			
-			return (0);
-
-		case WM_DESTROY:
-			if( hfont_watchlist != NULL ) {
-				DeleteObject( hfont_watchlist );
-				hfont_watchlist = NULL;
-			}
-			PostQuitMessage(0);
-			return (0);
-
-
+	case WM_DESTROY:
+		if (hfont_watchlist != NULL)
+		{
+			DeleteObject(hfont_watchlist);
+			hfont_watchlist = NULL;
+		}
+		PostQuitMessage(0);
+		return (0);
 	}
 
 	return DefWindowProcA(hWnd, wMsg, wParam, lParam);
-
 }
-
-
-
-
-
-
-
