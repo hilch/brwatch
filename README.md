@@ -60,8 +60,7 @@ Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 2. Install required packages:
 
 ```bash
-pacman -S mingw-w64-i686-toolchain mingw-w64-i686-binutils
-pacman -S mingw-w64-i686-winpthreads
+pacman -S --needed mingw-w64-i686-gcc mingw-w64-i686-binutils mingw-w64-i686-make mingw-w64-i686-winpthreads
 ```
 
 #### Build Instructions
