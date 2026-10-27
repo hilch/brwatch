@@ -26,10 +26,7 @@ brwatch needs a previously installed [PVI Development Setup](https://www.br-auto
 
 - ### INA/ANSL
 
-All B&R Controls support **INA** protocol for online communication, but newer plc support **ANSL**, too.
-Since version 4.x PVI supports both INA and ANSL. Brwatch supports both as well but **not simultaneously**.
-So starting with V1.1/PVI4.x the newer ANSL protocol could be an alternative by setting 'ANSL=1' in brwatch.ini.
-In this case, of course, you will not be able to contact old AR 3.x based PLC.
+since PVI 6.x INA2000 protocol becomes obsolete so brwatch >= 2.x is not able to handle INA anymore.
 
 - ### PVI License
 
