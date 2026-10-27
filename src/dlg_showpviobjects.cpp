@@ -8,7 +8,7 @@ static HWND hWndListView;
 /* prototypes */
 static void ShowPviObjectsInitListView(HWND hlistview);
 static void ShowPviObjectsFillListView(HWND hlistview);
-LRESULT CALLBACK  ShowPviObjectsDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK ShowPviObjectsDlgProc(HWND, UINT, WPARAM, LPARAM);
 
 
 void ShowWindowPviObjects( void ) {
@@ -29,29 +29,31 @@ void ShowWindowPviObjects( void ) {
 
 static void ShowPviObjectsInitListView(HWND hlistview) {
 	LVCOLUMN lvcolumn;
+	char columnName[32];
 
 
 	/* column 0 */
 	lvcolumn.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
 	lvcolumn.fmt = LVCFMT_LEFT;
 	lvcolumn.cx = 250;
-	lvcolumn.pszText = "Name";
+	lvcolumn.pszText = columnName;
+	strcpy(columnName, "Name");
 	ListView_InsertColumn(hlistview, 0, &lvcolumn);
 	/* column 1 */
 	lvcolumn.cx = 120;
-	lvcolumn.pszText = "Typ";
+	strcpy(columnName, "Typ");
 	ListView_InsertColumn(hlistview, 1, &lvcolumn);
 	/* column 2 */
 	lvcolumn.cx = 120;
-	lvcolumn.pszText = "Descriptor";
+	strcpy(columnName, "Descriptor");
 	ListView_InsertColumn(hlistview, 2, &lvcolumn);
 	/* column 3 */
 	lvcolumn.cx = 120;
-	lvcolumn.pszText = "Status";
+	strcpy(columnName, "Status");
 	ListView_InsertColumn(hlistview, 3, &lvcolumn);
 	/* column 4 */
 	lvcolumn.cx = 200;
-	lvcolumn.pszText = "Extended";
+	strcpy(columnName, "Extended");
 	ListView_InsertColumn(hlistview, 4, &lvcolumn);
 	ListView_SetItemCount(hlistview, GetNumberOfPviObjects());
 
@@ -86,46 +88,49 @@ static void ShowPviObjectsFillListView(HWND hlistview) {
 		lvitem.pszText = p->name;
 		lvitem.cchTextMax = 0;
 		ListView_InsertItem(hlistview, &lvitem);
+		const char *typeName;
 		switch (p->type) {
 			case POBJ_PVI:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_PVI);
+				typeName = KWOBJTYPE_PVI;
 				break;
 			case POBJ_LINE:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_LINE);
+				typeName = KWOBJTYPE_LINE;
 				break;
 			case POBJ_DEVICE:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_DEVICE);
+				typeName = KWOBJTYPE_DEVICE;
 				break;
 			case POBJ_STATION:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_STATION);
+				typeName = KWOBJTYPE_STATION;
 				break;
 			case POBJ_CPU:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_CPU);
+				typeName = KWOBJTYPE_CPU;
 				break;
 			case POBJ_MODULE:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_MODULE);
+				typeName = KWOBJTYPE_MODULE;
 				break;
 			case POBJ_TASK:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_TASK);
+				typeName = KWOBJTYPE_TASK;
 				break;
 			case POBJ_PVAR:
-				ListView_SetItemText(hlistview, i, 1, KWOBJTYPE_PVAR);
+				typeName = KWOBJTYPE_PVAR;
 				break;
 			default:
-				ListView_SetItemText(hlistview, i, 1, "???");
+				typeName = "???";
 		}
+		snprintf(tempstring, sizeof(tempstring), "%s", typeName);
+		ListView_SetItemText(hlistview, i, 1, tempstring);
 		//OemToChar(p->descriptor, tempstring );
 		ListView_SetItemText(hlistview, i, 2, p->descriptor);
 		if( p->linkid != 0 ) {
 			if (p->error == 0) {
-				ListView_SetItemText(hlistview, i, 3, "OK");
+				strcpy(tempstring, "OK");
 			} else {
 				sprintf(tempstring, "Err: %5u", p->error);
-				ListView_SetItemText(hlistview, i, 3, tempstring);
 			}
 		} else {
-			ListView_SetItemText(hlistview, i, 3, "not linked" );
+			strcpy(tempstring, "not linked");
 		}
+		ListView_SetItemText(hlistview, i, 3, tempstring);
 		if( p->type == POBJ_PVAR ) {
 			if( p->ex.pv.dimension > 1 )
 				sprintf( tempstring, "%s[%u]", p->ex.pv.pdatatype, p->ex.pv.dimension );

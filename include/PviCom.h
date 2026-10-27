@@ -111,6 +111,7 @@ typedef enum t_pobj_type
 #define POBJ_ACC_LN_XML_HW_INFO		405		// read hardware informations (XML format)
 #define POBJ_ACC_LN_XML_RED_INFO	406		// read redundancy informations (XML format)
 #define POBJ_ACC_LN_XML_TC_INFO		408		// read task class informations (XML format)
+#define POBJ_ACC_XML_APPL_INFO		409		// read application informations (XML format)
 #define POBJ_ACC_LN_XML_LOGM_INFO	416		// read logger module info (XML format)
 #define POBJ_ACC_LN_XML_LOGM_DATA	417		// read logger module data (XML format)
 

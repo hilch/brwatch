@@ -1,16 +1,16 @@
-# Makefile for brwatch - MSYS2 mingw32 version
-# Compatible with MSYS2 mingw32 toolchain
+# Makefile for brwatch - MSYS2 mingw64 version
+# Compatible with MSYS2 mingw64 toolchain
 # Usage: mingw32-make -f Makefile clean all
 #    or: make -f Makefile clean all
 
-# MSYS2 mingw32 toolchain prefix
-# Set MSYS2_MINGW32 to your MSYS2 installation root, e.g.:
-#   make -f Makefile MSYS2_MINGW32=C:/msys64
-MSYS2_MINGW32 ?= C:/msys64
-TOOLCHAIN     = $(MSYS2_MINGW32)/mingw32/bin/
+# MSYS2 mingw64 toolchain prefix
+# Set MSYS2_MINGW64 to your MSYS2 installation root, e.g.:
+#   make -f Makefile MSYS2_MINGW64=C:/msys64
+MSYS2_MINGW64 ?= C:/msys64
+TOOLCHAIN     = $(MSYS2_MINGW64)/mingw64/bin/
 
 CC       = $(TOOLCHAIN)gcc
-CPP      = $(TOOLCHAIN)g++
+CXX      = $(TOOLCHAIN)g++
 WINDRES  = $(TOOLCHAIN)windres
 RM       = del /Q
 RMDIR    = rmdir /S /Q
@@ -26,32 +26,33 @@ LIB_DIR  = libraries
 BUILD_DIR = build
 
 # Compiler flags
-CFLAGS   = -m32 -Wall -Wextra -I$(INC_DIR)
-LDFLAGS  = -m32 -mwindows -static-libgcc
-LIBS     = -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 -L$(LIB_DIR) $(LIB_DIR)/PviCom.lib
+CFLAGS   = -m64 -Wall -Wextra -I$(INC_DIR)
+CXXFLAGS = $(CFLAGS) -std=c++11
+LDFLAGS  = -m64 -mwindows -static-libgcc -static-libstdc++
+LIBS     = -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 -L$(LIB_DIR) $(LIB_DIR)/PviCom64.lib
 
 # Resource
 RES      = $(BUILD_DIR)/brwatch_private.o
 
 # Source files
-C_SOURCES = \
-	cpusearch.c \
-	dlg_about.c \
-	dlg_busy.c \
-	dlg_editcpu.c \
-	dlg_edittask.c \
-	dlg_settings.c \
-	dlg_showpviobjects.c \
-	dlg_writepvar.c \
-	logger.c \
-	main.c \
-	mylistview.c \
-	mytreeview.c \
-	pvi_interface.c \
-	resource.c \
-	settings.c \
-	stringtools.c \
-	compressfile.c
+CPP_SOURCES = \
+	cpusearch.cpp \
+	dlg_about.cpp \
+	dlg_busy.cpp \
+	dlg_editcpu.cpp \
+	dlg_edittask.cpp \
+	dlg_settings.cpp \
+	dlg_showpviobjects.cpp \
+	dlg_writepvar.cpp \
+	logger.cpp \
+	main.cpp \
+	mylistview.cpp \
+	mytreeview.cpp \
+	pvi_interface.cpp \
+	resource.cpp \
+	settings.cpp \
+	stringtools.cpp \
+	compressfile.cpp
 
 # zlib sources
 ZLIB_SOURCES = \
@@ -72,17 +73,17 @@ ZLIB_SOURCES = \
 	zutil.c
 
 # Object files
-C_OBJS   = $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
+APP_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
 ZLIB_OBJS = $(patsubst %.c,$(BUILD_DIR)/zlib/%.o,$(ZLIB_SOURCES))
-OBJS     = $(C_OBJS) $(ZLIB_OBJS)
+OBJS     = $(APP_OBJS) $(ZLIB_OBJS)
 
 # Rules
-.PHONY: all clean help
+.PHONY: all clean help FORCE
 
 all: setup $(BIN)
 
 help:
-	@echo brwatch Makefile (MSYS2 mingw32)
+	@echo brwatch Makefile (MSYS2 mingw64)
 	@echo.
 	@echo Usage:
 	@echo   make -f Makefile clean all    - Clean and build
@@ -101,16 +102,24 @@ clean:
 $(RES): resources/main.rc
 	$(WINDRES) -i resources/main.rc -o $(RES) --output-format=coff
 
+FORCE:
+
+$(BUILD_DIR)/git_info.h: FORCE | setup
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build_git_info.ps1 -OutputPath "$(BUILD_DIR)/git_info.h"
+
+$(BUILD_DIR)/dlg_about.o: $(SRC_DIR)/dlg_about.cpp $(BUILD_DIR)/git_info.h
+	$(CXX) $(CXXFLAGS) -I$(BUILD_DIR) -c $< -o $@
+
 # Main executable
 $(BIN): setup $(OBJS) $(RES)
-	$(CC) $(LDFLAGS) -o $(BIN) $(OBJS) $(RES) $(LIBS)
+	$(CXX) $(LDFLAGS) -o $(BIN) $(OBJS) $(RES) $(LIBS)
 	@echo.
 	@echo Build successful: $(BIN)
 	@echo.
 
 # Pattern rule for object files from src/
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Pattern rule for object files from src/zlib/
 $(BUILD_DIR)/zlib/%.o: $(SRC_DIR)/zlib/%.c

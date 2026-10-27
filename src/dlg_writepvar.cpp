@@ -4,6 +4,8 @@
 #include <windowsx.h>
 #include <commctrl.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include "main.h"
 #include "pvi_interface.h"
 #include "resource.h"
@@ -12,7 +14,7 @@ static int	  WritePviPvar( PVIOBJECT *object, void* value );
 
 
 
-static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static PVIOBJECT *object;
 	int result;
 
@@ -27,16 +29,16 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			EnableWindow( GetDlgItem(hDlg, IDC_EDIT_MILLISECONDS), FALSE );
 			if( lParam != 0 ) {
 				object = (PVIOBJECT *) lParam;
-				SetDlgItemText( hDlg, IDR_STATIC_NAME, object->descriptor );
-				SetDlgItemText( hDlg, IDR_EDIT_VALUE, "" );
+				SetDlgItemTextA( hDlg, IDR_STATIC_NAME, object->descriptor );
+				SetDlgItemTextA( hDlg, IDR_EDIT_VALUE, "" );
 				switch( object->ex.pv.type ) {
 					case BR_STRING: {
 						char tempstring[256];
 
 						sprintf( tempstring, "STRING(%lu) = %lu Bytes", object->ex.pv.length-1, object->ex.pv.length );
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, tempstring );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, tempstring );
 						if( object->ex.pv.pvalue != NULL ) {
-							SetDlgItemText( hDlg, IDR_EDIT_VALUE, object->ex.pv.pvalue );
+							SetDlgItemTextA( hDlg, IDR_EDIT_VALUE, static_cast<const char*>(object->ex.pv.pvalue) );
 						}
 					}
 					break;
@@ -47,81 +49,81 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 						_swprintf( tempstring, L"WSTRING(%lu) = %lu Bytes", object->ex.pv.length/2 -1, object->ex.pv.length );
 						SetDlgItemTextW( hDlg, IDC_STATIC_VARTYPE, tempstring );
 						if( object->ex.pv.pvalue != NULL ) {
-							SetDlgItemTextW( hDlg, IDR_EDIT_VALUE, object->ex.pv.pvalue );
+							SetDlgItemTextW( hDlg, IDR_EDIT_VALUE, static_cast<const wchar_t*>(object->ex.pv.pvalue) );
 						}
 					}
 					break;
 
 
 					case BR_BOOL:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "BOOL (0 ... 1)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "BOOL (0 ... 1)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((unsigned char*) object->ex.pv.pvalue), 0 );
 						break;
 
 					case BR_USINT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "USINT (0 ... +255)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "USINT (0 ... +255)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((unsigned char*) object->ex.pv.pvalue), 0 );
 						break;
 
 					case BR_SINT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "SINT (-128 ... +127)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "SINT (-128 ... +127)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((signed char*) object->ex.pv.pvalue), 1 );
 						break;
 
 					case BR_UINT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "UINT (0 ... +65535)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "UINT (0 ... +65535)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((unsigned short*) object->ex.pv.pvalue), 0 );
 						break;
 
 					case BR_INT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "INT (-32768 ... +32767)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "INT (-32768 ... +32767)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((signed short*) object->ex.pv.pvalue), 1 );
 						break;
 
 					case BR_UDINT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "UDINT (0 ... +4294967295)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "UDINT (0 ... +4294967295)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((unsigned int*) object->ex.pv.pvalue), 0 );
 						break;
 
 					case BR_DINT:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "DINT (-2147483648 ... +2147483647)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "DINT (-2147483648 ... +2147483647)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((signed int*) object->ex.pv.pvalue), 1 );
 						break;
 
 					case BR_REAL:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "REAL (-3.4e38 ... +3.4e38)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "REAL (-3.4e38 ... +3.4e38)" );
 						if( object->ex.pv.pvalue != NULL ) {
 							char tempstring[256];
 							sprintf( tempstring, "%g", *( float*) object->ex.pv.pvalue );
-							SetDlgItemText( hDlg, IDR_EDIT_VALUE, tempstring );
+							SetDlgItemTextA( hDlg, IDR_EDIT_VALUE, tempstring );
 						}
 						break;
 
 					case BR_LREAL:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "LREAL (-1.79769e308 ... +1.79769e308)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "LREAL (-1.79769e308 ... +1.79769e308)" );
 						if( object->ex.pv.pvalue != NULL ) {
 							char tempstring[256];
 							sprintf( tempstring, "%g", *( double*) object->ex.pv.pvalue );
-							SetDlgItemText( hDlg, IDR_EDIT_VALUE, tempstring );
+							SetDlgItemTextA( hDlg, IDR_EDIT_VALUE, tempstring );
 						}
 						break;
 
 					case BR_TIME:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "TIME (-2147483648ms ... +2147483647ms)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "TIME (-2147483648ms ... +2147483647ms)" );
 						if( object->ex.pv.pvalue != NULL )
 							SetDlgItemInt( hDlg, IDR_EDIT_VALUE, *((signed int*) object->ex.pv.pvalue), 1 );
 						break;
 
 
 					case BR_DATI:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "DATE_AND_TIME (DT#1970-01-01-00:00 ... DT#2106-02-06-06:28:15)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "DATE_AND_TIME (DT#1970-01-01-00:00 ... DT#2106-02-06-06:28:15)" );
 						if( object->ex.pv.pvalue != NULL ) {
 							__time64_t t=0;
 							struct tm *ptst;
@@ -132,7 +134,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 							if( ptst == NULL ) {
 								time_t t=time(0);
 								ptst = gmtime( &t );
-								MessageBox( GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR );
+								MessageBoxA( GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR );
 							}
 							SetDlgItemInt( hDlg, IDC_EDIT_YEAR, ptst->tm_year+1900, FALSE );
 							SetDlgItemInt( hDlg, IDC_EDIT_MONTH, ptst->tm_mon+1, FALSE );
@@ -151,7 +153,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 						break;
 
 					case BR_DATE:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "DATE (D#1970-01-01 ... D#2106-02-07 )" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "DATE (D#1970-01-01 ... D#2106-02-07 )" );
 						if( object->ex.pv.pvalue != NULL ) {
 							__time64_t t=0;
 							struct tm *ptst;
@@ -162,7 +164,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 							if( ptst == NULL ) {
 								time_t t=time(0);
 								ptst = gmtime( &t );
-								MessageBox( GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR );
+								MessageBoxA( GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR );
 							}
 							SetDlgItemInt( hDlg, IDC_EDIT_YEAR, ptst->tm_year+1900, FALSE );
 							SetDlgItemInt( hDlg, IDC_EDIT_MONTH, ptst->tm_mon+1, FALSE );
@@ -177,7 +179,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 						break;
 
 					case BR_TOD:
-						SetDlgItemText( hDlg, IDC_STATIC_VARTYPE, "TIME_OF_DAY (TOD#00:00:00.000 ... TOD#23:59:59.999)" );
+						SetDlgItemTextA( hDlg, IDC_STATIC_VARTYPE, "TIME_OF_DAY (TOD#00:00:00.000 ... TOD#23:59:59.999)" );
 						if( object->ex.pv.pvalue != NULL ) {
 							unsigned int intval, hour, minute, milliseconds;
 							memcpy( &intval, object->ex.pv.pvalue, 4 );
@@ -211,11 +213,11 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 					char tempstring[512];
 
 					o = object->ex.pv.task;
-					SetDlgItemText( hDlg, IDC_STATIC_TASK, o->descriptor );
+					SetDlgItemTextA( hDlg, IDC_STATIC_TASK, o->descriptor );
 					o = object->ex.pv.cpu;
 
 					sprintf( tempstring, "%s %s %s", o->ex.cpu.cputype, o->ex.cpu.arversion, o->descriptor );
-					SetDlgItemText( hDlg, IDC_STATIC_CPU, tempstring );
+					SetDlgItemTextA( hDlg, IDC_STATIC_CPU, tempstring );
 
 				}
 				return TRUE;
@@ -235,20 +237,20 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 						char tempstring[256];
 
 						tempstring[0] = 0;
-						GetDlgItemText( hDlg, IDR_EDIT_VALUE, tempstring, sizeof(tempstring) );
+						GetDlgItemTextA( hDlg, IDR_EDIT_VALUE, tempstring, sizeof(tempstring) );
 
 						switch( object->ex.pv.type ) {
 							// String
 							case BR_STRING:
 								result = WritePviPvar( object, tempstring );
-								SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+								SendMessageA( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 								break;
 
 							case BR_WSTRING: 
 							{
 								wchar_t tempstring[256];
 								memset( tempstring, 0, sizeof(tempstring));
-								SendDlgItemMessageW(hDlg, IDR_EDIT_VALUE, WM_GETTEXT, sizeof(tempstring)/sizeof(wchar_t), (long) tempstring );
+								SendDlgItemMessageW(hDlg, IDR_EDIT_VALUE, WM_GETTEXT, sizeof(tempstring)/sizeof(wchar_t), reinterpret_cast<LPARAM>(tempstring) );
 								result = WritePviPvar( object, tempstring );
 								SendMessageW( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 							}
@@ -265,7 +267,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									result = WritePviPvar( object, &byte );
 								}
 							}
-							SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+							SendMessageA( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 							break;
 
 							// Integer- Formate
@@ -277,26 +279,32 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 							case BR_UDINT:
 							case BR_DINT:
 							case BR_TIME: {
-								__int64 integer;
+								uint32_t integer = 0;
+								int32_t signedInteger = 0;
+								BOOL unsignedType = object->ex.pv.type == BR_USINT || object->ex.pv.type == BR_UINT || object->ex.pv.type == BR_UDINT;
 								BOOL valid;
 
 								valid = FALSE;
-								if( sscanf( tempstring, " 10#%10I64d", &integer ) == 1 ) {
+								if( sscanf( tempstring, " 16#%8" SCNx32, &integer ) == 1 ) {
 									valid = TRUE;
-								} else if( sscanf( tempstring, " 16#%8I64x", &integer ) == 1 ) {
-									valid = TRUE;
-								} else if( sscanf( tempstring, " %10I64d", &integer ) == 1 ) {
-									valid = TRUE;
+								} else if( unsignedType ) {
+									valid = sscanf( tempstring, " 10#%10" SCNu32, &integer ) == 1 ||
+										sscanf( tempstring, " %10" SCNu32, &integer ) == 1;
+								} else {
+									valid = sscanf( tempstring, " 10#%11" SCNd32, &signedInteger ) == 1 ||
+										sscanf( tempstring, " %11" SCNd32, &signedInteger ) == 1;
+									integer = static_cast<uint32_t>(signedInteger);
 								}
 
 								// check range of value
-								if( object->ex.pv.type == BR_USINT || object->ex.pv.type == BR_UINT || object->ex.pv.type == BR_UDINT ) {
-									if( integer >> (object->ex.pv.length*8) ) {
+								if( unsignedType ) {
+									if( object->ex.pv.length < sizeof(integer) && integer >> (object->ex.pv.length*8) ) {
 										valid = FALSE;
 									}
-								} else { // signed integers
-									if( integer <  -( 1<<(object->ex.pv.length*8-1) )  ||
-									        integer > ( (1<<(object->ex.pv.length*8-1)) -1)          ) {
+								} else if( object->ex.pv.length < sizeof(integer) ) { // signed integers
+									memcpy(&signedInteger, &integer, sizeof(signedInteger));
+									int32_t limit = 1 << (object->ex.pv.length*8-1);
+									if( signedInteger < -limit || signedInteger > limit - 1 ) {
 										valid = FALSE;
 									}
 								}
@@ -304,7 +312,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									result = WritePviPvar( object, &integer );
 								}
 							}
-							SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+							SendMessageA( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 							break;
 
 
@@ -316,7 +324,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									result = WritePviPvar( object, &real );
 								}
 							}
-							SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+							SendMessageA( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 							break;
 
 							case BR_LREAL: {
@@ -328,7 +336,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									result = WritePviPvar( object, &lreal );
 								}
 							}
-							SendMessage( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
+							SendMessageA( GetDlgItem( hDlg, IDR_EDIT_VALUE ), EM_SETSEL, 0, -1 ); // select all
 							break;
 
 
@@ -346,35 +354,35 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 								if( tst.tm_year > 138 || tst.tm_year < 70 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_YEAR );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong year !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong year !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 								} else if( tst.tm_mon < 0 || tst.tm_mon > 11 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MONTH );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong month !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong month !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 								} else if( tst.tm_mday < 1 || tst.tm_mday > 31 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_DAY );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong day !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong day !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 
 								} else if( tst.tm_hour > 23 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_HOUR );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong hour !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong hour !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 
 								} else if( tst.tm_min > 59 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MILLISECONDS );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 
 								} else if( tst.tm_sec > 59 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MILLISECONDS );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 
@@ -385,9 +393,9 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									SetDlgItemInt( hDlg, IDC_EDIT_MONTH, tst.tm_mon+1, FALSE );
 									SetDlgItemInt( hDlg, IDC_EDIT_DAY, tst.tm_mday, FALSE );
 									if( t == -1 ) {
-										SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong date !" );
+										SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong date !" );
 									} else {
-										SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "" );
+										SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "" );
 										WritePviPvar( object, &t );
 										result = 0;
 									}
@@ -406,17 +414,17 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 								tst.tm_mday = GetDlgItemInt( hDlg, IDC_EDIT_DAY, NULL, FALSE );
 								if( tst.tm_year > 106 || tst.tm_year < 70 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_YEAR );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong year !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong year !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 								} else if( tst.tm_mon < 0 || tst.tm_mon > 11 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MONTH );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong month !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong month !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 								} else if( tst.tm_mday < 1 || tst.tm_mday > 31 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_DAY );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong day !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong day !" );
 									SetFocus( hwnd );
 									SendMessage( hwnd, EM_SETSEL, 0, -1 );
 								} else {
@@ -426,9 +434,9 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 									SetDlgItemInt( hDlg, IDC_EDIT_MONTH, tst.tm_mon+1, FALSE );
 									SetDlgItemInt( hDlg, IDC_EDIT_DAY, tst.tm_mday, FALSE );
 									if( t == -1 ) {
-										SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong date !" );
+										SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong date !" );
 									} else {
-										SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "" );
+										SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "" );
 										WritePviPvar( object, &t );
 										result = 0;
 									}
@@ -443,23 +451,23 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 								milliseconds = GetDlgItemInt( hDlg, IDC_EDIT_MILLISECONDS, NULL, FALSE );
 								if( hour > 23 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_HOUR );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong hour !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong hour !" );
 									SetFocus( hwnd );
-									SendMessage( hwnd, EM_SETSEL, 0, -1 );
+									SendMessageA( hwnd, EM_SETSEL, 0, -1 );
 								} else if( minute > 59 ) {
-									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MILLISECONDS );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
+									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MINUTE );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong minute !" );
 									SetFocus( hwnd );
-									SendMessage( hwnd, EM_SETSEL, 0, -1 );
+									SendMessageA( hwnd, EM_SETSEL, 0, -1 );
 								} else if( milliseconds > 59999 ) {
 									HWND hwnd = GetDlgItem( hDlg, IDC_EDIT_MILLISECONDS );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !" );
 									SetFocus( hwnd );
-									SendMessage( hwnd, EM_SETSEL, 0, -1 );
+									SendMessageA( hwnd, EM_SETSEL, 0, -1 );
 								} else {
 									milliseconds = milliseconds + (60000*minute) + (3600000*hour);
 									WritePviPvar( object, &milliseconds );
-									SetDlgItemText( hDlg, IDC_STATUS_MESSAGE, "" );
+									SetDlgItemTextA( hDlg, IDC_STATUS_MESSAGE, "" );
 									result = 0;
 								}
 
@@ -480,7 +488,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 							if( result > 0 ) { /* PVI- Error ? */
 								char tempstring[256];
 								sprintf( tempstring, "A PVI-Error %u occured.\nRefer to PVI manual, please", result );
-								MessageBox( GetParent(hDlg), tempstring, "Error", MB_OK | MB_ICONERROR );
+								MessageBoxA( GetParent(hDlg), tempstring, "Error", MB_OK | MB_ICONERROR );
 							}
 						}
 						return TRUE;
@@ -507,19 +515,19 @@ void DlgWritePvarShowDialog( PVIOBJECT *object ) {
 		if( object->ex.pv.type == BR_DATI || object->ex.pv.type == BR_TOD || object->ex.pv.type == BR_DATE ) {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_DATE_AND_TIME), g_hwndMainWindow,
-			                (DLGPROC) DlgProc, (LPARAM) object );
+			                DlgProc, (LPARAM) object );
 		} else if( object->ex.pv.type == BR_STRING ) {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_STRINGS), g_hwndMainWindow,
-			                (DLGPROC) DlgProc, (LPARAM) object );
+			                DlgProc, (LPARAM) object );
 		} else if( object->ex.pv.type == BR_WSTRING ) {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_STRINGS), g_hwndMainWindow,
-			                (DLGPROC) DlgProc, (LPARAM) object );			                
+			                DlgProc, (LPARAM) object );
 		} else {
 
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_WRITE_NUMBERS), g_hwndMainWindow,
-			                (DLGPROC) DlgProc, (LPARAM) object );
+			                DlgProc, (LPARAM) object );
 		}
 	}
 }
@@ -533,8 +541,8 @@ int WritePviPvar(PVIOBJECT *object, void *value) {
 
 	if( object->ex.pv.type == BR_STRING ) {
 		length--;
-		if( strlen(value) < length )
-			length = (DWORD) strlen(value);
+		if( strlen(static_cast<const char*>(value)) < length )
+			length = (DWORD) strlen(static_cast<const char*>(value));
 	}
 
 	result = PviWrite( object->linkid, POBJ_ACC_DATA, value, length, 0, 0 ) ;

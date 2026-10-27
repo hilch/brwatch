@@ -42,31 +42,32 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 
 ## Development
 
-The project is done in plain old 'C' language (not C++) and makes use of pure Win32-API-calls.
+The application is written in C++ and uses the Win32 API. Bundled zlib sources remain C.
 Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 
 ### Build from Source
 
 #### Prerequisites
 
-- MSYS2 with mingw32 compiler
-- PVI development headers and libraries (from B&R)
+- MSYS2 with the mingw64 (x86-64) C and C++ compilers
+- PVI development headers and the 64-bit import library (`libraries/PviCom64.lib`) from B&R
+- The matching 64-bit PVI runtime to run the application
 - Resource compiler (windres)
 - make utility
 
-#### Setup MSYS2 mingw32
+#### Setup MSYS2 mingw64
 
 1. Install [MSYS2](https://www.msys2.org/) following the official guide
 2. Install required packages:
 
 ```bash
-pacman -S --needed mingw-w64-i686-gcc mingw-w64-i686-binutils mingw-w64-i686-make mingw-w64-i686-winpthreads
+pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils mingw-w64-x86_64-make mingw-w64-x86_64-winpthreads
 ```
 
 For VS Code debugging, install GDB as well:
 
 ```bash
-pacman -S --needed mingw-w64-i686-gdb
+pacman -S --needed mingw-w64-x86_64-gdb
 ```
 
 #### Build Instructions
@@ -82,14 +83,19 @@ pacman -S --needed mingw-w64-i686-gdb
 **Using Makefile:**
 
 ```bash
-mingw32-make.exe -f Makefile clean all
+mingw32-make.exe -f Makefile SHELL=cmd clean all
 ```
 
-**Using make in MSYS2 shell:**
+**Using make in the MSYS2 MinGW 64-bit shell:**
 
 ```bash
 cd /c/path/to/brwatch
-make -f Makefile clean all
+mingw32-make.exe -f Makefile SHELL=cmd clean all
 ```
 
-The compiled executable will be generated as `build/brwatch.exe`
+The 64-bit executable will be generated as `build/brwatch.exe`. Run a clean build
+when switching from the previous 32-bit build to discard incompatible object files.
+
+Every build checks Git metadata and updates the About dialog's commit hash and
+the tag pointing at the current commit. Commits without a tag show `untagged`.
+Builds without Git or repository metadata show `unknown` for the hash.

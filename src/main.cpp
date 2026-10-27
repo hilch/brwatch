@@ -43,13 +43,13 @@ PVIOBJECT *g_selectedPVIObject = NULL;
 char g_PVIVersionString[50] = {0};
 
 /* Global variables (extern in mylistview.h) */
-MYLISTVIEWPARAM mylistviewparam = {0};
+MYLISTVIEWPARAM mylistviewparam = {};
 
 /* Global variables (extern in mytreeview.h) */
-MYTREEVIEWPARAM mytreeviewparam = {0};
+MYTREEVIEWPARAM mytreeviewparam = {};
 
 /* Global variables (extern in pvi_interface.h) */
-PVIOBJECTNOTIFICATION pvi_interface_notify = {0};
+PVIOBJECTNOTIFICATION pvi_interface_notify = {};
 
 
 
@@ -60,7 +60,7 @@ PVIOBJECTNOTIFICATION pvi_interface_notify = {0};
 static int	drop_target_index;
 static int instance_counter;
 
-static NOTIFYICONDATA notifyicondata;
+static NOTIFYICONDATAA notifyicondata;
 
 
 
@@ -76,11 +76,11 @@ HWND MainWindowGetHandle( void ) {
 /* ============================================================================================== */
 
 
-BOOL CALLBACK EnumWindowsProc( HWND hwnd, LPARAM lParam ) {
+BOOL CALLBACK EnumWindowsProc( HWND hwnd, LPARAM /*lParam*/ ) {
 	char windowname[256];
 
-	GetWindowText( hwnd, windowname, sizeof(windowname) );
-	if( !strncmp( windowname, APPLICATION_NAME, lstrlen(APPLICATION_NAME) ) )
+	GetWindowTextA( hwnd, windowname, sizeof(windowname) );
+	if( !strncmp( windowname, APPLICATION_NAME, lstrlenA(APPLICATION_NAME) ) )
 		instance_counter++;
 
 	return TRUE;
@@ -89,14 +89,14 @@ BOOL CALLBACK EnumWindowsProc( HWND hwnd, LPARAM lParam ) {
 
 /* main entry point */
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-	WNDCLASS wc;
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmdLine, int nCmdShow) {
+	WNDCLASSA wc;
 	MSG msg;
 	char windowname[30];
 
 	commandLine = lpCmdLine;
 
-	HMODULE m_user32Dll = LoadLibrary("User32.dll");
+	HMODULE m_user32Dll = LoadLibraryA("User32.dll");
 	if(m_user32Dll) {
 		FARPROC pFunc = GetProcAddress(m_user32Dll, "SetProcessDPIAware");
 		if(pFunc) {
@@ -107,9 +107,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	// save application path
-	if (GetCurrentDirectory(sizeof(application_path), application_path)) {
+	if (GetCurrentDirectoryA(sizeof(application_path), application_path)) {
 	} else {
-		MessageBox( NULL, "GetCurrentDirectory", "Error", MB_OK );
+		MessageBoxA( NULL, "GetCurrentDirectory", "Error", MB_OK );
 		return -1;
 	}
 
@@ -130,17 +130,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = hInstance;
-	wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_ICO_MAIN));
+	wc.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDR_ICO_MAIN));
 	//wc.hCursor    = LoadCursor(NULL, IDC_ARROW);
 	wc.hCursor = LoadCursor(NULL, IDC_SIZEWE);	//for splitter
 	wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
-	wc.lpszMenuName = MAKEINTRESOURCE(IDR_MNU_MAIN);
-	wc.lpszClassName = _T("brwatchClass");
+	wc.lpszMenuName = MAKEINTRESOURCEA(IDR_MNU_MAIN);
+	wc.lpszClassName = "brwatchClass";
 
-	if (!RegisterClass(&wc))
+	if (!RegisterClassA(&wc))
 		return 0;
 
-	g_hwndMainWindow = CreateWindow(_T("brwatchClass"), windowname, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+	g_hwndMainWindow = CreateWindowA("brwatchClass", windowname, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
 	if (!g_hwndMainWindow)
 		return 0;
 	ShowWindow(g_hwndMainWindow, nCmdShow);
@@ -153,7 +153,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	notifyicondata.hWnd = g_hwndMainWindow;
 	strcpy( notifyicondata.szTip, windowname );
 	strcat( notifyicondata.szTip, " - Click here to size up" );
-	notifyicondata.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_ICO_MAIN));
+	notifyicondata.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDR_ICO_MAIN));
 	notifyicondata.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	notifyicondata.uCallbackMessage = NOTIFY_ICON_MESSAGE;
 
@@ -163,9 +163,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
 
 
-	while (GetMessage(&msg, NULL, 0, 0)) {
+	while (GetMessageA(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		DispatchMessageA(&msg);
 	}
 
 	StopPvi();
@@ -188,13 +188,13 @@ static void PviObjectsValid(void) {
 	}
 
 	// if logger was active when program ended it will be started again.
-	if( GetPrivateProfileInt( "General", "LoggerActive", 0, SettingsGetFileName() ) ) { // was logger active ?
+	if( GetPrivateProfileIntA( "General", "LoggerActive", 0, SettingsGetFileName() ) ) { // was logger active ?
 		strcpy( logger_watch_file, GetApplicationPath() );
 		strcat( logger_watch_file, "\\_logger.wtc" );
 		LoadWatchFile( logger_watch_file );
 		Logger();
 		SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
-		Shell_NotifyIcon(NIM_ADD, &notifyicondata );
+		Shell_NotifyIconA(NIM_ADD, &notifyicondata );
 		ShowWindow( g_hwndMainWindow, SW_HIDE );
 	}
 }
@@ -236,7 +236,10 @@ static void PviObjectErrorChanged( PVIOBJECT *object, int errcode ) {
 				sprintf( errtext, "Error:%u", errcode );
 				break;
 		}
-		ListView_SetItemText( mylistviewparam.hwndLV, index, 3, errtext );
+		LVITEMA item = {};
+		item.iSubItem = 3;
+		item.pszText = errtext;
+		SendMessageA(mylistviewparam.hwndLV, LVM_SETITEMTEXTA, index, reinterpret_cast<LPARAM>(&item));
 	}
 }
 
@@ -272,9 +275,8 @@ static void SaveWatchFile( char *filename ) {
 /* load watch file */
 
 static void LoadWatchFile( char *filename ) {
-	int objecttype[] = { POBJ_DEVICE, POBJ_CPU, POBJ_TASK, POBJ_PVAR, -1 };
+	const T_POBJ_TYPE objectTypes[] = { POBJ_DEVICE, POBJ_CPU, POBJ_TASK, POBJ_PVAR };
 	PVIOBJECT *object;
-	int t=0;
 	HCURSOR oldcursor;
 	int result, n;
 	int sort = 0;
@@ -283,12 +285,11 @@ static void LoadWatchFile( char *filename ) {
 
 	// load objects from file
 	n = 0;
-	while( objecttype[t] != -1 ) {
-		result = LoadPviObjectsFromWatchFile( objecttype[t], filename );
+	for( const T_POBJ_TYPE objectType : objectTypes ) {
+		result = LoadPviObjectsFromWatchFile( objectType, filename );
 		if( result > 0 ) {
 			n += result;
 		}
-		++t;
 	}
 
 	// add objects to tree view
@@ -334,15 +335,15 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		case WM_COMMAND:
 			switch (wParam) {
 				case IDM_ABOUT:
-					DialogBox(g_hInstance, MAKEINTRESOURCE(DLG_ABOUT), hWnd, (DLGPROC)AboutDlgProc);
+					DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_ABOUT), hWnd, AboutDlgProc);
 					break;
 
 				case IDM_STATUSPVIOBJEKTE:
-					//DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, (DLGPROC)ShowPviObjectsDlgProc);
+					//DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, ShowPviObjectsDlgProc);
 					ShowWindowPviObjects(  );
 					break;
 				case IDM_MNU_REFRESH:
-					if( MessageBox( hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING ) == IDYES ) {
+					if( MessageBoxA( hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING ) == IDYES ) {
 						HCURSOR oldcursor;
 
 						oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
@@ -356,7 +357,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					break;
 				case IDM_SAVE_WATCH_FILE: {
 					char filename[MAX_PATH];
-					OPENFILENAME ofn;
+					OPENFILENAMEA ofn;
 					strcpy(filename, "default");
 					memset(&ofn, 0, sizeof(ofn));
 					ofn.lStructSize = sizeof(ofn);
@@ -366,7 +367,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					ofn.lpstrDefExt = "wtc";
 					ofn.nMaxFile = sizeof(filename);
 					ofn.Flags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-					if (GetSaveFileName(&ofn)) {
+					if (GetSaveFileNameA(&ofn)) {
 						SaveWatchFile(filename);
 					}
 				}
@@ -374,7 +375,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 				case IDM_LOAD_WATCH_FILE: {
 					char filename[MAX_PATH];
-					OPENFILENAME ofn;
+					OPENFILENAMEA ofn;
 					memset(&ofn, 0, sizeof(ofn));
 					strcpy(filename, "default");
 					ofn.lStructSize = sizeof(ofn);
@@ -384,7 +385,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					ofn.lpstrDefExt = "wtc";
 					ofn.nMaxFile = sizeof(filename);
 					ofn.Flags = OFN_HIDEREADONLY;
-					if (GetOpenFileName(&ofn)) {
+					if (GetOpenFileNameA(&ofn)) {
 						LoadWatchFile(filename);
 					}
 				}
@@ -392,13 +393,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 
 				case IDM_LOGGER_CONFIG:
-					DialogBox(g_hInstance, MAKEINTRESOURCE(DLG_LOGGER_CONFIG), hWnd, (DLGPROC)LoggerConfigDlgProc);
+					DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_LOGGER_CONFIG), hWnd, LoggerConfigDlgProc);
 					break;
 					break;
 
 				case IDM_LOGGER_START:
 					Logger();
-					SendMessage( hWnd, NOTIFY_LOGGER_STATUS, 0, 0 );
+					SendMessageA( hWnd, NOTIFY_LOGGER_STATUS, 0, 0 );
 					break;
 
 				case IDM_LOGGER_UNZIPLOGGERFILE: {
@@ -406,7 +407,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					int result;
 					char tempstring[80];
 
-					OPENFILENAME ofn;
+					OPENFILENAMEA ofn;
 					memset(&ofn, 0, sizeof(ofn));
 					strcpy(filename, "");
 					ofn.lStructSize = sizeof(ofn);
@@ -416,13 +417,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					ofn.lpstrDefExt = "gz";
 					ofn.nMaxFile = sizeof(filename);
 					ofn.Flags = OFN_HIDEREADONLY;
-					if (GetOpenFileName(&ofn)) {
+					if (GetOpenFileNameA(&ofn)) {
 						result = DecompressFile(filename);
 						if( result == 0 ) {
-							MessageBox( hWnd, "File was successfully unzipped !", "Unzip Logger file", MB_OK );
+							MessageBoxA( hWnd, "File was successfully unzipped !", "Unzip Logger file", MB_OK );
 						} else {
 							sprintf( tempstring, "Error unzipping file: %i", result );
-							MessageBox( hWnd, tempstring, "Unzip Logger file", MB_OK | MB_ICONERROR );
+							MessageBoxA( hWnd, tempstring, "Unzip Logger file", MB_OK | MB_ICONERROR );
 						}
 					}
 				}
@@ -491,7 +492,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 
 				case IDM_VIEW_SETDEFAULTFONT: {
-					HFONT hfont = GetStockObject( DEFAULT_GUI_FONT );
+					HFONT hfont = static_cast<HFONT>(GetStockObject( DEFAULT_GUI_FONT ));
 					SendMessage( mylistviewparam.hwndLV, WM_SETFONT, (WPARAM) hfont, TRUE );
 					if( hfont_watchlist != NULL ) {
 						DeleteObject( hfont_watchlist );
@@ -501,8 +502,8 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 				break;
 
 				case IDM_VIEW_SELECT_FONT: {
-					CHOOSEFONT cf;
-					LOGFONT font;
+					CHOOSEFONTA cf;
+					LOGFONTA font;
 
 
 					if( hfont_watchlist != NULL ) {
@@ -521,15 +522,15 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					cf.hwndOwner = hWnd;
 					cf.Flags = CF_SCREENFONTS | CF_NOVERTFONTS | CF_INITTOLOGFONTSTRUCT ;
 					cf.lpLogFont = &font;
-					if( ChooseFont(&cf) ) {
-						hfont_watchlist = CreateFontIndirect( &font );
+					if( ChooseFontA(&cf) ) {
+						hfont_watchlist = CreateFontIndirectA( &font );
 						SendMessage( mylistviewparam.hwndLV, WM_SETFONT, (WPARAM) hfont_watchlist, 1 );
 					}
 				}
 				break;
 
 				case IDM_OPTIONS_SETTINGS:
-					DialogBox( g_hInstance, MAKEINTRESOURCE(DLG_SETTINGS), hWnd, (DLGPROC) SettingsDlg );
+					DialogBoxA( g_hInstance, MAKEINTRESOURCEA(DLG_SETTINGS), hWnd, SettingsDlg );
 					break;
 
 				case IDM_QUIT:
@@ -615,7 +616,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 		case WM_SYSCOMMAND:
 			if( wParam == SC_MINIMIZE ) {
-				Shell_NotifyIcon(NIM_ADD, &notifyicondata );
+				Shell_NotifyIconA(NIM_ADD, &notifyicondata );
 				ShowWindow( g_hwndMainWindow, SW_HIDE );
 				return 0;
 			}
@@ -626,7 +627,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			switch( LOWORD( lParam ) ) {
 				case WM_LBUTTONDOWN:
 					ShowWindow( g_hwndMainWindow, SW_RESTORE );
-					Shell_NotifyIcon(NIM_DELETE, &notifyicondata );
+					Shell_NotifyIconA(NIM_DELETE, &notifyicondata );
 					break;
 			}
 			break;
@@ -637,19 +638,19 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 				char logger_watch_file[MAX_PATH];
 
 				// logger was started...
-				ModifyMenu( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop" );
+				ModifyMenuA( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop" );
 				EnableWindow( mylistviewparam.hwndLV, FALSE );
 				EnableWindow( mytreeviewparam.hwndTV, FALSE );
-				WritePrivateProfileString( "General", "LoggerActive", "1", SettingsGetFileName() );
+				WritePrivateProfileStringA( "General", "LoggerActive", "1", SettingsGetFileName() );
 				strcpy( logger_watch_file, GetApplicationPath() );
 				strcat( logger_watch_file, "\\_logger.wtc" );
 				SaveWatchFile( logger_watch_file );
 			} else {
 				// logger was stopped
-				ModifyMenu( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start" );
+				ModifyMenuA( GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start" );
 				EnableWindow( mylistviewparam.hwndLV, TRUE );
 				EnableWindow( mytreeviewparam.hwndTV, TRUE );
-				WritePrivateProfileString( "General", "LoggerActive", "0", SettingsGetFileName() );
+				WritePrivateProfileStringA( "General", "LoggerActive", "0", SettingsGetFileName() );
 			}
 			break;
 
@@ -703,7 +704,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			// }
 
 			if (StartPvi())
-				MessageBox(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
+				MessageBoxA(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
 			EnableMenuItem( GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED );
 			
 			return (0);
@@ -719,7 +720,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 	}
 
-	return DefWindowProc(hWnd, wMsg, wParam, lParam);
+	return DefWindowProcA(hWnd, wMsg, wParam, lParam);
 
 }
 

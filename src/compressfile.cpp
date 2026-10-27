@@ -9,6 +9,7 @@ int CompressFile( char * filename ) {
 	gzFile out;
 	FILE * in;
 	unsigned long len;
+	int written;
 
 
 	strcpy( outfilename, filename );
@@ -38,7 +39,8 @@ int CompressFile( char * filename ) {
 		}
 		if (len == 0)
 			break; // End of file...
-		if (gzwrite(out, buf, (unsigned)len) != len) {
+		written = gzwrite(out, buf, (unsigned)len);
+		if (written != (int)len) {
 			//error(gzerror(out, &err));
 			fclose(in);
 			gzclose(out);
@@ -68,7 +70,7 @@ int DecompressFile( char *zipfilename ) {
 	char outfilename[MAX_PATH];
 	gzFile in;
 	FILE * out;
-	unsigned long len;
+	long len;
 	char buf[256];
 
 	_splitpath( zipfilename, drive, directory, filename, extension );

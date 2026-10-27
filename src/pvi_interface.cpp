@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------
-Module   : pvi_interface.c
+Module   : pvi_interface.cpp
  -----------------------------------------------------------------*/
 
 #include <windows.h>
@@ -26,8 +26,8 @@ static int g_ansl = 0;
 
 /* Prototypen */
 static void WINAPI PviCallback (WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO* );
-static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime );
-static void AddRowToLog( char*, int );
+static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime );
+static void AddRowToLog( const char*, int );
 static void DeleteLog(void);
 static void CreateUniqueObjectName( char *name, char *descriptor );
 
@@ -44,7 +44,7 @@ static void PviReadDataType( PVIOBJECT *object );
 /* */
 
 
-static char *AddPviDatatype( char * t );
+static const char *AddPviDatatype( const char * t );
 static int GetPviLicenceInfo(void );
 
 /* global variable */
@@ -57,7 +57,8 @@ static PVIOBJECT pvirootobject;
 static PVIOBJECT *readpointer_pviobject; // zum Auslesen der Pvi- Objektliste
 
 /* list for structure names  */
-static PVISTRUCTNAMES structnamesroot = { "DATATYPE", NULL };
+static char structnamesrootname[] = "DATATYPE";
+static PVISTRUCTNAMES structnamesroot = { structnamesrootname, NULL };
 
 
 /* read the INI file */
@@ -65,17 +66,17 @@ static PVISTRUCTNAMES structnamesroot = { "DATATYPE", NULL };
 static void ReadSettings(void) {
 	PVIOBJECT tempobject, *pObject;
 	PVIOBJECT *deviceObject;
-	int numberOfDevices = 0;
-	int numberOfCpus = 0;
+	unsigned int numberOfDevices = 0;
+	unsigned int numberOfCpus = 0;
 	char section[20];
 	char key[20];
 	char buffer[80];
 
-	deviceObject = calloc( MAX_SUPPORTED_DEVICES, sizeof(PVIOBJECT));
+	deviceObject = static_cast<PVIOBJECT*>(calloc( MAX_SUPPORTED_DEVICES, sizeof(PVIOBJECT)));
 	if( deviceObject == NULL) {
 		char tempstring[256];
 		snprintf( tempstring, sizeof(tempstring), "Out of memory !" );
-		MessageBox( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
+		MessageBoxA( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
 		return;
 	}
 
@@ -85,7 +86,7 @@ static void ReadSettings(void) {
 	sprintf( section, "General" );
 	sprintf( key, "PLCDataChangeEvents" );
 	strcpy( buffer, "" );
-	GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+	GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 	PLCDataChangeEvents = atoi(buffer);
 
 
@@ -96,16 +97,16 @@ static void ReadSettings(void) {
 	for (unsigned dev = 1; dev <= MAX_SUPPORTED_DEVICES; ++dev) {
 		sprintf(section, "DEVICE%u", dev);
 		strcpy(key, "broadcast");
-		GetPrivateProfileString(section, key, "255.255.255.255", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "255.255.255.255", buffer, sizeof(buffer), SettingsGetFileName());
 		tempobject.ex.dev.broadcast = inet_addr(buffer);
 
 		strcpy(key, "name");
 		strcpy( buffer, "" );
-		GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 
 		strcpy(key, "descriptor");
 		strcpy( buffer, "" );
-		GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 		if (strlen(buffer) != 0) {
 			// create DEVICE object
 			strcpy(tempobject.descriptor, buffer);
@@ -124,7 +125,7 @@ static void ReadSettings(void) {
 	if( numberOfDevices == 0 ) {
 		char tempstring[256];
 		snprintf( tempstring, sizeof(tempstring), "No PVI devices (interfaces) configured in .ini file !" );
-		MessageBox( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
+		MessageBoxA( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
 		return;
 	}
 
@@ -132,20 +133,20 @@ static void ReadSettings(void) {
 	// read CPUs from brwatch.ini
 	numberOfCpus = 0;
 	for (unsigned cpu = 1; cpu <= MAX_SUPPORTED_CPUS; ++cpu) {
-		char deviceName[256];
+
 		memset(&tempobject, 0, sizeof(tempobject));
 		sprintf(section, "CPU%u", cpu);
 		strcpy(key, "descriptor");
 		strcpy( buffer, "" );
-		GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 		strcpy(tempobject.descriptor, buffer);
 
 		strcpy(key, "device");
 		strcpy( buffer, "" );
-		GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 
 		if( strlen(buffer) != 0 ) {
-			int deviceNumber = atoi(buffer);
+			unsigned int deviceNumber = (unsigned int) atoi(buffer);
 			/* get device's descriptor */
 			pObject = deviceObject;
 			for( unsigned dev = 0; dev < numberOfDevices; ++dev, ++pObject) {
@@ -168,7 +169,7 @@ static void ReadSettings(void) {
 	if( numberOfCpus == 0 ) {
 		char tempstring[256];
 		snprintf( tempstring, sizeof(tempstring), "No CPUs configured in .ini file !" );
-		MessageBox( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
+		MessageBoxA( MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK );
 		return;
 	}
 
@@ -208,7 +209,7 @@ PVIOBJECT *AddPviObject(PVIOBJECT * tempobject, BOOL create ) {
 	char descriptor[256];
 	int result = 0;
 	BOOL already_exist;   // object already exist
-	char *event_mask;
+	const char *event_mask;
 
 	already_exist = FALSE;
 
@@ -505,7 +506,7 @@ int GetNumberOfPviObjects( void ) {
 
 /* global PVI event */
 
-static void WINAPI Pvi_GlobalEvent(WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO * pInfo) {
+static void WINAPI Pvi_GlobalEvent(WPARAM /*wParam*/, LPARAM /*lParam*/, LPVOID /*pData*/, DWORD /*DataLen*/, T_RESPONSE_INFO * pInfo) {
 	PVIOBJECT po, *ppo;
 
 
@@ -525,7 +526,7 @@ static void WINAPI Pvi_GlobalEvent(WPARAM wParam, LPARAM lParam, LPVOID pData, D
 			sprintf( section, "General" );
 			sprintf( key, "Ansl" );
 			strcpy( buffer, "" );
-			GetPrivateProfileString(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+			GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 			g_ansl = atoi(buffer);
 		}
 
@@ -552,7 +553,7 @@ static void WINAPI Pvi_GlobalEvent(WPARAM wParam, LPARAM lParam, LPVOID pData, D
 
 /* PVI callback */
 
-static void WINAPI PviCallback (WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo) {
+static void WINAPI PviCallback (WPARAM /*wParam*/, LPARAM /*lParam*/, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo) {
 	PVIOBJECT *object;
 	static char value[128];
 	char *s, *d;
@@ -698,7 +699,7 @@ static void WINAPI PviCallback (WPARAM wParam, LPARAM lParam, LPVOID pData, DWOR
 
 
 /* is used to send cyclic requests, since not all events are supported for all access types. */
-static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime ) {
+static void CALLBACK PviCyclicRequests( HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/ ) {
 	PVIOBJECT *object;
 	static int zyklus_readpv = 0;
 	static int zyklus_getlicenseinfo = 0;
@@ -711,7 +712,7 @@ static void CALLBACK PviCyclicRequests( HWND hwnd, UINT uMsg, UINT idEvent, DWOR
 	if( zyklus_getlicenseinfo < 10) {
 		if( ++zyklus_getlicenseinfo >= 10 ) {
 			if( GetPviLicenceInfo() == PVIWORK_STATE_LOCKED ) {
-				MessageBox( MainWindowGetHandle(), "Sorry PVI is locked.\nProgram must shut down !", "Error Pvi License", MB_ICONERROR );
+				MessageBoxA( MainWindowGetHandle(), "Sorry PVI is locked.\nProgram must shut down !", "Error Pvi License", MB_ICONERROR );
 				SendMessage( MainWindowGetHandle(), WM_CLOSE, 0, 0 );
 			} else {
 				zyklus_getlicenseinfo = 0;
@@ -794,7 +795,7 @@ int StartPvi( void ) {
 		char buffer[80];
 
 		memset( buffer, 0, sizeof(buffer) );
-		GetPrivateProfileString( "REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA( "REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), SettingsGetFileName());
 		result = PviInitialize( 0, 0, buffer, NULL );
 	}
 
@@ -816,7 +817,7 @@ int StartPvi( void ) {
 
 
 	// timer for cyclic requests
-	timerid_cyclic_requests = SetTimer( NULL, 0, 500, (TIMERPROC) PviCyclicRequests );
+	timerid_cyclic_requests = SetTimer( NULL, 0, 500, PviCyclicRequests );
 
 
 	return 0; // Alles OK
@@ -855,7 +856,7 @@ int StopPvi(void) {
 */
 
 
-static char *AddPviDatatype( char * t ) {
+static const char *AddPviDatatype( const char * t ) {
 	size_t length;
 	PVISTRUCTNAMES *p, *kill;
 
@@ -888,10 +889,10 @@ static char *AddPviDatatype( char * t ) {
 	}
 
 	// insert data type
-	p->next = malloc( sizeof(PVISTRUCTNAMES) );
+	p->next = static_cast<PVISTRUCTNAMES*>(malloc( sizeof(PVISTRUCTNAMES) ));
 	if( p->next != NULL ) {
 		p = p->next;
-		p->pname = malloc( length + 1); // space for name
+		p->pname = static_cast<char*>(malloc( length + 1)); // space for name
 		p->next = NULL;
 		if( p->pname != NULL ) {
 			return( strcpy( p->pname, t ) );
@@ -997,7 +998,7 @@ static void PviReadDataType( PVIOBJECT *object ) {
 					object->ex.pv.type = BR_WSTRING;
 					object->ex.pv.pdatatype = "WSTRING";
 				} else {
-					object->ex.pv.type = 0;	
+					object->ex.pv.type = static_cast<PVIPVARTYPE>(0);
 					object->ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
 						++s;	// ignore rest
@@ -1036,7 +1037,7 @@ PVIOBJECT *ExpandPviObject( PVIOBJECT * object ) {
 	if( object == NULL )
 		return NULL;
 
-	tempobject = malloc(sizeof(PVIOBJECT));
+	tempobject = static_cast<PVIOBJECT*>(malloc(sizeof(PVIOBJECT)));
 
 	if( tempobject != NULL ) {
 
@@ -1121,14 +1122,14 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject ) {
 		return NULL;
 
 
-	pbuffer = malloc(65535);
+	pbuffer = static_cast<char*>(malloc(65535));
 	if( pbuffer == NULL ) {
 		AddRowToLog( "PviReadCPUList():malloc(65535)", -1 );
 		return NULL;
 	}
 
 
-	cpuObject = calloc( 1, sizeof(PVIOBJECT) );
+	cpuObject = static_cast<PVIOBJECT*>(calloc( 1, sizeof(PVIOBJECT) ));
 	if( cpuObject == NULL ) {
 		free(pbuffer);
 		AddRowToLog( "PviReadCPUList():malloc(PVIOBJECT)", -1 );
@@ -1159,11 +1160,11 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject ) {
 			}
 			switch( result ) {
 				case 4808:
-					MessageBox( NULL, "No CPU found !", "Error", MB_OK | MB_ICONEXCLAMATION );
+					MessageBoxA( NULL, "No CPU found !", "Error", MB_OK | MB_ICONEXCLAMATION );
 					break;
 
 				case 13076:
-					MessageBox( NULL, "Device does not exist !", "Error", MB_OK | MB_ICONEXCLAMATION );
+					MessageBoxA( NULL, "Device does not exist !", "Error", MB_OK | MB_ICONEXCLAMATION );
 					break;
 
 
@@ -1176,7 +1177,7 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject ) {
 
 		// search for CPUs connected via ethernet
 		if( FindToken( &s, "/IF=TCPIP" ) ) {
-			struct stEthernetCpuInfo *buffer = calloc(256, sizeof(struct stEthernetCpuInfo) );
+			struct stEthernetCpuInfo *buffer = static_cast<struct stEthernetCpuInfo*>(calloc(256, sizeof(struct stEthernetCpuInfo) ));
 			struct stEthernetCpuInfo *ethernetCpuInfo = buffer;
 
 			if( ethernetCpuInfo != NULL ) {
@@ -1237,7 +1238,7 @@ static PVIOBJECT * PviReadTaskList(PVIOBJECT *object) {
 		return NULL;  // error
 	}
 
-	tempobject = malloc(sizeof(PVIOBJECT));
+	tempobject = static_cast<PVIOBJECT*>(malloc(sizeof(PVIOBJECT)));
 
 	if( tempobject == NULL ) { // error
 		free(pbuffer); 
@@ -1426,7 +1427,7 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT * object) {
 					newobject.ex.pv.type = BR_WSTRING;
 					newobject.ex.pv.pdatatype = "WSTRING";
 				} else {
-					newobject.ex.pv.type = 0;	// unknown
+					newobject.ex.pv.type = static_cast<PVIPVARTYPE>(0);	// unknown
 					newobject.ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
 						++s;	// ignore rest
@@ -1649,7 +1650,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 					newobject.ex.pv.type = BR_WSTRING;
 					newobject.ex.pv.pdatatype = "WSTRING";
 				} else {
-					newobject.ex.pv.type = 0;	// unbekannt
+					newobject.ex.pv.type = static_cast<PVIPVARTYPE>(0);	// unbekannt
 					newobject.ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
 						++s;	// Rest ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼berlesen
@@ -1748,7 +1749,7 @@ static PVIOBJECT *PviReadStructElements( PVIOBJECT *object ) {
 
 
 /* writes into log file */
-static void AddRowToLog(char *row, int errcode) {
+static void AddRowToLog(const char *row, int errcode) {
 	FILE *f;
 	char zeit[10];
 	char datum[10];
@@ -1773,7 +1774,7 @@ static void AddRowToLog(char *row, int errcode) {
 	}
 
 	if (errcode != 0) {
-		char *errtext;
+		const char *errtext;
 		pmessage = (char *)malloc(512);
 
 		if (pmessage != NULL) {
@@ -1788,7 +1789,7 @@ static void AddRowToLog(char *row, int errcode) {
 					errtext = "please refer to PVI documentation";
 			}
 			sprintf(pmessage, "Error in PVI-Interface\nError: %u\n\"%s\"\n(%s)", errcode, errtext, row  );
-			MessageBox(NULL, pmessage, "Error", MB_OK | MB_ICONERROR);
+			MessageBoxA(NULL, pmessage, "Error", MB_OK | MB_ICONERROR);
 		}
 		free(pmessage);
 	}
@@ -1813,7 +1814,7 @@ static void DeleteLog(void) {
 /* writes object to watch file */
 int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 	PVIOBJECT *parent;
-	char *section;
+	const char *section;
 	int entries;
 //	int result;
 	int i;
@@ -1821,8 +1822,8 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 
 
 	// store file version info
-	WritePrivateProfileString( "File", "Application", "BRWATCH.EXE", filename ); // type
-	WritePrivateProfileString( "File", "Version", WATCH_FILE_VERSION, filename ); // version
+	WritePrivateProfileStringA( "File", "Application", "BRWATCH.EXE", filename ); // type
+	WritePrivateProfileStringA( "File", "Version", WATCH_FILE_VERSION, filename ); // version
 
 	parent = GetNextPviObject(TRUE);
 
@@ -1850,12 +1851,12 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 				char keyname[80];
 				BOOL found = FALSE;
 				tempstring[0] = 0;
-				GetPrivateProfileString( section, section, "0", tempstring, sizeof(tempstring), filename );
+				GetPrivateProfileStringA( section, section, "0", tempstring, sizeof(tempstring), filename );
 				entries = atoi(tempstring);
 				// does entry exist ?
 				for( i = 1; i <= entries; ++i ) {
 					sprintf( keyname, "name%u", i );
-					GetPrivateProfileString( section, keyname, "", tempstring, sizeof(tempstring), filename );
+					GetPrivateProfileStringA( section, keyname, "", tempstring, sizeof(tempstring), filename );
 					if( strcmp( parent->name, tempstring ) == 0 ) {
 						found = TRUE;
 					}
@@ -1864,14 +1865,14 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 				if( !found ) { // not found
 					++entries;
 					sprintf( tempstring, "%u", entries );
-					WritePrivateProfileString( section, section, tempstring, filename );
+					WritePrivateProfileStringA( section, section, tempstring, filename );
 					// Eltern-Objekt speichern
 					sprintf( keyname, "name%u", entries );
-					WritePrivateProfileString( section, keyname, parent->name, filename ); // name
+					WritePrivateProfileStringA( section, keyname, parent->name, filename ); // name
 					sprintf( keyname, "desc%u", entries );
-					WritePrivateProfileString( section, keyname, parent->descriptor, filename ); // descriptor
+					WritePrivateProfileStringA( section, keyname, parent->descriptor, filename ); // descriptor
 					sprintf( keyname, "sort%u", entries );
-					WritePrivateProfileString( section, keyname, "-1", filename ); // sort criteria
+					WritePrivateProfileStringA( section, keyname, "-1", filename ); // sort criteria
 				}
 			}
 		}
@@ -1897,19 +1898,19 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 		char keyname[80];
 		tempstring[0] = 0;
 		// number of entries
-		GetPrivateProfileString( section, section, "0", tempstring, sizeof(tempstring), filename );
+		GetPrivateProfileStringA( section, section, "0", tempstring, sizeof(tempstring), filename );
 		entries = atoi(tempstring);
 		++entries;
 		sprintf( tempstring, "%u", entries );
-		WritePrivateProfileString( section, section, tempstring, filename );
+		WritePrivateProfileStringA( section, section, tempstring, filename );
 		// Objekt speichern
 		sprintf( keyname, "name%u", entries );
-		WritePrivateProfileString( section, keyname, object->name, filename ); // name
+		WritePrivateProfileStringA( section, keyname, object->name, filename ); // name
 		sprintf( keyname, "desc%u", entries );
-		WritePrivateProfileString( section, keyname, object->descriptor, filename ); // descriptor
+		WritePrivateProfileStringA( section, keyname, object->descriptor, filename ); // descriptor
 		sprintf( keyname, "sort%u", entries );
 		sprintf( tempstring, "%u", object->watchsort );
-		WritePrivateProfileString( section, keyname, tempstring, filename ); // sort criteria
+		WritePrivateProfileStringA( section, keyname, tempstring, filename ); // sort criteria
 	}
 
 
@@ -1922,7 +1923,7 @@ int AddToPviWatchFile(PVIOBJECT * object, char *filename) {
 /* load objects of filtered type from watch file 
 and returns number of objects read */ 
 int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
-	char *section="";
+	const char *section="";
 	PVIOBJECT tempobject, *object, *parent;
 	int entries, i, sort;
 	int n = 0;  // number of objects to be inserted
@@ -1947,11 +1948,11 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 
 	// read number of objects in this section
 	tempstring[0] = 0;
-	GetPrivateProfileString(section, section, "0", tempstring, sizeof(tempstring), filename);
+	GetPrivateProfileStringA(section, section, "0", tempstring, sizeof(tempstring), filename);
 	entries = atoi(tempstring);
 	if (entries == 0) {
 		sprintf(tempstring, "No entries found in section [%s] !", section);
-		MessageBox(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
+		MessageBoxA(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
 		return -1;
 	}
 	for (i = 1; i <= entries; ++i) {
@@ -1960,23 +1961,23 @@ int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename) {
 		memset(&tempobject, 0, sizeof(PVIOBJECT));
 		// read name
 		sprintf(keyname, "name%u", i);
-		GetPrivateProfileString(section, keyname, "", tempobject.name, sizeof(tempobject.name), filename);
+		GetPrivateProfileStringA(section, keyname, "", tempobject.name, sizeof(tempobject.name), filename);
 		if (strlen(tempobject.name) == 0) {
 			sprintf(tempstring, "section [%s]\n%s=\ninvalid or not found !", section, keyname);
-			MessageBox(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
+			MessageBoxA(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
 			return -1;
 		}
 		// read descriptor
 		sprintf(keyname, "desc%u", i);
-		GetPrivateProfileString(section, keyname, "", tempobject.descriptor, sizeof(tempobject.descriptor), filename);
+		GetPrivateProfileStringA(section, keyname, "", tempobject.descriptor, sizeof(tempobject.descriptor), filename);
 		if (strlen(tempobject.descriptor) == 0) {
 			sprintf(tempstring, "section [%s]\n%s=\ninvalid or not found !", section, keyname);
-			MessageBox(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
+			MessageBoxA(NULL, tempstring, "Error Loading Watch File", MB_OK | MB_ICONERROR);
 			return -1;
 		}
 		// read sort criteria
 		sprintf(keyname, "sort%u", i);
-		GetPrivateProfileString(section, keyname, "-1", tempstring, sizeof(tempstring), filename);
+		GetPrivateProfileStringA(section, keyname, "-1", tempstring, sizeof(tempstring), filename);
 		sort = atoi(tempstring);
 
 		// add object

@@ -54,7 +54,7 @@ BOOL IsLoggerRunning( void ) {
 
 static int CountLoggedObjects( void ) {
 	PVIOBJECT *object;
-	char *p;
+	PVIOBJECT **p;
 
 	no_of_logged_objects = 0;
 	estimated_row_size = 0;
@@ -69,11 +69,11 @@ static int CountLoggedObjects( void ) {
 		if( object->watchsort >= 0 ) { // is object in watch list ?
 			switch( object->type ) {
 				case POBJ_PVAR:
-					p = realloc( logged_object, sizeof(PVIOBJECT*) * (no_of_logged_objects+1) );
+					p = static_cast<PVIOBJECT**>(realloc( logged_object, sizeof(PVIOBJECT*) * (no_of_logged_objects+1) ));
 					if( p == NULL ) {
 						break;
 					} else {
-						logged_object = (PVIOBJECT**) p;
+						logged_object = p;
 						logged_object[no_of_logged_objects] = object;
 						estimated_row_size += object->ex.pv.length;
 						++no_of_logged_objects;
@@ -98,11 +98,11 @@ static void ReadSettings( void ) {
 	int last_watchsort;
 
 
-	GetPrivateProfileString( "Logger", "Filename", "C:\\temp\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName() );
-	filesize = GetPrivateProfileInt( "Logger", "maxfilesize", 10, SettingsGetFileName() );
-	cycletime = GetPrivateProfileInt( "Logger", "cycletime", 500, SettingsGetFileName() );
-	zip_the_files = GetPrivateProfileInt( "Logger", "zip", 0, SettingsGetFileName() );
-	write_by_change = GetPrivateProfileInt( "Logger", "write_by_change", 0, SettingsGetFileName() );
+	GetPrivateProfileStringA( "Logger", "Filename", "C:\\temp\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName() );
+	filesize = GetPrivateProfileIntA( "Logger", "maxfilesize", 10, SettingsGetFileName() );
+	cycletime = GetPrivateProfileIntA( "Logger", "cycletime", 500, SettingsGetFileName() );
+	zip_the_files = GetPrivateProfileIntA( "Logger", "zip", 0, SettingsGetFileName() );
+	write_by_change = GetPrivateProfileIntA( "Logger", "write_by_change", 0, SettingsGetFileName() );
 
 	// the first CPU is time master
 	cpu_timemaster = NULL;
@@ -141,22 +141,22 @@ static void ReadSettings( void ) {
 static BOOL ValidateSettings( void ) {
 
 	if( filesize < 1 ) {
-		MessageBox( MainWindowGetHandle(), "filesize at least 1 kByte !", "Logger Error - Wrong size", MB_OK | MB_ICONERROR );
+		MessageBoxA( MainWindowGetHandle(), "filesize at least 1 kByte !", "Logger Error - Wrong size", MB_OK | MB_ICONERROR );
 		return FALSE;
 	}
 
 	if( cycletime < 50 ) {
-		MessageBox( MainWindowGetHandle(), "cycletime must not below 50 ms !", "Logger Error - Wrong cycletime", MB_OK | MB_ICONERROR );
+		MessageBoxA( MainWindowGetHandle(), "cycletime must not below 50 ms !", "Logger Error - Wrong cycletime", MB_OK | MB_ICONERROR );
 		return FALSE;
 	}
 
 	if( cpu_timemaster == NULL ) {
-		MessageBox( MainWindowGetHandle(), "no cpu for timestamp found !", "Logger Error - No Timestamp- CPU", MB_OK | MB_ICONERROR );
+		MessageBoxA( MainWindowGetHandle(), "no cpu for timestamp found !", "Logger Error - No Timestamp- CPU", MB_OK | MB_ICONERROR );
 		return FALSE;
 	}
 
 	if( CountLoggedObjects() == 0 ) {
-		MessageBox( MainWindowGetHandle(), "no objects to log !", "Logger Error - No Objects", MB_OK | MB_ICONERROR );
+		MessageBoxA( MainWindowGetHandle(), "no objects to log !", "Logger Error - No Objects", MB_OK | MB_ICONERROR );
 		return FALSE;
 	}
 
@@ -165,7 +165,7 @@ static BOOL ValidateSettings( void ) {
 }
 
 
-BOOL CreateBackupFilename( LPTSTR oldfilename, LPTSTR renamedfilename ) {
+BOOL CreateBackupFilename( LPCSTR oldfilename, LPSTR renamedfilename ) {
 	FILETIME ftWrite;
 	SYSTEMTIME stUTC, stLocal;
 	HANDLE hFile;
@@ -174,7 +174,7 @@ BOOL CreateBackupFilename( LPTSTR oldfilename, LPTSTR renamedfilename ) {
 	char filename[FILENAME_MAX];
 	char extension[FILENAME_MAX];
 
-	hFile = CreateFile( oldfilename, GENERIC_READ,FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
+	hFile = CreateFileA( oldfilename, GENERIC_READ,FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
 
 	if( hFile == INVALID_HANDLE_VALUE ) {
 		return FALSE;
@@ -242,7 +242,7 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 				case START_LOGGING:
 //					p_step_str = "START_LOGGING";
 					strcpy( errstring, "" );
-					cache = malloc( CACHESIZE );
+					cache = static_cast<char*>(malloc( CACHESIZE ));
 					milliseconds = 0;
 					if( cache == NULL ) {
 						strcpy( errstring, "Logger: can't allocate cache. To less memory !" );
@@ -401,7 +401,7 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 										char *s;
 										char *d;
 										char value[256];
-										int count = 0;
+										unsigned int count = 0;
 										s = (char*) object->ex.pv.pvalue;
 										d = value;
 										while( *s && (count < sizeof(value)) ) {
@@ -413,7 +413,7 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 											} else {
 												++count;
 												if( object->gui_info.interpret_as_oem ) {
-													OemToCharBuff( s++, d++, 1 );
+													OemToCharBuffA( s++, d++, 1 );
 												} else {
 													*d++=*s++;
 												}
@@ -494,7 +494,7 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 					start_write_by_change = 0; // self stop
 					SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
 					if( strcmp( errstring, "") ) {
-						MessageBox( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
+						MessageBoxA( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
 					}
 					break;
 
@@ -514,7 +514,7 @@ void LoggerDataChanged( PVIOBJECT *object ) {
 
 /* this function is called by timer interval */
 
-static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
+static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, DWORD dwTime) {
 	static FILE *f;
 	static DWORD dwLastTime;
 	int iDifftime;
@@ -543,7 +543,7 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 //			p_step_str = "START_LOGGING";
 			milliseconds = 0;
 			strcpy( errstring, "" );
-			cache = malloc( CACHESIZE );
+			cache = static_cast<char*>(malloc( CACHESIZE ));
 			if( cache == NULL ) {
 				strcpy( errstring, "Logger: can't allocate cache. To less memory !" );
 				logger_step = STOP_LOGGING;
@@ -707,7 +707,7 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 									char *s;
 									char *d;
 									char value[256];
-									int count = 0;
+									unsigned int count = 0;
 									s = (char*) logged_object[i]->ex.pv.pvalue;
 									d = value;
 									while( *s && (count < sizeof(value)) ) {
@@ -719,7 +719,7 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 										} else {
 											++count;
 											if( logged_object[i]->gui_info.interpret_as_oem ) {
-												OemToCharBuff( s++, d++, 1 );
+												OemToCharBuffA( s++, d++, 1 );
 											} else {
 												*d++=*s++;
 											}
@@ -805,7 +805,7 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 			logger_is_running = FALSE;
 			SendMessage( MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0 );
 			if( strcmp( errstring, "") ) {
-				MessageBox( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
+				MessageBoxA( NULL, errstring, APPLICATION_NAME " - Logger",  MB_OK | MB_ICONERROR );
 			}
 			break;
 
@@ -825,14 +825,14 @@ static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwT
 
 /* logger configuration dialog */
 
-BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */) {
 	char tempstring[512];
 
 	switch (uMsg) {
 		case WM_INITDIALOG:
 			ReadSettings();
 			CheckDlgButton( hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED );
-			SetDlgItemText( hDlg, IDR_EDIT_FILENAME, loggerfile );
+			SetDlgItemTextA( hDlg, IDR_EDIT_FILENAME, loggerfile );
 			SetDlgItemInt( hDlg, IDR_EDIT_MAXSIZE, filesize, 0 );
 			SetDlgItemInt( hDlg, IDR_EDIT_CYCLETIME, cycletime, 0 );
 			CheckDlgButton( hDlg, IDC_CHECK_CHANGED, write_by_change == TRUE ? BST_CHECKED : BST_UNCHECKED );
@@ -844,7 +844,7 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			} else {
 				sprintf( tempstring, "%s %s %s", cpu_timemaster->ex.cpu.cputype, cpu_timemaster->ex.cpu.arversion, cpu_timemaster->descriptor );
 			}
-			SetDlgItemText( hDlg, IDR_EDIT_TIMESTAMP_CPU, tempstring );
+			SetDlgItemTextA( hDlg, IDR_EDIT_TIMESTAMP_CPU, tempstring );
 			SetDlgItemInt( hDlg, IDR_EDIT_OBJECT_COUNT, CountLoggedObjects(), 0 );
 
 			if( logger_is_running ) { // bei laufendem Logger nur schauen erlaubt
@@ -860,24 +860,24 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		case WM_COMMAND:
 			switch (wParam) {
 				case IDOK:
-					GetDlgItemText( hDlg, IDR_EDIT_FILENAME, loggerfile, sizeof(loggerfile) );
-					GetDlgItemText( hDlg, IDR_EDIT_MAXSIZE, tempstring, sizeof(tempstring) );
+					GetDlgItemTextA( hDlg, IDR_EDIT_FILENAME, loggerfile, sizeof(loggerfile) );
+					GetDlgItemTextA( hDlg, IDR_EDIT_MAXSIZE, tempstring, sizeof(tempstring) );
 					filesize = atoi(tempstring);
 
 
-					GetDlgItemText( hDlg, IDR_EDIT_CYCLETIME, tempstring, sizeof(tempstring) );
+					GetDlgItemTextA( hDlg, IDR_EDIT_CYCLETIME, tempstring, sizeof(tempstring) );
 					cycletime = atoi(tempstring);
 
 					if( ValidateSettings() ) {
-						WritePrivateProfileString( "Logger", "Filename", loggerfile, SettingsGetFileName() );
+						WritePrivateProfileStringA( "Logger", "Filename", loggerfile, SettingsGetFileName() );
 						sprintf( tempstring, "%u", filesize );
-						WritePrivateProfileString( "Logger", "maxfilesize", tempstring, SettingsGetFileName() );
+						WritePrivateProfileStringA( "Logger", "maxfilesize", tempstring, SettingsGetFileName() );
 						sprintf( tempstring, "%u", cycletime );
-						WritePrivateProfileString( "Logger", "cycletime", tempstring, SettingsGetFileName() );
+						WritePrivateProfileStringA( "Logger", "cycletime", tempstring, SettingsGetFileName() );
 						zip_the_files = IsDlgButtonChecked( hDlg, IDC_CHECK_ZIP ) == BST_CHECKED ? TRUE : FALSE;
-						WritePrivateProfileString( "Logger", "zip", zip_the_files == TRUE ? "1" : "0", SettingsGetFileName() );
+						WritePrivateProfileStringA( "Logger", "zip", zip_the_files == TRUE ? "1" : "0", SettingsGetFileName() );
 						write_by_change = IsDlgButtonChecked( hDlg, IDC_CHECK_CHANGED ) == BST_CHECKED ? TRUE : FALSE;
-						WritePrivateProfileString( "Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", SettingsGetFileName() );
+						WritePrivateProfileStringA( "Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", SettingsGetFileName() );
 
 						EndDialog(hDlg, TRUE );
 						return TRUE;
@@ -893,7 +893,7 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 					return TRUE;
 
 				case IDR_BUTTON_FILESELECT: {
-					OPENFILENAME ofn;
+					OPENFILENAMEA ofn;
 					memset(&ofn, 0, sizeof(ofn));
 					ofn.lStructSize = sizeof(ofn);
 					ofn.hwndOwner = hDlg;
@@ -902,8 +902,8 @@ BOOL CALLBACK  LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 					ofn.lpstrDefExt = "csv";
 					ofn.nMaxFile = sizeof(loggerfile);
 					ofn.Flags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-					if (GetSaveFileName(&ofn)) {
-						SetDlgItemText( hDlg, IDR_EDIT_FILENAME, loggerfile );
+					if (GetSaveFileNameA(&ofn)) {
+						SetDlgItemTextA( hDlg, IDR_EDIT_FILENAME, loggerfile );
 					}
 				}
 				return TRUE;

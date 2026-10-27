@@ -11,7 +11,7 @@
 
 
 
-static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static PVIOBJECT *object;
 
 	switch (uMsg) {
@@ -88,7 +88,7 @@ void DlgEditTaskShowDialog( PVIOBJECT *object ) {
 	if( object->type == POBJ_TASK ) {
 		if( object->error == 0 ) {
 			DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_EDIT_TASK), g_hwndMainWindow,
-			                (DLGPROC) DlgProc, (LPARAM) object );
+			                DlgProc, (LPARAM) object );
 		}
 	}
 }

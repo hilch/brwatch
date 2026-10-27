@@ -129,11 +129,11 @@ int ListNetworkAdapters( struct stAdapterInfo *adapterInfo, int maxEntries ) {
 	DWORD bufsize;
 	IP_ADAPTER_INFO *next;
 	IP_ADDR_STRING *ipaddr;
-	int i;
+
 	int entry = 0;
 
 	bufsize = 20 * sizeof(IP_ADAPTER_INFO);
-	buffer = malloc( bufsize );
+	buffer = (IP_ADAPTER_INFO*) malloc( bufsize );
 	next = (IP_ADAPTER_INFO*) buffer;
 	if( buffer == NULL )
 		return 0;
@@ -163,7 +163,6 @@ int ListNetworkAdapters( struct stAdapterInfo *adapterInfo, int maxEntries ) {
 					++adapterInfo;
 				}
 				ipaddr = ipaddr->Next;
-				++i;
 			}
 			next = next->Next;
 		}
@@ -178,9 +177,9 @@ int ListNetworkAdapters( struct stAdapterInfo *adapterInfo, int maxEntries ) {
     PVI Callback for SNMP line
     ----------------------------------------------------------------------------------------
 */
-static void WINAPI PviSnmpProc (WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo) {
+static void WINAPI PviSnmpProc (WPARAM /* wParam */, LPARAM /* lParam */, LPVOID /* pData */, DWORD /* DataLen */, T_RESPONSE_INFO* /*pInfo*/) {
 
-}
+};
 
 /* -----------------------------------------------------------------------------------------
     start searching CPUs via SNMP protocol
@@ -192,13 +191,14 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 	DWORD result;
 	DWORD linkIdSnmpLine;
 	DWORD linkIdDevice;
+	LPVOID pviSnmpCallback = reinterpret_cast<LPVOID>(PviSnmpProc);
 
 	memset(ethernetCpuInfo, 0, sizeof(struct stEthernetCpuInfo) * maxEntries );
 
 
-	result = PviCreate( &linkIdSnmpLine, "@Pvi/LnSNMP", POBJ_LINE, "CD=\"LNSNMP\"", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+	result = PviCreate( &linkIdSnmpLine, "@Pvi/LnSNMP", POBJ_LINE, "CD=\"LNSNMP\"", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 	if( result == 0 ) {
-		result = PviCreate( &linkIdDevice, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\"", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+		result = PviCreate( &linkIdDevice, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\"", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 		if( result == 0 ) {
 			char *buffer = (char* ) malloc(65536);
 			if( buffer != NULL ) {
@@ -216,35 +216,35 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 							strcat( description, ethernetCpuInfo->macAddress );
 							strcat( description, "\"");
 
-							result = PviCreate( &linkIdStation, "@Pvi/LnSNMP/Device/Station", POBJ_STATION, description, PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+							result = PviCreate( &linkIdStation, "@Pvi/LnSNMP/Device/Station", POBJ_STATION, description, pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 							if( result == 0 ) {
 								DWORD linkIdPvar;
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Ip", POBJ_PVAR, "CD=ipAddress", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Ip", POBJ_PVAR, "CD=ipAddress", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->ipAddress, sizeof(ethernetCpuInfo->ipAddress));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
 								PviUnlink( linkIdPvar);								
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/snmpMode", POBJ_PVAR, "CD=snmpMode", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/snmpMode", POBJ_PVAR, "CD=snmpMode", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->SNMP_mode, sizeof(ethernetCpuInfo->SNMP_mode));
 								PviUnlink( linkIdPvar);								
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaNodeNumber", POBJ_PVAR, "CD=inaNodeNumber", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaNodeNumber", POBJ_PVAR, "CD=inaNodeNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_nodeNumber, sizeof(ethernetCpuInfo->INA_nodeNumber));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaPortNumber", POBJ_PVAR, "CD=inaPortNumber", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaPortNumber", POBJ_PVAR, "CD=inaPortNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->INA_portNumber, sizeof(ethernetCpuInfo->INA_portNumber));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
 								PviUnlink( linkIdPvar);
 								int arState;
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arState", POBJ_PVAR, "CD=arState", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arState", POBJ_PVAR, "CD=arState", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &arState, sizeof(arState));
 								PviUnlink( linkIdPvar);
 								switch( arState ) {
@@ -269,10 +269,10 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries) 
 										break;
 								}
 
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
 								PviUnlink( linkIdPvar);
-								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arVersion", POBJ_PVAR, "CD=arVersion", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
+								result = PviCreate( &linkIdPvar, "@Pvi/LnSNMP/Device/Station/arVersion", POBJ_PVAR, "CD=arVersion", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds" );
 								PviRead( linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void*) &ethernetCpuInfo->arVersion, sizeof(ethernetCpuInfo->arVersion));
 								PviUnlink( linkIdPvar);
 								PviUnlink(linkIdStation);
@@ -308,7 +308,7 @@ int SearchEthernetCpus( struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntrie
 
 	/* as PVI 2.x and AR 2.x doesnt work with SNMP or SNMP could be disabled we serach also via UDP broadcast */
 	unsigned long buflen = 256*sizeof(struct stEthernetCpuInfo);
-	struct stEthernetCpuInfo *ethernetUdpCpuInfo = malloc(buflen);
+	struct stEthernetCpuInfo *ethernetUdpCpuInfo = (struct stEthernetCpuInfo*) malloc(buflen);
 	if( ethernetUdpCpuInfo != NULL  ) {
 		for( int i = 0; i < noOfEthernetAdapters; ++i ) {
 			//printf("%s  %s   %s\n", adapters[i].ipAddress, adapters[i].subnetMask, adapters[i].description );

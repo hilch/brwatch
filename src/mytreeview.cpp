@@ -36,9 +36,9 @@ HWND MyTreeViewCreateWindow( MYTREEVIEWPARAM * param ) {
 
 	//GetClientRect( param->hwndParent, &rcClient);
 
-	param->hwndTV = CreateWindowEx(WS_EX_CLIENTEDGE, WC_TREEVIEW, "Select Object", MY_TREEVIEW_STYLE, 0, 0, 0, 0, param->hwndParent, NULL, param->hinstance, NULL);
+	param->hwndTV = CreateWindowExA(WS_EX_CLIENTEDGE, WC_TREEVIEWA, "Select Object", MY_TREEVIEW_STYLE, 0, 0, 0, 0, param->hwndParent, NULL, param->hinstance, NULL);
 
-	hfont = GetStockObject( DEFAULT_GUI_FONT );
+	hfont = static_cast<HFONT>(GetStockObject( DEFAULT_GUI_FONT ));
 	SendMessage( param->hwndTV, WM_SETFONT, (WPARAM) hfont, 1 );
 
 	MyTreeViewClearAll(param);
@@ -57,8 +57,8 @@ HWND MyTreeViewCreateWindow( MYTREEVIEWPARAM * param ) {
 
 
 HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, LPARAM id, int icon_index ) {
-	TVITEM tvi;
-	TVINSERTSTRUCT tvins;
+	TVITEMA tvi;
+	TVINSERTSTRUCTA tvins;
 	HTREEITEM hti;
 
 	memset(&tvi, 0, sizeof(tvi) );
@@ -84,7 +84,7 @@ HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, L
 
 	// Add the item to the tree view control.
 	tvins.item = tvi;
-	hti= TreeView_InsertItem( tv->hwndTV, &tvins );
+	hti = reinterpret_cast<HTREEITEM>(SendMessageA(tv->hwndTV, TVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&tvins)));
 
 
 	// The new item is a child item. Give the parent item a
@@ -101,15 +101,15 @@ HTREEITEM MyTreeViewAddItem(MYTREEVIEWPARAM* tv, HTREEITEM parent, LPSTR text, L
 	return hti;
 }
 
-LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARAM wParam, LPARAM lParam) {
-	LPNMTREEVIEW pnmtv;
+LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARAM, LPARAM lParam) {
+	LPNMTREEVIEWA pnmtv;
 	HTREEITEM hti;
-	TVITEM item;
+	TVITEMA item;
 
 	switch (wMsg) {
 
 		case WM_NOTIFY:
-			pnmtv = (LPNMTREEVIEW)lParam;
+			pnmtv = (LPNMTREEVIEWA)lParam;
 
 			if (pnmtv->hdr.hwndFrom != tv->hwndTV) {
 				return 1;
@@ -122,7 +122,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 						memset( &item, 0, sizeof(item) );
 						item.mask = TVIF_HANDLE;
 						item.hItem = hti;
-						TreeView_GetItem( tv->hwndTV, &item );
+						SendMessageA(tv->hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item));
 
 						if( hti != NULL ) {
 							(tv->cbdblclick) (hti, item.lParam  );
@@ -142,7 +142,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 						memset( &item, 0, sizeof(item) );
 						item.mask = TVIF_HANDLE;
 						item.hItem = hti;
-						TreeView_GetItem( tv->hwndTV, &item );
+						SendMessageA(tv->hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item));
 
 						if( hti != NULL ) {
 							(tv->cbrclick) ( hti, item.lParam  );
@@ -151,14 +151,14 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 					return 0;
 					break;
 
-				case TVN_SELCHANGED:	// Selection changed
+				case TVN_SELCHANGEDA:	// Selection changed
 					if (tv->cbselected != NULL) {
 						(tv->cbselected) (pnmtv->itemNew.hItem, pnmtv->itemNew.lParam);
 					}
 					return 0;
 					break;
 
-				case TVN_BEGINDRAG:	// Begin Draggin
+				case TVN_BEGINDRAGA:	// Begin Draggin
 					if (tv->cbbegindrag != NULL) {
 						(tv->cbbegindrag) (pnmtv->itemNew.hItem, pnmtv->itemNew.lParam);
 					}
@@ -181,7 +181,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM * tv, UINT wMsg, WPARA
 static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent ) {
 	PVIOBJECT *child;
 	int imageindex;
-	TVITEM tvitem;
+	TVITEMA tvitem;
 
 	if( parent != NULL ) {
 
@@ -195,7 +195,7 @@ static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent ) {
 			tvitem.hItem = hti;
 			tvitem.mask = TVIF_TEXT;
 			tvitem.pszText = tempstring;
-			TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+			SendMessageA(mytreeviewparam.hwndTV, TVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&tvitem));
 		} else if( parent->type == POBJ_PVAR ) {
 			char tempstring[512];
 			if( parent->ex.pv.type == BR_STRUCT ) {
@@ -208,7 +208,7 @@ static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent ) {
 				tvitem.hItem = hti;
 				tvitem.mask = TVIF_TEXT;
 				tvitem.pszText = tempstring;
-				TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+				SendMessageA(mytreeviewparam.hwndTV, TVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&tvitem));
 			} else {
 				if( parent->ex.pv.dimension > 1 ) { // arrays of basic data types
 					sprintf( tempstring, "%s   :%s[%u]",parent->descriptor, parent->ex.pv.pdatatype, parent->ex.pv.dimension );
@@ -216,7 +216,7 @@ static void TreeViewInsertChildObjects( HTREEITEM hti, PVIOBJECT *parent ) {
 					tvitem.hItem = hti;
 					tvitem.mask = TVIF_TEXT;
 					tvitem.pszText = tempstring;
-					TreeView_SetItem( mytreeviewparam.hwndTV, &tvitem );
+					SendMessageA(mytreeviewparam.hwndTV, TVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&tvitem));
 				}
 			}
 		}
@@ -293,7 +293,7 @@ void MyTreeViewBeginDragging( HTREEITEM hti, LPARAM lParam ) {
 
 /* an element in tree view was double clicked */
 
-void MyTreeViewDblClick(HTREEITEM hti, LPARAM lParam) {
+void MyTreeViewDblClick(HTREEITEM /* hti */, LPARAM lParam) {
 	PVIOBJECT *object;
 	object = FindPviObjectByName( (char*) lParam );
 	if( object != NULL ) {

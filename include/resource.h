@@ -6,8 +6,8 @@
 #include "pvi_interface.h"
 #include <commctrl.h>
 
-#define VER_PRODUCTVERSION          1,4,1,0
-#define VER_PRODUCTVERSION_STR      "1.4.1"
+#define VER_PRODUCTVERSION          2,0,0,0
+#define VER_PRODUCTVERSION_STR      "2.0.0"
 
 // Used by main.rc
 //
@@ -50,6 +50,8 @@
 #define IDR_STATIC_TASK_STATUS          1041
 #define IDR_EDIT_NUMBER_OF_CYCLES       1042
 #define IDR_STATIC_SNMP_MODE            1043
+#define IDC_STATIC_GIT_HASH             1044
+#define IDC_STATIC_GIT_TAG              1045
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001

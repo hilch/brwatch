@@ -11,7 +11,7 @@
 #include "dlg_editcpu.h"
 #include "stringtools.h"
 
-static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static PVIOBJECT *object;
 
 	switch (uMsg) {
@@ -20,18 +20,18 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				char tempstring[512];
 				object = (PVIOBJECT *) lParam;
 				sprintf( tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor );
-				SetDlgItemText( hDlg, IDC_STATIC_CPU, tempstring );
+				SetDlgItemTextA( hDlg, IDC_STATIC_CPU, tempstring );
 				if( strlen(object->ex.cpu.ethernetCpuInfo.macAddress) == 0 )
 					strcpy( tempstring, "00-00-00-00-00-00-00");
 				else
 					strcpy( tempstring, object->ex.cpu.ethernetCpuInfo.macAddress );
-				SetDlgItemText( hDlg, IDR_MAC_ADDRESS, tempstring );
+				SetDlgItemTextA( hDlg, IDR_MAC_ADDRESS, tempstring );
 				
 				if( strlen(object->ex.cpu.ethernetCpuInfo.arState) == 0)
 					strcpy( tempstring, object->ex.cpu.status);
 				else
 					strcpy( tempstring, object->ex.cpu.ethernetCpuInfo.arState );
-				SetDlgItemText( hDlg, IDR_STATIC_CPU_STATUS, tempstring );
+				SetDlgItemTextA( hDlg, IDR_STATIC_CPU_STATUS, tempstring );
 				
 				if( object->ex.cpu.ethernetCpuInfo.SNMP_mode == 0)
 					strcpy( tempstring, "deactivated");
@@ -39,16 +39,16 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 					strcpy( tempstring, "read only");					
 				else if( object->ex.cpu.ethernetCpuInfo.SNMP_mode == 2)
 					strcpy( tempstring, "activated");									
-				SetDlgItemText( hDlg, IDR_STATIC_SNMP_MODE, tempstring );				
+				SetDlgItemTextA( hDlg, IDR_STATIC_SNMP_MODE, tempstring );				
 				
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.ipAddress );
-				SetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, tempstring );
+				SetDlgItemTextA( hDlg, IDR_EDIT_IPADDRESS, tempstring );
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.subnetMask );
-				SetDlgItemText( hDlg, IDR_EDIT_SUBNETMASK, tempstring );
+				SetDlgItemTextA( hDlg, IDR_EDIT_SUBNETMASK, tempstring );
 				sprintf( tempstring, "%s", object->ex.cpu.ethernetCpuInfo.gateway );
-				SetDlgItemText( hDlg, IDR_EDIT_GATEWAY, tempstring );				
+				SetDlgItemTextA( hDlg, IDR_EDIT_GATEWAY, tempstring );				
 				sprintf( tempstring, "INA-node:%u  INA-port:%u", object->ex.cpu.ethernetCpuInfo.INA_nodeNumber, object->ex.cpu.ethernetCpuInfo.INA_portNumber );
-				SetDlgItemText( hDlg, IDR_INA_SETTINGS, tempstring );
+				SetDlgItemTextA( hDlg, IDR_INA_SETTINGS, tempstring );
 
 				SendMessage( GetDlgItem( hDlg, IDR_CHECK_DHCP_CLIENT ), BM_SETCHECK, object->ex.cpu.ethernetCpuInfo.ipMethod ? BST_CHECKED : BST_UNCHECKED, 0 );
 				SendMessage( GetDlgItem( hDlg, IDR_INA_ACTIVATED ), BM_SETCHECK, object->ex.cpu.ethernetCpuInfo.INA_activated ? BST_CHECKED : BST_UNCHECKED, 0 );
@@ -88,9 +88,9 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 					if(  object != NULL ) {
 						struct stEthernetCpuInfo cpuInfo;
 						int result;
-						GetDlgItemText( hDlg, IDR_EDIT_IPADDRESS, cpuInfo.ipAddress, sizeof(cpuInfo.ipAddress) );
-						GetDlgItemText( hDlg, IDR_EDIT_SUBNETMASK, cpuInfo.subnetMask, sizeof(cpuInfo.subnetMask) );
-						GetDlgItemText( hDlg, IDR_EDIT_GATEWAY, cpuInfo.gateway, sizeof(cpuInfo.gateway) );						
+						GetDlgItemTextA( hDlg, IDR_EDIT_IPADDRESS, cpuInfo.ipAddress, sizeof(cpuInfo.ipAddress) );
+						GetDlgItemTextA( hDlg, IDR_EDIT_SUBNETMASK, cpuInfo.subnetMask, sizeof(cpuInfo.subnetMask) );
+						GetDlgItemTextA( hDlg, IDR_EDIT_GATEWAY, cpuInfo.gateway, sizeof(cpuInfo.gateway) );						
 						cpuInfo.ipMethod = Button_GetCheck(GetDlgItem(hDlg, IDR_CHECK_DHCP_CLIENT ));
 						strcpy( cpuInfo.macAddress, object->ex.cpu.ethernetCpuInfo.macAddress );
 						if( validate_ip4(cpuInfo.ipAddress) && validate_ip4(cpuInfo.subnetMask)) {
@@ -182,7 +182,7 @@ static LRESULT CALLBACK  DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 void DlgEditCpuShowDialog( PVIOBJECT *object ) {
 	if( object->type == POBJ_CPU ) {
 		DialogBoxParam( g_hInstance, MAKEINTRESOURCE(DLG_EDIT_CPU), g_hwndMainWindow,
-		                (DLGPROC) DlgProc, (LPARAM) object );
+		                DlgProc, (LPARAM) object );
 	}
 }
 
@@ -192,7 +192,7 @@ void DlgEditCpuShowDialog( PVIOBJECT *object ) {
     PVI Callback for SNMP line
     ----------------------------------------------------------------------------------------
 */
-static void WINAPI PviSnmpProc (WPARAM wParam, LPARAM lParam, LPVOID pData, DWORD DataLen, T_RESPONSE_INFO* pInfo) {
+static void WINAPI PviSnmpProc (WPARAM /* wParam */, LPARAM /*lParam*/, LPVOID /* pData */, DWORD /* DataLen */, T_RESPONSE_INFO* /* pInfo */) {
 
 }
 

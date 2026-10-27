@@ -2,7 +2,7 @@
 #ifndef __LOGGER_H
 #define __LOGGER_H
 
-BOOL CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL Logger( void );
 BOOL IsLoggerRunning( void );
 void LoggerDataChanged( PVIOBJECT *object );

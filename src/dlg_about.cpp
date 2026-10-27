@@ -6,13 +6,14 @@
 #include "main.h"
 #include "resource.h"
 #include "pvicom.h"
+#include "git_info.h"
 
 
-LRESULT WINAPI AboutDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK AboutDlgProc(HWND, UINT, WPARAM, LPARAM);
 
 
 
-LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */) {
 
 	switch (uMsg) {
 		case WM_INITDIALOG:
@@ -27,10 +28,12 @@ LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 #define VERSION ""
 #endif
 
-			SetDlgItemText( hDlg, IDC_STATIC_VERSION, "BRWATCH " VER_PRODUCTVERSION_STR " (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
+			SetDlgItemTextA( hDlg, IDC_STATIC_VERSION, "BRWATCH " VER_PRODUCTVERSION_STR " (BUILD " __DATE__ "  " __TIME__ "  " VERSION ")" );
+			SetDlgItemTextA( hDlg, IDC_STATIC_GIT_HASH, "Git hash: " BRWATCH_GIT_HASH );
+			SetDlgItemTextA( hDlg, IDC_STATIC_GIT_TAG, "Git tag: " BRWATCH_GIT_TAG );
 
 			// PviGetVersion( versiontext, sizeof(versiontext) );
-			SetDlgItemText( hDlg, IDC_STATIC_PVIVERSION, g_PVIVersionString );
+			SetDlgItemTextA( hDlg, IDC_STATIC_PVIVERSION, g_PVIVersionString );
 			return TRUE;
 
 		case WM_COMMAND:

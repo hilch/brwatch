@@ -10,7 +10,7 @@
 #define MAX_MYLISTVIEW_COLS		10
 
 typedef struct {
-	char 					*name;
+	const char 				*name;
 	int						width;
 } MYLISTVIEWCOLUMN;
 

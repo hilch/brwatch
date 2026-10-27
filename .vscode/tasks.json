@@ -4,14 +4,14 @@
         {
             "label": "brwatch: Build Release",
             "type": "shell",
-            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
                 "all"
             ],
             "options": {
                 "env": {
-                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                    "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
                 }
             },
             "group": {
@@ -29,16 +29,17 @@
         {
             "label": "brwatch: Build Debug",
             "type": "shell",
-            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
-                "CFLAGS=-m32 -Wall -Wextra -Iinclude -g -O0",
-                "LDFLAGS=-m32 -mwindows -static-libgcc -g",
+                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0",
+                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0",
+                "LDFLAGS=-m64 -mwindows -static-libgcc -static-libstdc++ -g",
                 "all"
             ],
             "options": {
                 "env": {
-                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                    "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
                 }
             },
             "group": "build",
@@ -53,17 +54,18 @@
         {
             "label": "brwatch: Clean and Build Debug",
             "type": "shell",
-            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
                 "clean",
-                "CFLAGS=-m32 -Wall -Wextra -Iinclude -g -O0",
-                "LDFLAGS=-m32 -mwindows -static-libgcc -g",
+                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0",
+                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0",
+                "LDFLAGS=-m64 -mwindows -static-libgcc -static-libstdc++ -g",
                 "all"
             ],
             "options": {
                 "env": {
-                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                    "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
                 }
             },
             "group": "build",
@@ -79,14 +81,14 @@
         {
             "label": "brwatch: Clean",
             "type": "shell",
-            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
                 "clean"
             ],
             "options": {
                 "env": {
-                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                    "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
                 }
             },
             "group": "build",
@@ -98,7 +100,7 @@
         {
             "label": "brwatch: Clean and Build Release",
             "type": "shell",
-            "command": "C:\\msys64\\mingw32\\bin\\mingw32-make.exe",
+            "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
                 "clean",
@@ -106,7 +108,7 @@
             ],
             "options": {
                 "env": {
-                    "Path": "C:\\msys64\\mingw32\\bin;${env:Path}"
+                    "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
                 }
             },
             "group": "build",

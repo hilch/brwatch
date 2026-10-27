@@ -17,7 +17,7 @@ void SettingsInitialize(void) {
 	FILE *file;
 	HRSRC hrsrc;
 	HGLOBAL hglobal;
-	char * p;
+	LPVOID p;
 	DWORD length;
 	BOOL inifile_exist=FALSE;
 	char errorMessage[256];
@@ -27,7 +27,7 @@ void SettingsInitialize(void) {
 
 	file = fopen( inifile, "r" );
 	if( file == NULL ) {
-		if( (hrsrc = FindResource( NULL, MAKEINTRESOURCE(IDR_DEFAULT_INI1), "DEFAULT_INI" )) != NULL ) {
+		if( (hrsrc = FindResourceA( NULL, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI" )) != NULL ) {
 			if( (hglobal = LoadResource( NULL, hrsrc )) != NULL ) {
 				length = SizeofResource( NULL, hrsrc );
 				if( (p=LockResource(hglobal)) != NULL ) {
@@ -36,7 +36,7 @@ void SettingsInitialize(void) {
 							char tempstring[256];
 							inifile_exist = TRUE;
 							snprintf( tempstring, sizeof(tempstring), "The settings were not found.\n%s\nwas created !", inifile );
-							MessageBox( MainWindowGetHandle(), tempstring, "Create *.ini file", MB_OK );
+							MessageBoxA( MainWindowGetHandle(), tempstring, "Create *.ini file", MB_OK );
 						} else {
 							perror(errorMessage);
 						}
@@ -56,7 +56,7 @@ void SettingsInitialize(void) {
 	if( inifile_exist == FALSE ) {
 		char tempstring[256];
 		snprintf( tempstring, sizeof(tempstring), "Error creating *.ini file !\n%s", errorMessage );
-		MessageBox( MainWindowGetHandle(), tempstring, "Error!", MB_OK | MB_ICONERROR );
+		MessageBoxA( MainWindowGetHandle(), tempstring, "Error!", MB_OK | MB_ICONERROR );
 	}
 
 }
@@ -64,7 +64,7 @@ void SettingsInitialize(void) {
 
 
 
-BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (uMsg) {
 		case WM_INITDIALOG: {
 			FILE *file;
@@ -74,9 +74,9 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 
 
-			buf = malloc(32768);
+			buf = static_cast<char*>(malloc(32768));
 			if( buf == NULL ) {
-				MessageBox( MainWindowGetHandle(), "To less memory !", "Error", MB_OK | MB_ICONERROR );
+				MessageBoxA( MainWindowGetHandle(), "To less memory !", "Error", MB_OK | MB_ICONERROR );
 				return FALSE;
 			}
 
@@ -85,25 +85,25 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			if( file != NULL ) {
 				if( (bytes_read = fread( buf, 1, 32768, file )) ) {
 					buf[bytes_read] = 0;
-					SetDlgItemText( hDlg, IDC_EDIT1, buf );
+					SetDlgItemTextA( hDlg, IDC_EDIT1, buf );
 					free(buf);
 					fclose(file);
 				} else if( ferror(file) ) {
 					sprintf( buf, "Error reading %s !", SettingsGetFileName() );
-					MessageBox( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
+					MessageBoxA( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
 					free(buf);
 					fclose(file);
 					return FALSE;
 				}
 			} else {
 				sprintf( buf, "Could not open %s !", SettingsGetFileName() );
-				MessageBox( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
+				MessageBoxA( MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR );
 				free(buf);
 				fclose(file);
 				return FALSE;
 			}
 
-			hfont = GetStockObject( SYSTEM_FIXED_FONT );
+			hfont = static_cast<HFONT>(GetStockObject( SYSTEM_FIXED_FONT ));
 			SendDlgItemMessage( hDlg, IDC_EDIT1, WM_SETFONT, (WPARAM) hfont, TRUE );
 
 		}
@@ -119,10 +119,10 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 					file = fopen( SettingsGetFileName(), "wb+" );
 					if( file != NULL ) {
-						length = GetWindowTextLength( GetDlgItem(hDlg, IDC_EDIT1) );
-						buf = malloc(length+1);
+						length = GetWindowTextLengthA( GetDlgItem(hDlg, IDC_EDIT1) );
+						buf = static_cast<char*>(malloc(length+1));
 						if( buf != NULL ) {
-							GetDlgItemText( hDlg, IDC_EDIT1, buf, length+1 );
+							GetDlgItemTextA( hDlg, IDC_EDIT1, buf, length+1 );
 							buf[length] = 0;
 							fwrite( buf, 1, length, file );
 							fclose(file);
@@ -131,9 +131,9 @@ BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 							return TRUE;
 						}
 					}
-					MessageBox( MainWindowGetHandle(), "Could not save the settings", "Error", MB_OK | MB_ICONERROR );
+					MessageBoxA( MainWindowGetHandle(), "Could not save the settings", "Error", MB_OK | MB_ICONERROR );
 				}
-				// weiter wie bei IDCANCEL...
+				// Fall through.
 
 				case IDCANCEL:
 					/*

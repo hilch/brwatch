@@ -7,6 +7,27 @@
 #include <windows.h>
 #include <time.h>
 
+#ifdef __cplusplus
+template <typename Callback>
+inline INT PviCreate(LPDWORD linkId, LPCSTR objectName, DWORD objectType, LPCSTR objectDescription,
+					Callback callback, DWORD eventMessage, LPARAM eventParameter, LPCSTR linkDescription) {
+	return ::PviCreate(linkId, objectName, objectType, objectDescription,
+					reinterpret_cast<LPVOID>(callback), eventMessage, eventParameter, linkDescription);
+}
+
+template <typename Callback>
+inline INT PviReadRequest(DWORD linkId, DWORD accessType, Callback callback, DWORD responseMessage,
+						  LPARAM responseParameter) {
+	return ::PviReadRequest(linkId, accessType, reinterpret_cast<LPVOID>(callback), responseMessage,
+							responseParameter);
+}
+
+template <typename Callback>
+inline INT PviSetGlobEventMsg(DWORD eventType, Callback callback, DWORD eventMessage, LPARAM eventParameter) {
+	return ::PviSetGlobEventMsg(eventType, reinterpret_cast<LPVOID>(callback), eventMessage, eventParameter);
+}
+#endif
+
 /* Variablentypen */
 typedef enum PVIPVARTYPE {
 	BR_BOOL = 1,
@@ -37,7 +58,7 @@ typedef struct PVISTRUCTNAMES {
 /* erweiterte Info Prozessvariable */
 typedef struct PVIPVAROBJECT{
 	PVIPVARTYPE					type;				// Variablentyp
-	char						*pdatatype;			// Zeiger auf Datentypnamen
+	const char				*pdatatype;			// Zeiger auf Datentypnamen
 	int							dimension;			// dimension (bei Arrays)
 	DWORD						length;				// Variablenlänge
 	void						*pvalue;			// Zeiger auf Watchdaten

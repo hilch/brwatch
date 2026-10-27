@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN  /* speed up compilations */
 #include <windows.h>
+#include <vector>
 #include "mylistview.h"
 #include "main.h"
 #include "stringtools.h"
@@ -8,12 +9,19 @@
 #include "dlg_editcpu.h"
 #include "dlg_edittask.h"
 
+static void SetListViewItemTextA(HWND window, int index, int subItem, char *text) {
+	LVITEMA item = {};
+	item.iSubItem = subItem;
+	item.pszText = text;
+	SendMessageA(window, LVM_SETITEMTEXTA, index, reinterpret_cast<LPARAM>(&item));
+}
+
 HWND MyListViewCreateWindow( MYLISTVIEWPARAM * param ) {
 	HFONT hfont;
-	LV_COLUMN lvcolumn;
+	LVCOLUMNA lvcolumn;
 	int i;
 
-	param->hwndLV = CreateWindowExW(WS_EX_CLIENTEDGE, L""WC_LISTVIEW, NULL, WS_CHILD | WS_VISIBLE
+	param->hwndLV = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, NULL, WS_CHILD | WS_VISIBLE
 	                               | WS_TABSTOP | LVS_REPORT,
 	                               0, 0, 0, 0, param->hwndParent, 0, param->hinstance, NULL);
 	//ListView_SetUnicodeFormat(param->hwndLV, TRUE );
@@ -30,8 +38,10 @@ HWND MyListViewCreateWindow( MYLISTVIEWPARAM * param ) {
 		lvcolumn.cx = param->column[i].width;
 		lvcolumn.cchTextMax = (int) strlen(param->column[i].name);
 		lvcolumn.iSubItem = i;
-		lvcolumn.pszText = param->column[i].name;
-		ListView_InsertColumn(param->hwndLV, i, &lvcolumn);
+		std::vector<char> columnName(param->column[i].name,
+			param->column[i].name + strlen(param->column[i].name) + 1);
+		lvcolumn.pszText = columnName.data();
+		SendMessageA(param->hwndLV, LVM_INSERTCOLUMNA, i, reinterpret_cast<LPARAM>(&lvcolumn));
 	}
 
 
@@ -43,14 +53,14 @@ HWND MyListViewCreateWindow( MYLISTVIEWPARAM * param ) {
 	                                     | LVS_EX_TRACKSELECT				// Element auswählen, wenn Cursor längere Zeit darüber ist
 	                                   );
 
-	hfont = GetStockObject( DEFAULT_GUI_FONT );
+	hfont = static_cast<HFONT>(GetStockObject( DEFAULT_GUI_FONT ));
 	SendMessage( param->hwndLV, WM_SETFONT, (WPARAM) hfont, TRUE );
 
 	return param->hwndLV;
 }
 
 
-LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM * lv, UINT wMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM * lv, UINT wMsg, WPARAM /*wParam*/, LPARAM lParam) {
 	LPNMLISTVIEW pnmlv;
 	LPNMLVKEYDOWN pnkd;
 
@@ -122,7 +132,7 @@ LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM * lv, UINT wMsg, WPARA
 /* insert object to list view */
 
 void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
-	LVITEM lvitem;
+	LVITEMA lvitem;
 	char *text;
 	BOOL found = FALSE;
 	int i;
@@ -174,7 +184,7 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 				lvitem.iItem = object->watchsort;
 
 				/* name */
-				ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
+				SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
 
 
@@ -187,33 +197,33 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 					sprintf( tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype );
 				}
 				text = tempstring;
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, text ); // data type
+				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, text ); // data type
 				memset(&lvitem, 0, sizeof(lvitem));
 				lvitem.mask = LVIF_IMAGE;
 				lvitem.iImage = ResourcesGetPviObjectImage(object);
 				lvitem.iSubItem = 1;
 				lvitem.iItem = object->watchsort;
-				ListView_SetItem( mylistviewparam.hwndLV, &lvitem ); // set icon
+				SendMessageA(mylistviewparam.hwndLV, LVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&lvitem)); // set icon
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
 
 				/* value range */
 				switch( object->ex.pv.scope[0] ) {
 					case 'g':
-						text = "<GLOBAL>";
+						strcpy(text, "<GLOBAL>");
 						break;
 					case 'l':
-						text = "<LOCAL >";
+						strcpy(text, "<LOCAL >");
 						break;
 					case 'd':
-						text = "<DYNAM.>";
+						strcpy(text, "<DYNAM.>");
 						break;
 				}
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, text ); // Scope
+				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 2, text ); // Scope
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE );
 
 				/* value */
-				text = " ";
-				ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, text );	// value
+				strcpy(text, " ");
+				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 3, text );	// value
 				//
 				ListView_EnsureVisible( mylistviewparam.hwndLV, lvitem.iItem, TRUE );
 				ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
@@ -232,11 +242,12 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 			lvitem.iItem = object->watchsort;
 
 			/* name */
-			ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
+			SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE_USEHEADER );
 
 			/* type */
-			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "CPU " );
+			strcpy(tempstring, "CPU ");
+			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, tempstring );
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE_USEHEADER );
 
 			/* scope */
@@ -257,7 +268,7 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 					sprintf( tempstring, "Err:%i", object->error );
 					break;
 			}
-			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// value
+			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring );	// value
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE );
 
 			/* insert a task */
@@ -274,11 +285,12 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 			lvitem.iItem = object->watchsort;
 
 			/* name */
-			ListView_InsertItem(mylistviewparam.hwndLV, &lvitem);
+			SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE );
 
 			/* type */
-			ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 1, "TASK" );
+			strcpy(tempstring, "TASK");
+			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, tempstring );
 			ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE );
 
 			/* scope */
@@ -314,10 +326,10 @@ void MyListViewInsertPVIObjects( PVIOBJECT *object ) {
 void MyListViewUpdateValue( PVIOBJECT *object ) {
 	LVFINDINFO lvfindinfo;
 	int index;
-	char *format_decimal=NULL;
-	char *format_hex=NULL;
-	char *format_binary=NULL;
-	char *format_char=NULL;
+	const char *format_decimal=NULL;
+	const char *format_hex=NULL;
+	const char *format_binary=NULL;
+	const char *format_char=NULL;
 	char *text_binary=NULL;
 	long long intval=0;
 	int hours, minutes, seconds, milliseconds;
@@ -456,7 +468,7 @@ void MyListViewUpdateValue( PVIOBJECT *object ) {
 							*d = 0;
 							if( object->gui_info.interpret_as_oem ) {
 								strcpy(tempstring, value);
-								OemToChar( tempstring, value );
+								OemToCharA( tempstring, value );
 							}
 						}
 						break;
@@ -466,7 +478,7 @@ void MyListViewUpdateValue( PVIOBJECT *object ) {
 						if( object->ex.pv.pvalue != NULL ) {
 							LV_ITEMW item; 
 							item.iSubItem = 3; 
-							item.pszText = object->ex.pv.pvalue; 
+							item.pszText = static_cast<LPWSTR>(object->ex.pv.pvalue); 
 							SendMessageW( mylistviewparam.hwndLV, LVM_SETITEMTEXTW, index, (LPARAM)(LV_ITEMW *)&item);	
 						}
 						return;
@@ -576,7 +588,7 @@ void MyListViewUpdateValue( PVIOBJECT *object ) {
 				break;
 		}
 
-		ListView_SetItemText( mylistviewparam.hwndLV, index, 3, value );
+		SetListViewItemTextA( mylistviewparam.hwndLV, index, 3, value );
 
 	}
 
@@ -637,7 +649,7 @@ void MyListViewDblClick( LPNMLISTVIEW lpnm ) {
 	BOOL write_allowed;
 
 	// Ini- Datei lesen
-	write_allowed = GetPrivateProfileInt( "General", "WriteAllowed", 0, SettingsGetFileName() );
+	write_allowed = GetPrivateProfileIntA( "General", "WriteAllowed", 0, SettingsGetFileName() );
 
 	if( !write_allowed )
 		return;
@@ -663,7 +675,7 @@ void MyListViewRClick( LPNMLISTVIEW lpnm ) {
 	//RECT offset;
 	LVITEM lvitem;
 	UINT enabled;
-	char *entry;
+	const char *entry;
 	POINT pt;
 
 
@@ -691,34 +703,35 @@ void MyListViewRClick( LPNMLISTVIEW lpnm ) {
 				case BR_USINT:
 				case BR_SINT:
 					enabled = g_selectedPVIObject->gui_info.display_as_char ? MF_CHECKED : MF_UNCHECKED;
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_CHAR, "char" );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_CHAR, "char" );
+					break;
 				case BR_UINT:
 				case BR_INT:
 				case BR_UDINT:
 				case BR_DINT:
 				case BR_TIME:
 					enabled = g_selectedPVIObject->gui_info.display_as_decimal ? MF_CHECKED : MF_UNCHECKED;
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_DECIMAL, "dec" );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_DECIMAL, "dec" );
 					enabled = g_selectedPVIObject->gui_info.display_as_hex ? MF_CHECKED : MF_UNCHECKED;
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_HEX, "hex" );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_HEX, "hex" );
 					enabled = g_selectedPVIObject->gui_info.display_as_binary ? MF_CHECKED : MF_UNCHECKED;
-					AppendMenu( hmenu,  MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_BINARY, "bin" );
+					AppendMenuA( hmenu,  MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_BINARY, "bin" );
 					break;
 
 				case BR_REAL:
 				case BR_LREAL:
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING, 0, "no option" );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING, 0, "no option" );
 					break;
 
 				case BR_STRING:
 					entry = g_selectedPVIObject->gui_info.interpret_as_oem ? "interpret as ANSI" : "interpret as OEM";
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_OEMCHAR, entry );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_OEMCHAR, entry );
 					break;
 
 
 				case BR_DATI:
 					entry = g_selectedPVIObject->gui_info.display_as_decimal ? "hide decimal value" : "show decimal value";
-					AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_DECIMAL, entry );
+					AppendMenuA( hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_DECIMAL, entry );
 					break;
 
 				default:
@@ -732,7 +745,7 @@ void MyListViewRClick( LPNMLISTVIEW lpnm ) {
 
 	}
 
-	AppendMenu( hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "remove this object" );
+	AppendMenuA( hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "remove this object" );
 	//TrackPopupMenu( hmenu, TPM_VERTICAL, offset.left + lpnm->ptAction.x , offset.top + lpnm->ptAction.y, 0, hMainWindow, NULL );
 	TrackPopupMenu( hmenu, TPM_VERTICAL, pt.x, pt.y, 0, g_hwndMainWindow, NULL );
 

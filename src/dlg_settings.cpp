@@ -7,7 +7,7 @@
 
 
 
-LRESULT CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */) {
 	switch (uMsg) {
 		case WM_INITDIALOG:
 			/*
@@ -19,11 +19,11 @@ LRESULT CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		case WM_COMMAND:
 			switch (wParam) {
 				case IDR_BUTTON_DEVICE1:
-					MessageBox( hDlg, "SERIAL", "Click", MB_OK );
+					MessageBoxA( hDlg, "SERIAL", "Click", MB_OK );
 					return TRUE;
 
 				case IDR_BUTTON_DEVICE2:
-					MessageBox( hDlg, "SERIAL", "Click", MB_OK );
+					MessageBoxA( hDlg, "SERIAL", "Click", MB_OK );
 					return TRUE;
 
 				case IDOK:

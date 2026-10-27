@@ -1,5 +1,5 @@
 
 char *SettingsGetFileName( void );
 void SettingsInitialize(void);
-BOOL CALLBACK  SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-LRESULT WINAPI SettingsDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK SettingsDlgProc(HWND, UINT, WPARAM, LPARAM);

@@ -31,7 +31,7 @@ int CountToken( char *s, char token ) {
 	return count;
 }
 
-int FindToken( char **source, char* token ) {
+int FindToken( char **source, const char* token ) {
 	size_t length;
 	char *s;
 
@@ -55,11 +55,9 @@ int FindToken( char **source, char* token ) {
 
 int GetIntValue( char **source ) {
 	char tempstring[256];
-	int i;
+	unsigned int i = 0;
 
-
-	i = 0;
-	while( **source && **source != ' ' && **source != '\t' && i <sizeof(tempstring) ) {
+	while( **source && **source != ' ' && **source != '\t' && i < sizeof(tempstring) ) {
 		tempstring[i++] = * (*source)++;
 	}
 	tempstring[i] = 0;

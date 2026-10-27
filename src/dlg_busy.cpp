@@ -3,7 +3,7 @@
 
 
 
-BOOL CALLBACK  BusyDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK BusyDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */) {
 	switch (uMsg) {
 		case WM_INITDIALOG:
 			/*
