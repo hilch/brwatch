@@ -63,6 +63,12 @@ Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 pacman -S --needed mingw-w64-i686-gcc mingw-w64-i686-binutils mingw-w64-i686-make mingw-w64-i686-winpthreads
 ```
 
+For VS Code debugging, install GDB as well:
+
+```bash
+pacman -S --needed mingw-w64-i686-gdb
+```
+
 #### Build Instructions
 
 **Using PowerShell Script:**
