@@ -15,113 +15,127 @@ struct stAdapterInfo
 };
 
 int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
-int SearchCpuViaUDP(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
+int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
 int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries);
 
 /* -----------------------------------------------------------------------------------------
-	start searching CPUs via UDP datagrams
+	start searching CPUs via TCP port 11169
 	----------------------------------------------------------------------------------------
 */
-int SearchCpuViaUDP(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
+int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 {
 	WSADATA wsa;
-	SOCKET s;
-	SOCKADDR_IN addr;
-	SOCKADDR_IN remoteAddr;
-	fd_set socket_set;
-
-	int result;
-	unsigned char requestDatagram[10];
-	char receivedDatagram[256];
-
-	struct timeval timeout;
-	int size;
 	int entries = 0;
 
-	// start winsock
-	result = WSAStartup(MAKEWORD(2, 0), &wsa);
+	if (adapter == NULL || ethernetCpuInfo == NULL || maxEntries <= 0)
+		return 0;
 
-	if (result == 0)
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+		return -1;
+
+	unsigned long localIp = ntohl(inet_addr(adapter->ipAddress));
+	unsigned long subnetMask = ntohl(inet_addr(adapter->subnetMask));
+	unsigned long network = localIp & subnetMask;
+	unsigned long broadcast = network | ~subnetMask;
+	unsigned long scanNetwork = localIp & 0xFFFFFF00UL;
+
+	for (unsigned host = 1; host < 255 && entries < maxEntries;)
 	{
+		SOCKET sockets[32];
+		IN_ADDR addresses[32];
+		int pending = 0;
 
-		// UDP socket
-		s = socket(AF_INET, SOCK_DGRAM, 0);
-
-		if (s != INVALID_SOCKET)
+		while (host < 255 && pending < 32 && entries < maxEntries)
 		{
+			unsigned long targetIp = scanNetwork | host++;
+			if (targetIp == localIp || targetIp <= network || targetIp >= broadcast ||
+				(targetIp & subnetMask) != network)
+				continue;
 
-			requestDatagram[0] = 1;
-			/* calculate broadcast address */
-			unsigned long ipAddress, subnetMask, broadcast;
-			ipAddress = inet_addr(adapter->ipAddress);
-			subnetMask = inet_addr(adapter->subnetMask);
-			broadcast = (ipAddress & subnetMask) | ~subnetMask;
+			SOCKET connection = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			if (connection == INVALID_SOCKET)
+				continue;
 
-			// enable socket for UDP broadcast datagrams
-			setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)requestDatagram, 1);
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(11159);
-			addr.sin_addr.S_un.S_addr = broadcast;
-
-			for (unsigned char node = 1; (node < 255) && (entries < maxEntries); ++node)
+			u_long nonblocking = 1;
+			SOCKADDR_IN localAddress = {};
+			localAddress.sin_family = AF_INET;
+			localAddress.sin_addr.s_addr = htonl(localIp);
+			if (bind(connection, (SOCKADDR *)&localAddress, sizeof(localAddress)) == SOCKET_ERROR ||
+				ioctlsocket(connection, FIONBIO, &nonblocking) == SOCKET_ERROR)
 			{
-				memset(requestDatagram, 0, sizeof(requestDatagram));
-				requestDatagram[0] = 2;	   // INA- Request
-				requestDatagram[1] = 99;   // Source- node
-				requestDatagram[6] = node; // Dest- node
+				closesocket(connection);
+				continue;
+			}
 
-				result = sendto(s, (char *)requestDatagram, 8, 0, (SOCKADDR *)&addr, sizeof(SOCKADDR_IN));
-				if (result == SOCKET_ERROR)
-				{
-					result = WSAGetLastError();
-					printf("\nWSAGetLastError: %i", result);
-					break;
-				}
-
-				FD_ZERO(&socket_set);
-				FD_SET(s, &socket_set);
-				timeout.tv_sec = 0;
-				timeout.tv_usec = 500;
-
-				memset(receivedDatagram, 0, sizeof(receivedDatagram));
-				size = sizeof(SOCKADDR_IN);
-
-				select(0, &socket_set, NULL, NULL, &timeout);
-
-				if (FD_ISSET(s, &socket_set))
-				{
-					recvfrom(s, receivedDatagram, sizeof(receivedDatagram), 0, (SOCKADDR *)&remoteAddr, &size);
-					if (receivedDatagram[0] == 0x03)
-					{ // INA response buf[1] contains node number
-						if (strcmp(inet_ntoa(remoteAddr.sin_addr), adapter->ipAddress))
-						{ /* ignore adapter itself */
-							strcpy(ethernetCpuInfo->ipAddress, inet_ntoa(remoteAddr.sin_addr));
-							strcpy(ethernetCpuInfo->subnetMask, adapter->subnetMask);
-							++ethernetCpuInfo;
-							++entries;
-						}
-					}
-				}
+			SOCKADDR_IN targetAddress = {};
+			targetAddress.sin_family = AF_INET;
+			targetAddress.sin_port = htons(11169);
+			targetAddress.sin_addr.s_addr = htonl(targetIp);
+			int result = connect(connection, (SOCKADDR *)&targetAddress, sizeof(targetAddress));
+			if (result == 0)
+			{
+				memset(&ethernetCpuInfo[entries], 0, sizeof(ethernetCpuInfo[entries]));
+				strcpy(ethernetCpuInfo[entries].ipAddress, inet_ntoa(targetAddress.sin_addr));
+				strcpy(ethernetCpuInfo[entries].subnetMask, adapter->subnetMask);
+				++entries;
+				closesocket(connection);
+			}
+			else if (WSAGetLastError() == WSAEWOULDBLOCK)
+			{
+				sockets[pending] = connection;
+				addresses[pending++] = targetAddress.sin_addr;
+			}
+			else
+			{
+				closesocket(connection);
 			}
 		}
-		else
+
+		DWORD started = GetTickCount();
+		while (pending > 0 && entries < maxEntries)
 		{
-			return -2; // can not create socket
+			DWORD elapsed = GetTickCount() - started;
+			if (elapsed >= 300)
+				break;
+
+			fd_set writable, failed;
+			FD_ZERO(&writable);
+			FD_ZERO(&failed);
+			for (int index = 0; index < pending; ++index)
+			{
+				FD_SET(sockets[index], &writable);
+				FD_SET(sockets[index], &failed);
+			}
+			struct timeval timeout = {0, static_cast<long>((300 - elapsed) * 1000)};
+			if (select(0, NULL, &writable, &failed, &timeout) <= 0)
+				break;
+
+			for (int index = pending - 1; index >= 0 && entries < maxEntries; --index)
+			{
+				if (!FD_ISSET(sockets[index], &writable) && !FD_ISSET(sockets[index], &failed))
+					continue;
+				int error = 0;
+				int errorSize = sizeof(error);
+				if (getsockopt(sockets[index], SOL_SOCKET, SO_ERROR, (char *)&error, &errorSize) == 0 &&
+					error == 0 && FD_ISSET(sockets[index], &writable))
+				{
+					memset(&ethernetCpuInfo[entries], 0, sizeof(ethernetCpuInfo[entries]));
+					strcpy(ethernetCpuInfo[entries].ipAddress, inet_ntoa(addresses[index]));
+					strcpy(ethernetCpuInfo[entries].subnetMask, adapter->subnetMask);
+					++entries;
+				}
+				closesocket(sockets[index]);
+				--pending;
+				sockets[index] = sockets[pending];
+				addresses[index] = addresses[pending];
+			}
 		}
-	}
-	else
-	{
-		return -1; // can not start winsock
+		for (int index = 0; index < pending; ++index)
+			closesocket(sockets[index]);
 	}
 
-	//    do
-	//    {
-	//        Sleep(100);
-	//    }
-	//    while( !threadParameter.done );
-	closesocket(s);
 	WSACleanup();
-	return (entries);
+	return entries;
 }
 
 /* -----------------------------------------------------------------------------------------
@@ -321,27 +335,27 @@ int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries
 
 	int noOfEthernetAdapters = ListNetworkAdapters(adapters, 20);
 
-	/* as PVI 2.x and AR 2.x doesnt work with SNMP or SNMP could be disabled we serach also via UDP broadcast */
+	/* Also discover CPUs with SNMP disabled via TCP port 11169. */
 	unsigned long buflen = 256 * sizeof(struct stEthernetCpuInfo);
-	struct stEthernetCpuInfo *ethernetUdpCpuInfo = (struct stEthernetCpuInfo *)malloc(buflen);
-	if (ethernetUdpCpuInfo != NULL)
+	struct stEthernetCpuInfo *ethernetScanCpuInfo = (struct stEthernetCpuInfo *)malloc(buflen);
+	if (ethernetScanCpuInfo != NULL)
 	{
 		for (int i = 0; i < noOfEthernetAdapters; ++i)
 		{
 			// printf("%s  %s   %s\n", adapters[i].ipAddress, adapters[i].subnetMask, adapters[i].description );
-			memset(ethernetUdpCpuInfo, 0, buflen);
-			int result = SearchCpuViaUDP(&adapters[i], ethernetUdpCpuInfo, 256);
+			memset(ethernetScanCpuInfo, 0, buflen);
+			int result = SearchCpuViaPortScan(&adapters[i], ethernetScanCpuInfo, 256);
 			if (result > 0)
 			{
 				for (int i = 0; i < result; ++i)
 				{
 #ifdef __DEBUG__
-					printf("%s / %s \n", ethernetUdpCpuInfo[i].ipAddress, ethernetUdpCpuInfo[i].subnetMask);
+					printf("%s / %s \n", ethernetScanCpuInfo[i].ipAddress, ethernetScanCpuInfo[i].subnetMask);
 #endif // __DEBUG__
 					int found = 0;
 					for (int n = 0; n < noOfCPUs; ++n)
 					{ /* discard dublicates */
-						if (strcmp(ethernetUdpCpuInfo[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0)
+						if (strcmp(ethernetScanCpuInfo[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0)
 						{
 							found = 1;
 							break;
@@ -352,13 +366,13 @@ int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries
 #ifdef __DEBUG__
 						puts("SNMP disabled CPU found\n");
 #endif
-						memcpy(&ethernetCpuInfo[noOfCPUs], &ethernetUdpCpuInfo[i], sizeof(struct stEthernetCpuInfo));
+						memcpy(&ethernetCpuInfo[noOfCPUs], &ethernetScanCpuInfo[i], sizeof(struct stEthernetCpuInfo));
 						++noOfCPUs;
 					}
 				}
 			}
 		}
-		free(ethernetUdpCpuInfo);
+		free(ethernetScanCpuInfo);
 	}
 
 	return (noOfCPUs);

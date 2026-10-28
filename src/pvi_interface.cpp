@@ -123,13 +123,17 @@ static void ReadSettings(void)
 		// GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 
 		// create CPU object
-		char devicename[256];
-		CreateUniqueObjectName(devicename, deviceObject.descriptor);		
-		CreateUniqueObjectName(tempstring, cpuObject.descriptor);
-		snprintf(cpuObject.name, sizeof(cpuObject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
-		cpuObject.type = POBJ_CPU;
-		AddPviObject(&cpuObject, TRUE);
-		++numberOfCpus;
+
+		if (strlen(buffer) != 0)
+		{
+			char devicename[256];
+			CreateUniqueObjectName(devicename, deviceObject.descriptor);
+			CreateUniqueObjectName(tempstring, cpuObject.descriptor);
+			snprintf(cpuObject.name, sizeof(cpuObject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
+			cpuObject.type = POBJ_CPU;
+			AddPviObject(&cpuObject, TRUE);
+			++numberOfCpus;
+		}
 
 		// if (strlen(buffer) != 0)
 		// {
@@ -1226,44 +1230,44 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject)
 	while (*s)
 	{
 		// search for CPUs connected to a serial port
-		if (FindToken(&s, "/IF=COM"))
-		{
+		// if (FindToken(&s, "/IF=COM"))
+		// {
 
-			CreateUniqueObjectName(tempstring, cpuObject->descriptor);
-			snprintf(cpuObject->name, sizeof(cpuObject->name), "%s/CPU%s", deviceObject->name, tempstring);
+		// 	CreateUniqueObjectName(tempstring, cpuObject->descriptor);
+		// 	snprintf(cpuObject->name, sizeof(cpuObject->name), "%s/CPU%s", deviceObject->name, tempstring);
 
-			cpuObject->type = POBJ_CPU;
-			snprintf(descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject->descriptor);
+		// 	cpuObject->type = POBJ_CPU;
+		// 	snprintf(descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject->descriptor);
 
-			result = PviCreate(&cpuObject->linkid, cpuObject->name, cpuObject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=e");
-			if (result == 0)
-			{
-				result = PviRead(cpuObject->linkid, POBJ_ACC_VERSION, NULL, 0, pbuffer, 65535);
-				if (result == 0)
-				{
-					if (AddPviObject(cpuObject, 1) == NULL)
-					{
-						deviceObject = NULL; // Fehler
-					}
-					break;
-				}
-			}
-			switch (result)
-			{
-			case 4808:
-				MessageBoxA(NULL, "No CPU found !", "Error", MB_OK | MB_ICONEXCLAMATION);
-				break;
+		// 	result = PviCreate(&cpuObject->linkid, cpuObject->name, cpuObject->type, descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=e");
+		// 	if (result == 0)
+		// 	{
+		// 		result = PviRead(cpuObject->linkid, POBJ_ACC_VERSION, NULL, 0, pbuffer, 65535);
+		// 		if (result == 0)
+		// 		{
+		// 			if (AddPviObject(cpuObject, 1) == NULL)
+		// 			{
+		// 				deviceObject = NULL; // Fehler
+		// 			}
+		// 			break;
+		// 		}
+		// 	}
+		// 	switch (result)
+		// 	{
+		// 	case 4808:
+		// 		MessageBoxA(NULL, "No CPU found !", "Error", MB_OK | MB_ICONEXCLAMATION);
+		// 		break;
 
-			case 13076:
-				MessageBoxA(NULL, "Device does not exist !", "Error", MB_OK | MB_ICONEXCLAMATION);
-				break;
+		// 	case 13076:
+		// 		MessageBoxA(NULL, "Device does not exist !", "Error", MB_OK | MB_ICONEXCLAMATION);
+		// 		break;
 
-			default:
-				AddRowToLog("PviReadCPUList()", result);
-				break;
-			}
-			break;
-		}
+		// 	default:
+		// 		AddRowToLog("PviReadCPUList()", result);
+		// 		break;
+		// 	}
+		// 	break;
+		// }
 
 		// search for CPUs connected via ethernet
 		if (FindToken(&s, "/IF=TCPIP"))

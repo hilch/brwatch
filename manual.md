@@ -25,8 +25,9 @@ As default brwatch starts PVI with an INA Line. Set Ansl=1 in [General] if you p
 
 ## Scan for PLCs in network
 
-since V1.1 a click on the tcpip device starts the scanning via SNMP and UDP to find B&R PLCs.
-If SNMP ist not supported (old PVI version, old AR) there is UDP only.
+A click on the tcpip device starts SNMP discovery and a TCP port scan on port 11169.
+The TCP scan checks addresses .1 through .254 in each Ethernet adapter's local /24, restricted to its configured subnet, excluding the adapter itself and network/broadcast addresses. It uses up to 32 simultaneous connections with a 300 ms timeout per batch.
+Hosts accepting a connection are added with their IP address and subnet mask; an open port alone does not verify that the host is a B&R PLC. Additional CPU information comes from SNMP when available.
 CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead.
 
 ![NetworkScan](/doc/network_scan.gif)
