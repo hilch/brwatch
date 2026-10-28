@@ -16,10 +16,8 @@ Module   : pvi_interface.cpp
 #define PVILOGFILE "pvilog.txt"
 #define WATCH_FILE_VERSION "1.0"
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MAX_SUPPORTED_DEVICES 256
+#define MAX_SUPPORTED_DEVICES 1
 #define MAX_SUPPORTED_CPUS 256
-
-static int g_ansl = 0;
 
 /* Prototypen */
 static void WINAPI PviCallback(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO *);
@@ -60,24 +58,25 @@ static PVISTRUCTNAMES structnamesroot = {structnamesrootname, NULL};
 
 static void ReadSettings(void)
 {
-	PVIOBJECT tempobject, *pObject;
-	PVIOBJECT *deviceObject;
-	unsigned int numberOfDevices = 0;
+	PVIOBJECT cpuObject; /*, *pObject;*/
+	PVIOBJECT deviceObject;
+	// unsigned int numberOfDevices = 0;
 	unsigned int numberOfCpus = 0;
 	char section[20];
 	char key[20];
 	char buffer[80];
 
-	deviceObject = static_cast<PVIOBJECT *>(calloc(MAX_SUPPORTED_DEVICES, sizeof(PVIOBJECT)));
-	if (deviceObject == NULL)
-	{
-		char tempstring[256];
-		snprintf(tempstring, sizeof(tempstring), "Out of memory !");
-		MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-		return;
-	}
+	// deviceObject = static_cast<PVIOBJECT *>(calloc(MAX_SUPPORTED_DEVICES, sizeof(PVIOBJECT)));
+	// if (deviceObject == NULL)
+	// {
+	// 	char tempstring[256];
+	// 	snprintf(tempstring, sizeof(tempstring), "Out of memory !");
+	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
+	// 	return;
+	// }
 
-	memset(&tempobject, 0, sizeof(PVIOBJECT));
+	memset(&cpuObject, 0, sizeof(cpuObject));
+	memset(&deviceObject, 0, sizeof(deviceObject));
 
 	sprintf(section, "General");
 	sprintf(key, "PLCDataChangeEvents");
@@ -86,84 +85,74 @@ static void ReadSettings(void)
 	PLCDataChangeEvents = atoi(buffer);
 
 	// read devices from brwatch.ini
-	pObject = deviceObject;
-	numberOfDevices = 0;
-	for (unsigned dev = 1; dev <= MAX_SUPPORTED_DEVICES; ++dev)
-	{
-		sprintf(section, "DEVICE%u", dev);
-		strcpy(key, "broadcast");
-		GetPrivateProfileStringA(section, key, "255.255.255.255", buffer, sizeof(buffer), SettingsGetFileName());
-		tempobject.ex.dev.broadcast = inet_addr(buffer);
+	// pObject = deviceObject;
+	// numberOfDevices = 1;
 
-		strcpy(key, "name");
-		strcpy(buffer, "");
-		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+	// create DEVICE object
+	strcpy(deviceObject.descriptor, "/IF=tcpip");
+	CreateUniqueObjectName(tempstring, deviceObject.descriptor);
+	snprintf(deviceObject.name, sizeof(deviceObject.name), "@Pvi/LNBRWATCH/DEV%s", tempstring);
+	deviceObject.type = POBJ_DEVICE;
+	deviceObject.ex.dev.number = 1;
+	AddPviObject(&deviceObject, TRUE);
+	// store device's information for later use
+	// memcpy(pObject, &tempobject, sizeof(PVIOBJECT));
 
-		strcpy(key, "descriptor");
-		strcpy(buffer, "");
-		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
-		if (strlen(buffer) != 0)
-		{
-			// create DEVICE object
-			strcpy(tempobject.descriptor, buffer);
-			CreateUniqueObjectName(tempstring, tempobject.descriptor);
-			snprintf(tempobject.name, sizeof(tempobject.name), "@Pvi/LNBRWATCH/DEV%s", tempstring);
-			tempobject.type = POBJ_DEVICE;
-			tempobject.ex.dev.number = dev;
-			AddPviObject(&tempobject, TRUE);
-			// store device's information for later use
-			memcpy(pObject, &tempobject, sizeof(PVIOBJECT));
-			++pObject;
-			++numberOfDevices;
-		}
-	}
-
-	if (numberOfDevices == 0)
-	{
-		char tempstring[256];
-		snprintf(tempstring, sizeof(tempstring), "No PVI devices (interfaces) configured in .ini file !");
-		MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-		return;
-	}
+	// if (numberOfDevices == 0)
+	// {
+	// 	char tempstring[256];
+	// 	snprintf(tempstring, sizeof(tempstring), "No PVI devices (interfaces) configured in .ini file !");
+	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
+	// 	return;
+	// }
 
 	// read CPUs from brwatch.ini
 	numberOfCpus = 0;
 	for (unsigned cpu = 1; cpu <= MAX_SUPPORTED_CPUS; ++cpu)
 	{
 
-		memset(&tempobject, 0, sizeof(tempobject));
+		memset(&cpuObject, 0, sizeof(cpuObject));
 		sprintf(section, "CPU%u", cpu);
 		strcpy(key, "descriptor");
 		strcpy(buffer, "");
 		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
-		strcpy(tempobject.descriptor, buffer);
+		strcpy(cpuObject.descriptor, buffer);
 
-		strcpy(key, "device");
-		strcpy(buffer, "");
-		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		// strcpy(key, "device");
+		// strcpy(buffer, "");
+		// GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 
-		if (strlen(buffer) != 0)
-		{
-			unsigned int deviceNumber = (unsigned int)atoi(buffer);
-			/* get device's descriptor */
-			pObject = deviceObject;
-			for (unsigned dev = 0; dev < numberOfDevices; ++dev, ++pObject)
-			{
-				if (deviceNumber == pObject->ex.dev.number)
-				{
-					// get device's PVI path name
-					char devicename[256];
-					CreateUniqueObjectName(devicename, pObject->descriptor);
-					// create CPU object
-					CreateUniqueObjectName(tempstring, tempobject.descriptor);
-					snprintf(tempobject.name, sizeof(tempobject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
-					tempobject.type = POBJ_CPU;
-					AddPviObject(&tempobject, TRUE);
-					++numberOfCpus;
-					break;
-				}
-			}
-		}
+		// create CPU object
+		char devicename[256];
+		CreateUniqueObjectName(devicename, deviceObject.descriptor);		
+		CreateUniqueObjectName(tempstring, cpuObject.descriptor);
+		snprintf(cpuObject.name, sizeof(cpuObject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
+		cpuObject.type = POBJ_CPU;
+		AddPviObject(&cpuObject, TRUE);
+		++numberOfCpus;
+
+		// if (strlen(buffer) != 0)
+		// {
+		// 	unsigned int deviceNumber = (unsigned int)atoi(buffer);
+		// 	/* get device's descriptor */
+		// 	pObject = deviceObject;
+		// 	for (unsigned dev = 0; dev < numberOfDevices; ++dev, ++pObject)
+		// 	{
+		// 		if (deviceNumber == pObject->ex.dev.number)
+		// 		{
+		// 			// get device's PVI path name
+		// 			char devicename[256];
+		// 			CreateUniqueObjectName(devicename, pObject->descriptor);
+		// 			// create CPU object
+		// 			CreateUniqueObjectName(tempstring, tempobject.descriptor);
+		// 			snprintf(tempobject.name, sizeof(tempobject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
+		// 			tempobject.type = POBJ_CPU;
+		// 			AddPviObject(&tempobject, TRUE);
+		// 			++numberOfCpus;
+		// 			break;
+		// 		}
+		// 	}
+		// }
 	}
 
 	if (numberOfCpus == 0)
@@ -174,7 +163,7 @@ static void ReadSettings(void)
 		return;
 	}
 
-	free(deviceObject);
+	// free(deviceObject);
 }
 
 /* create unique name from descriptor */
@@ -563,28 +552,10 @@ static void WINAPI Pvi_GlobalEvent(WPARAM /*wParam*/, LPARAM /*lParam*/, LPVOID 
 		break;
 
 	case POBJ_EVENT_PVI_ARRANGE:
-	{
-		char section[20];
-		char key[20];
-		char buffer[80];
-		sprintf(section, "General");
-		sprintf(key, "Ansl");
-		strcpy(buffer, "");
-		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
-		g_ansl = atoi(buffer);
-	}
-
 		AddRowToLog("POBJ_EVENT_PVI_ARRANGE", 0);
 		ppo = &po;
 		strcpy(po.name, "@Pvi/LNBRWATCH");
-		if (g_ansl)
-		{
-			strcpy(po.descriptor, "LnAnsl");
-		}
-		else
-		{
-			strcpy(po.descriptor, "LnIna2");
-		}
+		strcpy(po.descriptor, "LnAnsl");
 		po.type = POBJ_LINE;
 		AddPviObject(ppo, 1);
 		ReadSettings();
