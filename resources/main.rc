@@ -238,6 +238,8 @@ BEGIN
         MENUITEM "&Save Watch File",            IDM_SAVE_WATCH_FILE
         MENUITEM "&Unzip Loggerfile",           IDM_LOGGER_UNZIPLOGGERFILE
         MENUITEM SEPARATOR
+        MENUITEM "&Settings",                   IDM_OPTIONS_SETTINGS
+        MENUITEM SEPARATOR
         MENUITEM "&Quit",                       IDM_QUIT
     END
     POPUP "&PVI-Objects"
@@ -262,7 +264,6 @@ BEGIN
             MENUITEM "Select &New Font",        IDM_VIEW_SELECT_FONT
             MENUITEM "Set &Default Font",       IDM_VIEW_SETDEFAULTFONT
         END
-        MENUITEM "&Settings",                   IDM_OPTIONS_SETTINGS
     END
     POPUP "&Help"
     BEGIN

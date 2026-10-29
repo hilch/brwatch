@@ -172,8 +172,23 @@ void SettingsInitialize(void)
 	BOOL inifile_exist = FALSE;
 	char errorMessage[256];
 
-	strcpy(inifile, GetApplicationPath());
-	strcat(inifile, "\\" INIFILE);
+	const char *appData = getenv("APPDATA");
+	BOOL useAppData = appData != NULL && appData[0] != 0;
+	std::string directory = useAppData ? appData : GetApplicationPath();
+	if (useAppData)
+		directory += "\\brwatch";
+	std::string filename = directory + "\\" INIFILE;
+	if (filename.size() >= sizeof(inifile))
+	{
+		MessageBoxA(MainWindowGetHandle(), "The settings file path is too long.", "Settings", MB_OK | MB_ICONERROR);
+		return;
+	}
+	strcpy(inifile, filename.c_str());
+	if (useAppData && !CreateDirectoryA(directory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		MessageBoxA(MainWindowGetHandle(), "Could not create the settings directory in APPDATA.", "Settings", MB_OK | MB_ICONERROR);
+		return;
+	}
 
 	file = fopen(inifile, "r");
 	if (file == NULL)
@@ -240,6 +255,8 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 	{
+		std::string title = std::string("Settings - ") + SettingsGetFileName();
+		SetWindowTextA(hDlg, title.c_str());
 		SendDlgItemMessageA(hDlg, IDC_EDIT1, EM_SETLIMITTEXT, 0, 0);
 		HFONT hfont = static_cast<HFONT>(GetStockObject(SYSTEM_FIXED_FONT));
 		SendDlgItemMessage(hDlg, IDC_EDIT1, WM_SETFONT, (WPARAM)hfont, TRUE);

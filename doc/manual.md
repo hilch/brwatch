@@ -11,7 +11,7 @@ Just copy brwatch.exe to this installation package to get a complete portable ve
 
 ## Settings
 
-After first start, BRWATCH creates a **BRWATCH.ini** file in the current folder if it does not exist.
+BRWATCH reads and saves its settings in **%APPDATA%\brwatch\brwatch.ini** when the `APPDATA` environment variable is set. Otherwise, it uses **brwatch.ini** in the current folder. On first start, the settings folder and file are created if needed.
 To edit these settings use an external editor or the built-in one in menu Options/Settings.
 Refer to the comments in this file and the PVI- documentation that comes with the installation package of **PVI development setup**.
 
