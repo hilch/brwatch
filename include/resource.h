@@ -53,6 +53,7 @@
 #define IDR_STATIC_SNMP_MODE            1043
 #define IDC_STATIC_GIT_HASH             1044
 #define IDC_STATIC_GIT_TAG              1045
+#define IDC_EDIT_CPU_TIMEOUT            1046
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001

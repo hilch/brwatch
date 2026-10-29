@@ -1191,7 +1191,7 @@ PVIOBJECT *ExpandPviObject(PVIOBJECT *object)
 	return NULL;
 }
 
-PVIOBJECT *AddPviCpuByIp(const char *ipAddress)
+PVIOBJECT *AddPviCpuByIp(const char *ipAddress, unsigned timeoutMs)
 {
 	PVIOBJECT *deviceObject = pvirootobject.next;
 	while (deviceObject != NULL && deviceObject->type != POBJ_DEVICE)
@@ -1204,7 +1204,7 @@ PVIOBJECT *AddPviCpuByIp(const char *ipAddress)
 
 	PVIOBJECT cpuObject = {};
 	strncpy(cpuObject.ex.cpu.ethernetCpuInfo.ipAddress, ipAddress, sizeof(cpuObject.ex.cpu.ethernetCpuInfo.ipAddress) - 1);
-	snprintf(cpuObject.descriptor, sizeof(cpuObject.descriptor), "/DAIP=%s", ipAddress);
+	snprintf(cpuObject.descriptor, sizeof(cpuObject.descriptor), "/IP=%s /COMT=%u", ipAddress, timeoutMs);
 	for (PVIOBJECT *existing = deviceObject->next; existing != NULL; existing = existing->next)
 	{
 		if (existing->type == POBJ_CPU && strcmp(existing->descriptor, cpuObject.descriptor) == 0)
@@ -1317,7 +1317,7 @@ static PVIOBJECT *PviReadCPUList(PVIOBJECT *deviceObject)
 				{
 					memset(cpuObject, 0, sizeof(PVIOBJECT));
 					memcpy(&cpuObject->ex.cpu.ethernetCpuInfo, (void *)ethernetCpuInfo, sizeof(struct stEthernetCpuInfo));
-					sprintf(cpuObject->descriptor, "/DAIP=%s", ethernetCpuInfo->ipAddress);
+					sprintf(cpuObject->descriptor, "/IP=%s", ethernetCpuInfo->ipAddress);
 					strcpy(cpuObject->ex.cpu.arversion, ethernetCpuInfo->arVersion);
 					strcpy(cpuObject->ex.cpu.cputype, ethernetCpuInfo->targetTypeDescription);
 					if (strlen(cpuObject->ex.cpu.ethernetCpuInfo.macAddress))

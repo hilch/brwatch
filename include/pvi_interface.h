@@ -148,7 +148,7 @@ extern PVIOBJECTNOTIFICATION pvi_interface_notify;
 int StartPvi( void );
 int StopPvi( void );
 
-PVIOBJECT *AddPviCpuByIp(const char *ipAddress);
+PVIOBJECT *AddPviCpuByIp(const char *ipAddress, unsigned timeoutMs);
 PVIOBJECT *GetNextPviObject(BOOL);
 PVIOBJECT *FindPviObjectByName( char *name );
 PVIOBJECT *FindPviChildObject(PVIOBJECT * object, BOOL first );

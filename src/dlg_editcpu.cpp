@@ -17,6 +17,8 @@ static INT_PTR CALLBACK AddCpuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
 	{
 		SetWindowLongPtr(hDlg, DWLP_USER, lParam);
 		SendDlgItemMessageA(hDlg, IDR_EDIT_IPADDRESS, EM_SETLIMITTEXT, 15, 0);
+		SendDlgItemMessageA(hDlg, IDC_EDIT_CPU_TIMEOUT, EM_SETLIMITTEXT, 6, 0);
+		SetDlgItemInt(hDlg, IDC_EDIT_CPU_TIMEOUT, 2500, FALSE);
 		return TRUE;
 	}
 	if (uMsg == WM_COMMAND)
@@ -38,7 +40,18 @@ static INT_PTR CALLBACK AddCpuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
 				return TRUE;
 			}
 			snprintf(ipAddress, sizeof(ipAddress), "%u.%u.%u.%u", octets[0], octets[1], octets[2], octets[3]);
-			PVIOBJECT *cpuObject = AddPviCpuByIp(ipAddress);
+			char timeoutText[32];
+			GetDlgItemTextA(hDlg, IDC_EDIT_CPU_TIMEOUT, timeoutText, sizeof(timeoutText));
+			BOOL validTimeout = FALSE;
+			UINT timeoutMs = GetDlgItemInt(hDlg, IDC_EDIT_CPU_TIMEOUT, &validTimeout, FALSE);
+			if (!validTimeout || strspn(timeoutText, "0123456789") != strlen(timeoutText) ||
+				timeoutMs < 500 || timeoutMs > 360000)
+			{
+				MessageBoxA(hDlg, "Enter a timeout from 500 to 360000 ms.", "Add Cpu", MB_OK | MB_ICONWARNING);
+				SetFocus(GetDlgItem(hDlg, IDC_EDIT_CPU_TIMEOUT));
+				return TRUE;
+			}
+			PVIOBJECT *cpuObject = AddPviCpuByIp(ipAddress, timeoutMs);
 			if (cpuObject != NULL)
 			{
 				PVIOBJECT **result = reinterpret_cast<PVIOBJECT **>(GetWindowLongPtr(hDlg, DWLP_USER));
