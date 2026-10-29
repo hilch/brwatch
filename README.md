@@ -35,7 +35,9 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 ## Usage
 
 1. [download EXE](https://github.com/hilch/brwatch/releases)
-2. [see brief manual](http://hilch.github.io/brwatch/manual)
+2. [see brief manual](http://hilch.github.io/brwatch/doc/manual.md)
+
+([for brwatch V1.x see brief manual](http://hilch.github.io/brwatch/doc/manual-v1x.md))
 
 ## Development
 
