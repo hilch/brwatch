@@ -239,12 +239,12 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Quit",                       IDM_QUIT
     END
-    POPUP "PVI"
+    POPUP "&PVI-Objects"
     BEGIN
         MENUITEM "&Add Cpu",                    IDM_ADD_CPU
-        MENUITEM "PVI-&Objects",                IDM_STATUSPVIOBJEKTE
+        MENUITEM "&List all PVI-Objects",       IDM_STATUSPVIOBJEKTE
         MENUITEM SEPARATOR
-        MENUITEM "&Clear All Objects",          IDM_MNU_REFRESH
+        MENUITEM "&Clear All PVI-Objects",          IDM_MNU_REFRESH
     END
     POPUP "&Logger"
     BEGIN
