@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio Version=4.1.17.113 SP?>
+<DataObject xmlns="http://br-automation.co.at/AS/DataObject">
+  <Files>
+    <File Description="DataObject file" Reference="true">\Logical\cnc1\NewCncProg.cnc</File>
+  </Files>
+</DataObject>

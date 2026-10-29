@@ -1,0 +1,6 @@
+VAR
+	axX : REFERENCE TO AxisHandlingAxisType; (*OPCUa tag*)
+	size1 : UDINT;
+	n : UINT;
+	tempstring : STRING[80];
+END_VAR

@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Library SubType="binary" Description="The AsBrStr Library contains FBKs for memory and character string handling." xmlns="http://br-automation.co.at/AS/Library">
+  <Files>
+    <File>AsBrStr.fun</File>
+    <File>AsBrStr.typ</File>
+    <File>AsBrStr.var</File>
+  </Files>
+</Library>

@@ -1,0 +1,11 @@
+VAR CONSTANT
+	MAX_AX : USINT := 2;
+	MAX_AX_MINUS_ONE : USINT := MAX_AX-1;
+END_VAR
+VAR
+	gAxisHandling : AxisHandlingType;
+END_VAR
+VAR CONSTANT
+	AX_X : USINT := 0;
+	AX_Y : USINT := 1;
+END_VAR

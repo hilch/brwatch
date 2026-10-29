@@ -7,3 +7,8 @@ obj
 build/
 brwatch_private.h
 brwatch_private.rc
+tools/Test_V6x/Binaries/
+tools/Test_V6x/Temp/
+tools/Test_V6x/Diagnosis/
+tools/Test_V6x/**/*.set
+tools/Test_V6x/**/*.isopen

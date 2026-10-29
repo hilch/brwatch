@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Library Version="6.7.2" SubType="binary" Description="[mapp Motion] Base library" xmlns="http://br-automation.co.at/AS/Library">
+  <Files>
+    <File>McBase.typ</File>
+    <File>McBase.fun</File>
+    <File>McBase.var</File>
+    <File>McBaseCfg.typ</File>
+  </Files>
+  <Dependencies>
+    <Dependency ObjectName="MpBase" FromVersion="6.0.0" ToVersion="6.2147483647.2147483647" />
+  </Dependencies>
+</Library>

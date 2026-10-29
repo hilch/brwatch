@@ -1,0 +1,866 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<tmx version="1.4">
+  <header creationtool="B&amp;R Automation Studio" creationtoolversion="4.2" datatype="unknown" segtype="sentence" adminlang="en" srclang="en" o-tmf="TMX">
+    <note>Do not change anything in this file, else the tmx-file will not be recognized as a valid system text anymore</note>
+    <prop type="x-BR-TS:Namespace">BR/EventLog</prop>
+    <prop type="x-BR-TS:systemtextsig">BF5a7dq1HQHPwp22xewCkWfiD66yjQRCJRUdbTH2aonAG7TVkAspFZnPIguzy2fMlRH7B9X7BFjo7WPNWwpdZJHHYpeRAy40PjJQIoh9+SEx+/+iRVGCebVUzLhlaBet9JmEMt5BToy02OWQS3/1795iBbo9fVVdbnJnhI38m58=</prop>
+  </header>
+  <body>
+    <tu tuid="1083180007">
+      <tuv xml:lang="en">
+        <seg>{1}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>{1}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303639">
+      <tuv xml:lang="en">
+        <seg>Service {2} was not found</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Der Service {2} konnte nicht gefunden werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303631">
+      <tuv xml:lang="en">
+        <seg>Unable to create registry for {2}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Eintrag für {2} konnte nicht erstellt werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303630">
+      <tuv xml:lang="en">
+        <seg>Failed to register diagnostic web-service (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Der Diagnose Web-Service konnte nicht registriert werden (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303629">
+      <tuv xml:lang="en">
+        <seg>Failed to add {2} as child to {3} (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>{2} konnte nicht als Kind von {3} hinzugefügt werden (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303628">
+      <tuv xml:lang="en">
+        <seg>Failed to remove {2} from parent {3} (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>{2} konnte nicht von {3} entfernt werden (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303627">
+      <tuv xml:lang="en">
+        <seg>Failed to remove the component web service from the faceplate service (ErrorCause {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Der Komponenten Web-Service konnte nicht vom Faceplate-Service gelöscht werden (Fehlerursache {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303626">
+      <tuv xml:lang="en">
+        <seg>Could not access configuration {2} (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Zugriff auf Konfiguration {2} fehlgeschlagen (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303625">
+      <tuv xml:lang="en">
+        <seg>Addon with name {2} already exists for {3}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Für {3} existiert bereits die Erweiterung {2}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303624">
+      <tuv xml:lang="en">
+        <seg>Unable to locate configuration FB instance (ErrorCause {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Instanz des Konfigurations FB konnte nicht gefunden werden (Fehlerursache {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303623">
+      <tuv xml:lang="en">
+        <seg>Unable to locate configuration PV (ErroCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfigurations PV konnte nicht gefunden werden (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303622">
+      <tuv xml:lang="en">
+        <seg>Could not register library faceplate content (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Der Inhalt des Bibliotheken Faceplate konnte nicht registriert werden (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303621">
+      <tuv xml:lang="en">
+        <seg>The revision of the library info is not known. Expected {2} was {3}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Revision der Bibliotheks Information ist unbekannt. Erwartet wurde {2} nicht {3}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303620">
+      <tuv xml:lang="en">
+        <seg>Unable to register license {2} (ErrorCause {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Lizenz {2} konnte nicht registriert werden (Fehlerursache {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303619">
+      <tuv xml:lang="en">
+        <seg>Unable to unregister license (ErrorCause {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Deregestrierung der Lizenz nicht möglich (Fehlerursache {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="1083180030">
+      <tuv xml:lang="en">
+        <seg>License system could not be located. Technology guarding skipped.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Lizenzsystem konnte nicht lokalisiert werden. Technology guarding wurde übersprungen</seg>
+      </tuv>
+    </tu>
+    <tu tuid="1083180031">
+      <tuv xml:lang="en">
+        <seg>Runtime does not support licensing. Technology guarding skipped.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Laufzeit unterstüzt Lizensierung nicht. Technology guarding wurde übersprungen</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303616">
+      <tuv xml:lang="en">
+        <seg>No PV with the requested name was found.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Es wurde keine PV mit dem angegebenen Namen gefunden.</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303615">
+      <tuv xml:lang="en">
+        <seg>The requested reference is NULL.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die gewünschte Referenz ist NULL.</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303614">
+      <tuv xml:lang="en">
+        <seg>Invalid configuration of query {2} (in {3})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Konfiguration der Query {2} (in {3})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303613">
+      <tuv xml:lang="en">
+        <seg>Configuration of a WHERE-condition (#{2}) invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration einer WHERE-Bedingung (#{2}) ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303612">
+      <tuv xml:lang="en">
+        <seg>Configuration of a SELECT-command (#{2}) invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration einer SELECT-Anweisung (#{2}) ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303611">
+      <tuv xml:lang="en">
+        <seg>Configuration of WHERE-logic invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration der WHERE-Logik ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303610">
+      <tuv xml:lang="en">
+        <seg>Invalid Query-Update PV {2}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Query-Update PV {2}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="1083180039">
+      <tuv xml:lang="en">
+        <seg>Used mapp Services version: {1}.{2}.{3}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Verwendete mapp Services Version: {1}.{2}.{3}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="1083180047">
+      <tuv xml:lang="en">
+        <seg>Used mapp Technology (legacy) version: {1}.{2}.{3}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Verwendete mapp Technology (legacy) Version: {1}.{2}.{3}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="1083180048">
+      <tuv xml:lang="en">
+        <seg>Used mapp Control version: {1}.{2}.{3}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Verwendete mapp Control Version: {1}.{2}.{3}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2138045423">
+      <tuv xml:lang="en">
+        <seg>Entered task name "{2}" is too long and was truncated: "{3}"</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Eingegebener Taskname "{2}" ist zu lang und wurde gekürzt: "{3}"</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303598">
+      <tuv xml:lang="en">
+        <seg>Error reading password ({2}) from configuration (Internal Error: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Fehler beim Lesen des Passworts ({2}) aus der Konfiguration (Interner Fehler: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303597">
+      <tuv xml:lang="en">
+        <seg>Password is invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Passwort ist ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303596">
+      <tuv xml:lang="en">
+        <seg>Failed to allocated sufficient memory</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Es konnte nicht genügend Speicher allokiert werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2138045419">
+      <tuv xml:lang="en">
+        <seg>mapp Assertion failed</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>mapp Assertion fehlgeschlagen</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303594">
+      <tuv xml:lang="en">
+        <seg>Invalid component ({2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Komponente ({2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303590">
+      <tuv xml:lang="en">
+        <seg>Configuration: Path is invalid (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Pfad ist ungültig (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303589">
+      <tuv xml:lang="en">
+        <seg>Configuration: Datatype mismatch (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Falscher Datentype (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303588">
+      <tuv xml:lang="en">
+        <seg>Configuration: Actual selector value invalid (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Aktueller Selector-Wert ungültig (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303587">
+      <tuv xml:lang="en">
+        <seg>Configuration: Value is not valid (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Wert ist nicht gültig (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303586">
+      <tuv xml:lang="en">
+        <seg>Configuration: No link to array present (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Kein Link auf Feld vorhanden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303585">
+      <tuv xml:lang="en">
+        <seg>Configuration: Index is out of range (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Index ist nicht im gültigen Bereich (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303584">
+      <tuv xml:lang="en">
+        <seg>Configuration: Array-size is not valid (no multiple of array-element-size) (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Feld-Größe ist ungültig (keine Vielfaches der Feld-Element-Größe) (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303583">
+      <tuv xml:lang="en">
+        <seg>Configuration: Invalid index given in path (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Ungültiger Index im Pfad (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303582">
+      <tuv xml:lang="en">
+        <seg>Configuration: Invalid array-dimension (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Ungültige Feld-Dimension (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303581">
+      <tuv xml:lang="en">
+        <seg>Configuration: No support for sparse arrays (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Feld-Einträge müssen kontinuurlich sein (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2138045404">
+      <tuv xml:lang="en">
+        <seg>Configuration: Value was limited (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Wert wurde limitiert (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303579">
+      <tuv xml:lang="en">
+        <seg>Configuration: element {2} could not be created</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Element {2} konnte nicht erzeugt werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303578">
+      <tuv xml:lang="en">
+        <seg>Configuration: property could not be written (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Wert konnte nicht geschrieben werden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303577">
+      <tuv xml:lang="en">
+        <seg>Configuration: selection could not be written (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Auswahl konnte nich geschrieben werden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303576">
+      <tuv xml:lang="en">
+        <seg>Configuration: selection could not be read (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Auswahl konnte nicht gelesen werden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303575">
+      <tuv xml:lang="en">
+        <seg>Configuration: entry could not be deleted (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Eintrag konnte nicht gelöscht werden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303574">
+      <tuv xml:lang="en">
+        <seg>Configuration: Element {2} could not be found</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Element {2} konnte nicht gefunden werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303573">
+      <tuv xml:lang="en">
+        <seg>Configuration: Entry-Point could not be found for {2}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Einsprungpunkt (für {2}) konnte nicht gefunden werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303572">
+      <tuv xml:lang="en">
+        <seg>Configuration: Necessary path-information is missing</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Notwendige Pfad-Angabe fehlt</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303571">
+      <tuv xml:lang="en">
+        <seg>Configuration: Given path is not correct</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Angegebener Pfad ist nicht korrekt</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303570">
+      <tuv xml:lang="en">
+        <seg>Configuration: No meta-information available for {2}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Keine Meta-Informationen für {2} vorhanden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303569">
+      <tuv xml:lang="en">
+        <seg>Configuration: Entry could not be read (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Eintrage konnte nicht gelesen werden (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303568">
+      <tuv xml:lang="en">
+        <seg>Configuration: Data-access not valid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Daten-Zugang nicht gültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303567">
+      <tuv xml:lang="en">
+        <seg>Configuration: Given write-mode not valid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Anegebener Schreib-Modus nicht gültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303566">
+      <tuv xml:lang="en">
+        <seg>Array element already exists</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Arrayelement existiert bereits</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303565">
+      <tuv xml:lang="en">
+        <seg>Configuration: Internal error (at {2})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Konfiguration: Interner Fehler (bei {2})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303136">
+      <tuv xml:lang="en">
+        <seg>Invalid registry for desired operation</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Registrierung für den gewünschten Vorgang</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303133">
+      <tuv xml:lang="en">
+        <seg>Error when initializing system-elements (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Fehler beim Initialisieren der System-Elemente (Fehlerursache: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303132">
+      <tuv xml:lang="en">
+        <seg>Error during system-element linking (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Fehler bei der Verknüpfung von System-Elementen (Fehlerursache: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2138044953">
+      <tuv xml:lang="en">
+        <seg>Component {2:RegistryName} was already linked to {3:OldParent} and is relinked to {4:NewParent}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Komponente {2:RegistryName} war mit {3:OldParent} verlinkt und wurde nun mit {4:NewParent} verlinkt</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303116">
+      <tuv xml:lang="en">
+        <seg>Path within configuration not valid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Pfad innerhalb der Konfiguration ist nicht gültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303115">
+      <tuv xml:lang="en">
+        <seg>The entry for {3:PropertyName} is missing in the configuration {2:ConfigurationName}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Der Eintrag {3:PropertyName} fehlt in der Konfiguration {2:ConfigurationName}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303114">
+      <tuv xml:lang="en">
+        <seg>The configuration data ({2:ConfigurationName} : {3:PropertyName}) contains entries with invalid format</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Konfigurationsdaten ({2:ConfigurationName} : {3:PropertyName}) enthalten Einträge mit ungültigen Format</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303107">
+      <tuv xml:lang="en">
+        <seg>Error setting selector {2:SelectorPath} to {3:Value}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Fehler beim Setzen des Selektoren {2:SelectorPath} zu {3:Value}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303098">
+      <tuv xml:lang="en">
+        <seg>Data-Format invalid ({2:FileName})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Datenformat ungültig ({2:FileName})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303097">
+      <tuv xml:lang="en">
+        <seg>Could not save data (too {2:FileName} at {3:DeviceName}) (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Daten (von {2:FileName} auf Speichermedium {3:DeviceName}) konnten nicht gespeichert werden (Fehlerursache: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303096">
+      <tuv xml:lang="en">
+        <seg>Could not load data (from {2:FileName} at {3:DeviceName}) (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Daten (von {2:FileName} auf Speichermedium {3:DeviceName}) konnten nicht geladen werden (Fehlerursache: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303094">
+      <tuv xml:lang="en">
+        <seg>No data is present for {2:GroupName}</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Es sind keine Daten vorhanden für {2:GroupName}</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303087">
+      <tuv xml:lang="en">
+        <seg>Invalid datapoint {2:Name} in display-configuration</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültiger Datenpunk {2:Name} in der Display-Konfiguration</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303086">
+      <tuv xml:lang="en">
+        <seg>Invalid fallback-unit ({3:Namespace}|{2:Unit-ID}) in display-configuration</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Fallback-Einheit ({3:Namespace}|{2:Unit-ID}) in der Display-Konfiguration</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303085">
+      <tuv xml:lang="en">
+        <seg>Invalid PV {2:Name} configured for limit</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige PV {2:Name} für das Limit konfiguriert</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303084">
+      <tuv xml:lang="en">
+        <seg>Mismatch between unit {2:EU} and {3:DU} (not convertible)</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Nichtübereinstimmung zwischen Einheit {2:EU} und {3:DU} (nicht konvertierbar)</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303083">
+      <tuv xml:lang="en">
+        <seg>Invalid unit-definition ({3:Namespace}|{2:Unit-ID}) </seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Einheiten-Definition ({3:Namespace}|{2:Unit-ID}) </seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303082">
+      <tuv xml:lang="en">
+        <seg>OPC-Server not accessible</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>OPC-Server nicht verfügbar</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303081">
+      <tuv xml:lang="en">
+        <seg>EngineeringUnit of OPC-Node not accessible</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>EngineeringUnit der OPC-Node nicht verfügbar</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303079">
+      <tuv xml:lang="en">
+        <seg>Unit Translation (formula) is invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Einheiten-Übersetzung (Formel) ist ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303077">
+      <tuv xml:lang="en">
+        <seg>Unit Translation variable missing or invalid</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die Variable für die Einheiten-Übersetzung fehlt oder ist ungültig</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303070">
+      <tuv xml:lang="en">
+        <seg>Invalid measurement system identiffier</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige ID für Einheitensystem</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303069">
+      <tuv xml:lang="en">
+        <seg>Invalid unit group</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Einheiten-Gruppe</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303068">
+      <tuv xml:lang="en">
+        <seg>Invalid unit-group ID</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige ID für Einheiten-Gruppe</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303067">
+      <tuv xml:lang="en">
+        <seg>Invalid unit-group PV (measurment system)</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige PV für Einheitengruppe(measurment system)</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303060">
+      <tuv xml:lang="en">
+        <seg>No PV found at given address</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Kein PV unter der angegebenen Adresse gefunden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303030">
+      <tuv xml:lang="en">
+        <seg>Failed to register a new text formatter data source (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Registrierung einer neuen Textformatierungsdatenquelle fehlgeschlagen (Fehlerursache: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303029">
+      <tuv xml:lang="en">
+        <seg>Failed to locate runtime support for additional text formatter data sources</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Laufzeitunterstützung für zusätzliche Textformatierungsdatenquellen konnte nicht gefunden werden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303020">
+      <tuv xml:lang="en">
+        <seg>The PV- or function reference "{2:Name}" was not found.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die PV- oder Funktionsreferenz "{2:Name}" wurde nicht gefunden.</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064303019">
+      <tuv xml:lang="en">
+        <seg>The PV- or function reference "{2:Name}" already exists.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Die PV- oder Funktionsreferenz "{2:Name}" existiert bereits.</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064294640">
+      <tuv xml:lang="en">
+        <seg>No configuration-structure found at given address</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Keine Konfigurations-Struktur an angegebener Adresse gefunden</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064294634">
+      <tuv xml:lang="en">
+        <seg>Failed to write {2} to {3} (ErrorCause: {1})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Schreiben von {3} auf  {3} fehlgeschlagenn (Fehlerursache: {1})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239103">
+      <tuv xml:lang="en">
+        <seg>Could not create component</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Could not create component</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239102">
+      <tuv xml:lang="en">
+        <seg>MpLink is NULL pointer</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>MpLink is NULL pointer</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239101">
+      <tuv xml:lang="en">
+        <seg>MpLink connection not allowed</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>MpLink connection not allowed</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239100">
+      <tuv xml:lang="en">
+        <seg>MpLink modified</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>MpLink modified</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239099">
+      <tuv xml:lang="en">
+        <seg>Invalid MpLink contents</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Invalid MpLink contents</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239098">
+      <tuv xml:lang="en">
+        <seg>MpLink already in use</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>MpLink already in use</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239097">
+      <tuv xml:lang="en">
+        <seg>Parameters structure is a null pointer</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Parameters structure is a null pointer</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239096">
+      <tuv xml:lang="en">
+        <seg>Configuration structure is null pointer</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Configuration structure is null pointer</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239095">
+      <tuv xml:lang="en">
+        <seg>Configuration pointer not PV</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Configuration pointer not PV</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239094">
+      <tuv xml:lang="en">
+        <seg>Error loading configuration {2:ConfigName} (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Error loading configuration {2:ConfigName} (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2137980917">
+      <tuv xml:lang="en">
+        <seg>Warning loading configuration</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Warnung beim Laden der Konfiguration</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239092">
+      <tuv xml:lang="en">
+        <seg>Error saving configuration {2:ConfigName} (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Error saving configuration {2:ConfigName} (ErrorCause: {1:ErrorNumber})</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239091">
+      <tuv xml:lang="en">
+        <seg>Invalid Configuration</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Invalid Configuration</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239090">
+      <tuv xml:lang="en">
+        <seg>Invalid component-type (incorrect MpLink connected?)</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültiger Komponenten-Typ (falscher MpLink verbunden?)</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-1064239089">
+      <tuv xml:lang="en">
+        <seg>Component {2} is in error-state</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Komponente {2} ist im Fehlerzustand</seg>
+      </tuv>
+    </tu>
+    <tu tuid="-2137980912">
+      <tuv xml:lang="en">
+        <seg>Invalid task class #{2} was selected.</seg>
+      </tuv>
+      <tuv xml:lang="de">
+        <seg>Ungültige Taskklasse #{2} ausgewählt.</seg>
+      </tuv>
+    </tu>
+  </body>
+</tmx>

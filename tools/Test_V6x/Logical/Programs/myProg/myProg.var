@@ -1,0 +1,35 @@
+(********************************************************************
+ * COPYRIGHT -- B&R Industrial Automation GmbH
+ ********************************************************************
+ * Program: myProg
+ * File: myProg.var
+ * Author: hilchenbachc
+ * Created: November 22, 2022
+ ********************************************************************
+ * Local variables of program myProg
+ ********************************************************************)
+VAR
+	myUSINT : USINT := 0;
+	myUINT : UINT := 0;
+	mySTRING : STRING[80] := '';
+	myWSTRING : WSTRING[80] := "";
+	myTIME : TIME := T#0S;
+	myTOD : TIME_OF_DAY := TOD#00:00:00;
+	myDT : DATE_AND_TIME := DT#1970-01-01-00:00:00;
+	myDINT : DINT := 0;
+	myINTArray : ARRAY[0..9] OF INT := [10(0)];
+	myWSTRINGArray : ARRAY[0..9] OF WSTRING[80];
+	mySTRINGArray : ARRAY[0..9] OF STRING[80];
+	myUDINT : UDINT := 0;
+	myDATE : DATE;
+	myLREAL : LREAL := 0.0;
+	myREAL : REAL := 0.0;
+	myINT : INT := 0;
+	mySINT : SINT := 0;
+	myBOOL : BOOL := FALSE;
+	myStructArray : ARRAY[0..1] OF myStructType;
+	myComplexStruct : myComplexStructType;
+	i : INT;
+	j : INT;
+	sizeof_myComplexStruct : UDINT;
+END_VAR

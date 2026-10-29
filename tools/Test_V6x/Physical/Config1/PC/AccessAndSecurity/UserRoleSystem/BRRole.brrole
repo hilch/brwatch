@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Configuration>
+  <Element ID="BR_Anonymous" Type="BRRole" />
+  <Element ID="BR_Engineer" Type="BRRole" />
+  <Element ID="BR_Observer" Type="BRRole" />
+  <Element ID="BR_SafetyAdmin" Type="BRRole" />
+  <Element ID="BR_SecurityAdmin" Type="BRRole" />
+</Configuration>

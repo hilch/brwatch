@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio WorkingVersion="6.3" FileVersion="4.9"?>
+<Hardware xmlns="http://br-automation.co.at/AS/Hardware">
+  <Module Name="5LS182.6-2" Type="5LS182.6-2" Version="1.13.0.0">
+    <Connection Connector="SL" TargetModule="PC" TargetConnector="SL1" />
+  </Module>
+  <Module Name="8EI2X2HWD10.xxxx-1" Type="8EI2X2HWD10.xxxx-1" Version="2.4.0.0" NodeNumber="1">
+    <Connection Connector="PLK1" TargetModule="5LS182.6-2" TargetConnector="IF1">
+      <Cable Type="PowerlinkCable" Length="10" Version="1.0.0.3" />
+    </Connection>
+    <Connection Connector="MT2" TargetModule="8LSA35.DA030S000-3_a" TargetConnector="MT" />
+  </Module>
+  <Module Name="8LSA35.DA030S000-3" Type="8LSA35.DA030S000-3" Version="2.2.0.2">
+    <Connection Connector="MT" TargetModule="8EI2X2HWD10.xxxx-1" TargetConnector="MT1" />
+    <Parameter ID="MOTOR_AMB_TEMP_RATED" Location="M1/MotorParameters" Value="40" />
+    <Parameter ID="MOTOR_TEMPSENS_LIM" Location="M1/MotorParameters/TemperatureSensor" Value="130" />
+  </Module>
+  <Module Name="8LSA35.DA030S000-3_a" Type="8LSA35.DA030S000-3" Version="2.2.0.2">
+    <Connection Connector="MT" TargetModule="8EI2X2HWD10.xxxx-1" TargetConnector="MT2" />
+    <Parameter ID="MOTOR_AMB_TEMP_RATED" Location="M1/MotorParameters" Value="40" />
+    <Parameter ID="MOTOR_TEMPSENS_LIM" Location="M1/MotorParameters/TemperatureSensor" Value="130" />
+  </Module>
+  <Module Name="PC" Type="PC_any" Version="1.1.2.0" OrderNumber="PC">
+    <Parameter ID="ConfigurationID" Value="test_Config1" />
+    <Parameter ID="VolatileGlobalPvSize" Value="256000" />
+    <Group ID="FileDevice1" />
+    <Parameter ID="FileDeviceName1" Value="USER" />
+    <Parameter ID="FileDevicePath1" Value="USER_PATH" />
+  </Module>
+</Hardware>

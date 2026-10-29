@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Configuration>
+  <Element ID="ClientServerConfiguration" Type="uacfg">
+    <Property ID="OpcUaCs" Value="0" />
+    <Group ID="System">
+      <Property ID="Multicore" Value="1" />
+    </Group>
+    <Group ID="Network">
+      <Property ID="TcpPort" Value="4840" />
+      <Group ID="Discovery">
+        <Property ID="RegisterAtServer" Value="0" />
+        <Property ID="ServerUrl" Value="opc.tcp://" />
+        <Property ID="RegistrationInterval" Value="600" />
+      </Group>
+    </Group>
+    <Group ID="Facets">
+      <Property ID="AuditingServerFacet" Value="0" />
+    </Group>
+    <Group ID="Security">
+      <Group ID="MessageSecurity">
+        <Group ID="SecurityPolicies">
+          <Property ID="None" Value="0" />
+          <Property ID="Basic128Rsa15" Value="0" />
+          <Property ID="Basic256" Value="0" />
+          <Property ID="Aes128Sha256RsaOaep" Value="1" />
+          <Property ID="Basic256Sha256" Value="1" />
+        </Group>
+        <Group ID="Modes">
+          <Property ID="Sign" Value="0" />
+          <Property ID="SignAndEncrypt" Value="1" />
+        </Group>
+      </Group>
+      <Group ID="Authentication">
+        <Group ID="SecurityPolicies">
+          <Property ID="Basic128Rsa15" Value="0" />
+          <Property ID="Basic256" Value="0" />
+          <Property ID="Aes128Sha256RsaOaep" Value="1" />
+          <Property ID="Basic256Sha256" Value="1" />
+        </Group>
+        <Group ID="UserIdentityTokens">
+          <Property ID="AnonymousIdentityToken" Value="0" />
+          <Property ID="UserNameIdentityToken" Value="1" />
+          <Property ID="X509IdentityToken" Value="0" />
+        </Group>
+      </Group>
+      <Group ID="Authorization">
+        <Group ID="AnonymousAccess">
+          <Property ID="DefaultRole0" Value="BR_Anonymous" />
+        </Group>
+      </Group>
+      <Property ID="AppCertificateTrustListValidation" Value="1" />
+    </Group>
+    <Group ID="Limits">
+      <Group ID="General">
+        <Property ID="MaxSecureChannels" Value="100" />
+        <Property ID="MaxReferencesToReturn" Value="10000" />
+        <Property ID="MaxTranslateResults" Value="10000" />
+      </Group>
+      <Group ID="Operation">
+        <Property ID="MaxNodesPerRead" Value="65535" />
+        <Property ID="MaxNodesPerWrite" Value="65535" />
+        <Property ID="MaxNodesPerBrowse" Value="65535" />
+        <Property ID="MaxNodesPerTranslateBrowsePathsToNodeIds" Value="65535" />
+        <Property ID="MaxNodesPerRegisterNodes" Value="65535" />
+        <Property ID="MaxNodesPerMethodCall" Value="65535" />
+        <Property ID="MaxMonitoredItemsPerCall" Value="65535" />
+        <Property ID="MaxNodesPerHistoryReadData" Value="65535" />
+        <Property ID="MaxNodesPerHistoryReadEvents" Value="65535" />
+      </Group>
+      <Group ID="Session">
+        <Property ID="MaxSessions" Value="50" />
+        <Property ID="MaxSubscriptionsPerSession" Value="1000" />
+        <Property ID="MaxPublishPerSession" Value="10" />
+        <Property ID="MaxBrowseContinuationPoints" Value="5" />
+        <Property ID="MaxHistoryContinuationPoints" Value="5" />
+      </Group>
+      <Group ID="Subscription">
+        <Property ID="MaxMonitoredItemsPerSubscription" Value="10000" />
+        <Property ID="MaxDataMonitoredItemsQueueSize" Value="100" />
+        <Property ID="MaxEventMonitoredItemsQueueSize" Value="1000" />
+        <Group ID="PublishingInterval">
+          <Property ID="MinPublishingInterval" Value="50" />
+          <Property ID="MaxPublishingInterval" Value="3600000" />
+        </Group>
+        <Group ID="KeepAliveInterval">
+          <Property ID="MinKeepAliveInterval" Value="50" />
+          <Property ID="MaxKeepAliveInterval" Value="1200000" />
+        </Group>
+        <Group ID="LifetimeInterval">
+          <Property ID="MinLifetimeInterval" Value="150" />
+          <Property ID="MaxLifetimeInterval" Value="3600000" />
+        </Group>
+      </Group>
+    </Group>
+    <Group ID="Conversions">
+      <Property ID="EncodingAsciiString" Value="1" />
+      <Property ID="ImplicitTypeCast" Value="0" />
+    </Group>
+    <Group ID="Sampling">
+      <Selector ID="TimerCount">
+        <Property ID="DefaultTimer" Value="7" />
+        <Property ID="Timer1Interval" Value="10" />
+        <Property ID="Timer2Interval" Value="20" />
+        <Property ID="Timer3Interval" Value="50" />
+        <Property ID="Timer4Interval" Value="100" />
+        <Property ID="Timer5Interval" Value="200" />
+        <Property ID="Timer6Interval" Value="500" />
+        <Property ID="Timer7Interval" Value="1000" />
+        <Property ID="Timer8Interval" Value="5000" />
+      </Selector>
+    </Group>
+  </Element>
+</Configuration>

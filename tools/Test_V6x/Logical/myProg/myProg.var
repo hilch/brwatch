@@ -1,0 +1,17 @@
+(********************************************************************
+ * COPYRIGHT -- B&R Industrial Automation GmbH
+ ********************************************************************
+ * Program: myProg
+ * File: myProg.var
+ * Author: hilchenbachc
+ * Created: November 22, 2022
+ ********************************************************************
+ * Local variables of program myProg
+ ********************************************************************)
+VAR
+	myComplexStruct : myComplexStructType;
+	i : INT;
+	j : INT;
+	n : USINT := 0;
+	sizeof_myComplexStruct : UDINT;
+END_VAR

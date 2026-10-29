@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Package SubType="OpcUaCs" PackageType="OpcUaCs" xmlns="http://br-automation.co.at/AS/Package">
+  <Objects>
+    <Object Type="File">UaCsConfig.uacfg</Object>
+    <Object Type="File">OpcUaCsMap.uad</Object>
+    <Object Type="File">UaDvConfig.uadcfg</Object>
+  </Objects>
+</Package>

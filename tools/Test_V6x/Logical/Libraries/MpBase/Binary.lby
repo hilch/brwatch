@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?AutomationStudio FileVersion="4.9"?>
+<Library Version="6.8.0" SubType="Binary" Description="Core library for mapp components" xmlns="http://br-automation.co.at/AS/Library">
+  <Files>
+    <File>MpBase.var</File>
+    <File>MpBase.typ</File>
+    <File>MpBase.fun</File>
+    <File>Common_EventLog.tmx</File>
+  </Files>
+</Library>
