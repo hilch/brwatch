@@ -245,7 +245,7 @@ BEGIN
         MENUITEM "&Add Cpu",                    IDM_ADD_CPU
         MENUITEM "&List all PVI-Objects",       IDM_STATUSPVIOBJEKTE
         MENUITEM SEPARATOR
-        MENUITEM "&Clear All PVI-Objects",          IDM_MNU_REFRESH
+        MENUITEM "&Remove all PVI-Objects",     IDM_MNU_REFRESH
     END
     POPUP "&Logger"
     BEGIN
@@ -256,8 +256,8 @@ BEGIN
     BEGIN
         POPUP "&Font"
         BEGIN
-            MENUITEM "Select &New Font",            IDM_VIEW_SELECT_FONT
-            MENUITEM "Set &Default Font",           IDM_VIEW_SETDEFAULTFONT
+            MENUITEM "Select &New Font",        IDM_VIEW_SELECT_FONT
+            MENUITEM "Set &Default Font",       IDM_VIEW_SETDEFAULTFONT
         END
         MENUITEM "&Settings",                   IDM_OPTIONS_SETTINGS
     END
