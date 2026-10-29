@@ -322,6 +322,48 @@ void MyTreeViewDblClick(HTREEITEM /* hti */, LPARAM lParam)
 	}
 }
 
+static PVIOBJECT *MyTreeViewGetSelectedCpu(void)
+{
+	TVITEMA item = {};
+	item.hItem = TreeView_GetSelection(mytreeviewparam.hwndTV);
+	item.mask = TVIF_PARAM;
+	if (item.hItem == NULL ||
+		!SendMessageA(mytreeviewparam.hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)) ||
+		item.lParam == 0)
+		return NULL;
+	PVIOBJECT *object = FindPviObjectByName(reinterpret_cast<char *>(item.lParam));
+	return object != NULL && object->type == POBJ_CPU ? object : NULL;
+}
+
+static void MyTreeViewUpdateCpuSettings(PVIOBJECT *object, UINT command)
+{
+	if (object == NULL || object->type != POBJ_CPU)
+		return;
+	BOOL success = TRUE;
+	if (command == IDM_STORE_CPU_SETTINGS)
+		success = SettingsStoreCpu(object->descriptor);
+	else if (command == IDM_REMOVE_CPU_SETTINGS)
+		success = SettingsRemoveCpu(object->descriptor);
+	if (!success)
+		MessageBoxA(g_hwndMainWindow, "Could not update the CPU settings. Check that brwatch.ini is writable and has a free CPU slot.",
+			"CPU settings", MB_OK | MB_ICONERROR);
+}
+
+void MyTreeViewUpdateCpuSettingsMenu(HMENU menu)
+{
+	PVIOBJECT *object = MyTreeViewGetSelectedCpu();
+	BOOL stored = object != NULL && SettingsFindCpuSection(object->descriptor) != 0;
+	EnableMenuItem(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND |
+		(object != NULL && !stored ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND |
+		(stored ? MF_ENABLED : MF_GRAYED));
+}
+
+void MyTreeViewCpuSettingsCommand(UINT command)
+{
+	MyTreeViewUpdateCpuSettings(MyTreeViewGetSelectedCpu(), command);
+}
+
 /* mouse right click on tree view */
 void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 {
@@ -345,24 +387,17 @@ void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 					HMENU menu = CreatePopupMenu();
 					if (menu == NULL)
 						break;
-					AppendMenuA(menu, MF_STRING, 1, "Store to settings");
-					UINT removeFlags = MF_STRING;
-					if (SettingsFindCpuSection(object->descriptor) == 0)
-						removeFlags |= MF_GRAYED;
-					AppendMenuA(menu, removeFlags, 2, "Remove from settings");
+					BOOL stored = SettingsFindCpuSection(object->descriptor) != 0;
+					AppendMenuA(menu, MF_STRING | (stored ? MF_GRAYED : MF_ENABLED),
+						IDM_STORE_CPU_SETTINGS, "Store to settings");
+					AppendMenuA(menu, MF_STRING | (stored ? MF_ENABLED : MF_GRAYED),
+						IDM_REMOVE_CPU_SETTINGS, "Remove from settings");
 					POINT position;
 					GetCursorPos(&position);
 					UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
 						position.x, position.y, 0, g_hwndMainWindow, NULL);
 					DestroyMenu(menu);
-					BOOL success = TRUE;
-					if (command == 1)
-						success = SettingsStoreCpu(object->descriptor);
-					else if (command == 2)
-						success = SettingsRemoveCpu(object->descriptor);
-					if (!success)
-						MessageBoxA(g_hwndMainWindow, "Could not update the CPU settings. Check that brwatch.ini is writable and has a free CPU slot.",
-							"CPU settings", MB_OK | MB_ICONERROR);
+					MyTreeViewUpdateCpuSettings(object, command);
 					break;
 				}
 				case POBJ_DEVICE:

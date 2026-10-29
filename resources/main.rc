@@ -243,6 +243,9 @@ BEGIN
     POPUP "&PVI-Objects"
     BEGIN
         MENUITEM "&Add Cpu",                    IDM_ADD_CPU
+        MENUITEM "&Store to settings",          IDM_STORE_CPU_SETTINGS, GRAYED
+        MENUITEM "Remove &from settings",       IDM_REMOVE_CPU_SETTINGS, GRAYED
+        MENUITEM SEPARATOR
         MENUITEM "&List all PVI-Objects",       IDM_STATUSPVIOBJEKTE
         MENUITEM SEPARATOR
         MENUITEM "&Remove all PVI-Objects",     IDM_MNU_REFRESH

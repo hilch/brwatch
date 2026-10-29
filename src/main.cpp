@@ -338,9 +338,18 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 	switch (wMsg)
 	{
 
+	case WM_INITMENUPOPUP:
+		MyTreeViewUpdateCpuSettingsMenu(reinterpret_cast<HMENU>(wParam));
+		break;
+
 	case WM_COMMAND:
 		switch (wParam)
 		{
+		case IDM_STORE_CPU_SETTINGS:
+		case IDM_REMOVE_CPU_SETTINGS:
+			MyTreeViewCpuSettingsCommand(static_cast<UINT>(wParam));
+			break;
+
 		case IDM_ABOUT:
 			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_ABOUT), hWnd, AboutDlgProc);
 			break;

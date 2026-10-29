@@ -65,6 +65,8 @@
 #define IDM_SAVE_WATCH_FILE             6004
 #define IDM_LOAD_WATCH_FILE             6005
 #define IDM_ADD_CPU                     6006
+#define IDM_STORE_CPU_SETTINGS          6007
+#define IDM_REMOVE_CPU_SETTINGS         6008
 #define IDM_CHANGE_VIEW_DECIMAL         6101
 #define IDM_CHANGE_VIEW_HEX             6102
 #define IDM_CHANGE_VIEW_BINARY          6103

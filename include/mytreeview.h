@@ -27,6 +27,8 @@ void MyTreeViewDblClick(HTREEITEM hti, LPARAM lParam);
 void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam);
 void MyTreeViewBeginDragging( HTREEITEM hti, LPARAM lParam );
 void MyTreeViewItemSelected( HTREEITEM hti, LPARAM lParam );
+void MyTreeViewUpdateCpuSettingsMenu(HMENU menu);
+void MyTreeViewCpuSettingsCommand(UINT command);
 
 
 
