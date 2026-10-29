@@ -2,6 +2,7 @@
 #include "main.h"
 #include "settings.h"
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <string>
 
@@ -26,6 +27,29 @@ unsigned SettingsFindCpuSection(const char *descriptor)
 			return cpu;
 	}
 	return 0;
+}
+
+static BOOL SettingsWriteText(const std::string &text)
+{
+	std::string directory = inifile;
+	directory.erase(directory.find_last_of("\\/") + 1);
+	char temporary[MAX_PATH];
+	if (!GetTempFileNameA(directory.c_str(), "brw", 0, temporary))
+		return FALSE;
+	HANDLE file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	BOOL success = FALSE;
+	if (file != INVALID_HANDLE_VALUE)
+	{
+		DWORD written = 0;
+		success = WriteFile(file, text.data(), static_cast<DWORD>(text.size()), &written, NULL) &&
+			written == text.size();
+		if (!CloseHandle(file))
+			success = FALSE;
+		if (success)
+			success = MoveFileExA(temporary, inifile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+	}
+	DeleteFileA(temporary);
+	return success;
 }
 
 static BOOL SettingsSortCpuSections(void)
@@ -106,25 +130,7 @@ static BOOL SettingsSortCpuSections(void)
 			sorted += newline;
 	}
 	remaining.insert(position, sorted);
-	std::string directory = inifile;
-	directory.erase(directory.find_last_of("\\/") + 1);
-	char temporary[MAX_PATH];
-	if (!GetTempFileNameA(directory.c_str(), "brw", 0, temporary))
-		return FALSE;
-	HANDLE file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	BOOL success = FALSE;
-	if (file != INVALID_HANDLE_VALUE)
-	{
-		DWORD written = 0;
-		success = WriteFile(file, remaining.data(), static_cast<DWORD>(remaining.size()), &written, NULL) &&
-			written == remaining.size();
-		if (!CloseHandle(file))
-			success = FALSE;
-		if (success)
-			success = MoveFileExA(temporary, inifile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-	}
-	DeleteFileA(temporary);
-	return success;
+	return SettingsWriteText(remaining);
 }
 
 BOOL SettingsStoreCpu(const char *descriptor)
@@ -216,93 +222,117 @@ void SettingsInitialize(void)
 	}
 }
 
-INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /*lParam*/)
+static void SettingsSetEditorText(HWND hDlg, const std::string &text)
+{
+	std::string editorText;
+	for (size_t index = 0; index < text.size(); ++index)
+	{
+		if (text[index] == '\n' && (index == 0 || text[index - 1] != '\r'))
+			editorText += '\r';
+		editorText += text[index];
+	}
+	SetDlgItemTextA(hDlg, IDC_EDIT1, editorText.c_str());
+}
+
+INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
 	{
-		FILE *file;
-		size_t bytes_read;
-		char *buf;
-		HFONT hfont;
-
-		buf = static_cast<char *>(malloc(32768));
-		if (buf == NULL)
-		{
-			MessageBoxA(MainWindowGetHandle(), "To less memory !", "Error", MB_OK | MB_ICONERROR);
-			return FALSE;
-		}
-
-		file = fopen(SettingsGetFileName(), "rb");
-
-		if (file != NULL)
-		{
-			if ((bytes_read = fread(buf, 1, 32768, file)))
-			{
-				buf[bytes_read] = 0;
-				SetDlgItemTextA(hDlg, IDC_EDIT1, buf);
-				free(buf);
-				fclose(file);
-			}
-			else if (ferror(file))
-			{
-				sprintf(buf, "Error reading %s !", SettingsGetFileName());
-				MessageBoxA(MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR);
-				free(buf);
-				fclose(file);
-				return FALSE;
-			}
-		}
-		else
-		{
-			sprintf(buf, "Could not open %s !", SettingsGetFileName());
-			MessageBoxA(MainWindowGetHandle(), buf, "Error", MB_OK | MB_ICONERROR);
-			free(buf);
-			fclose(file);
-			return FALSE;
-		}
-
-		hfont = static_cast<HFONT>(GetStockObject(SYSTEM_FIXED_FONT));
+		SendDlgItemMessageA(hDlg, IDC_EDIT1, EM_SETLIMITTEXT, 0, 0);
+		HFONT hfont = static_cast<HFONT>(GetStockObject(SYSTEM_FIXED_FONT));
 		SendDlgItemMessage(hDlg, IDC_EDIT1, WM_SETFONT, (WPARAM)hfont, TRUE);
+		WritePrivateProfileStringA(NULL, NULL, NULL, inifile);
+		std::ifstream input(inifile, std::ios::binary);
+		if (!input)
+		{
+			MessageBoxA(hDlg, "Could not open brwatch.ini.", "Settings", MB_OK | MB_ICONERROR);
+			EndDialog(hDlg, IDCANCEL);
+			return TRUE;
+		}
+		std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+		if (input.bad())
+		{
+			MessageBoxA(hDlg, "Could not read brwatch.ini.", "Settings", MB_OK | MB_ICONERROR);
+			EndDialog(hDlg, IDCANCEL);
+			return TRUE;
+		}
+		SettingsSetEditorText(hDlg, text);
+		SendMessage(hDlg, WM_SIZE, SIZE_RESTORED, 0);
 	}
 
 		return TRUE;
 
+	case WM_GETMINMAXINFO:
+	{
+		RECT minimum = {0, 0, 260, 120};
+		MapDialogRect(hDlg, &minimum);
+		AdjustWindowRectEx(&minimum, static_cast<DWORD>(GetWindowLongPtr(hDlg, GWL_STYLE)), FALSE,
+			static_cast<DWORD>(GetWindowLongPtr(hDlg, GWL_EXSTYLE)));
+		MINMAXINFO *limits = reinterpret_cast<MINMAXINFO *>(lParam);
+		limits->ptMinTrackSize.x = minimum.right - minimum.left;
+		limits->ptMinTrackSize.y = minimum.bottom - minimum.top;
+		return TRUE;
+	}
+
+	case WM_SIZE:
+	{
+		if (wParam == SIZE_MINIMIZED)
+			return TRUE;
+		RECT client;
+		GetClientRect(hDlg, &client);
+		RECT margin = {0, 0, 7, 7};
+		RECT button = {0, 0, 50, 14};
+		RECT spacing = {0, 0, 9, 6};
+		MapDialogRect(hDlg, &margin);
+		MapDialogRect(hDlg, &button);
+		MapDialogRect(hDlg, &spacing);
+		int buttonTop = client.bottom - margin.bottom - button.bottom;
+		MoveWindow(GetDlgItem(hDlg, IDC_EDIT1), margin.right, margin.bottom,
+			client.right - 2 * margin.right, buttonTop - spacing.bottom - margin.bottom, TRUE);
+		MoveWindow(GetDlgItem(hDlg, IDOK), margin.right, buttonTop, button.right, button.bottom, TRUE);
+		MoveWindow(GetDlgItem(hDlg, IDCANCEL), margin.right + button.right + spacing.right,
+			buttonTop, button.right, button.bottom, TRUE);
+		MoveWindow(GetDlgItem(hDlg, IDC_BUTTON_SETTINGS_DEFAULTS), client.right - margin.right - button.right,
+			buttonTop, button.right, button.bottom, TRUE);
+		return TRUE;
+	}
+
 	case WM_COMMAND:
-		switch (wParam)
+		switch (LOWORD(wParam))
 		{
+		case IDC_BUTTON_SETTINGS_DEFAULTS:
+		{
+			HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI");
+			HGLOBAL loaded = resource != NULL ? LoadResource(NULL, resource) : NULL;
+			const char *data = loaded != NULL ? static_cast<const char *>(LockResource(loaded)) : NULL;
+			if (data == NULL)
+			{
+				MessageBoxA(hDlg, "Could not load the default settings.", "Settings", MB_OK | MB_ICONERROR);
+				return TRUE;
+			}
+			SettingsSetEditorText(hDlg, std::string(data, SizeofResource(NULL, resource)));
+			return TRUE;
+		}
 		case IDOK:
 		{
-			FILE *file;
-			DWORD length;
-			char *buf;
-
-			file = fopen(SettingsGetFileName(), "wb+");
-			if (file != NULL)
+			int length = GetWindowTextLengthA(GetDlgItem(hDlg, IDC_EDIT1));
+			std::string text(static_cast<size_t>(length) + 1, '\0');
+			int copied = GetDlgItemTextA(hDlg, IDC_EDIT1, &text[0], length + 1);
+			text.resize(static_cast<size_t>(copied));
+			WritePrivateProfileStringA(NULL, NULL, NULL, inifile);
+			if (copied == length && SettingsWriteText(text))
 			{
-				length = GetWindowTextLengthA(GetDlgItem(hDlg, IDC_EDIT1));
-				buf = static_cast<char *>(malloc(length + 1));
-				if (buf != NULL)
-				{
-					GetDlgItemTextA(hDlg, IDC_EDIT1, buf, length + 1);
-					buf[length] = 0;
-					fwrite(buf, 1, length, file);
-					fclose(file);
-					free(buf);
-					EndDialog(hDlg, TRUE);
-					return TRUE;
-				}
+				EndDialog(hDlg, IDOK);
+				return TRUE;
 			}
-			MessageBoxA(MainWindowGetHandle(), "Could not save the settings", "Error", MB_OK | MB_ICONERROR);
+			MessageBoxA(hDlg, "Could not save brwatch.ini.", "Settings", MB_OK | MB_ICONERROR);
+			return TRUE;
 		}
-			// Fall through.
 
 		case IDCANCEL:
-			/*
-			 * OK or Cancel was clicked, close the dialog.
-			 */
-			EndDialog(hDlg, TRUE);
+			EndDialog(hDlg, IDCANCEL);
 			return TRUE;
 		}
 		break;
