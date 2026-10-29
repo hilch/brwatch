@@ -11,6 +11,58 @@
 #include "dlg_editcpu.h"
 #include "stringtools.h"
 
+static INT_PTR CALLBACK AddCpuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uMsg == WM_INITDIALOG)
+	{
+		SetWindowLongPtr(hDlg, DWLP_USER, lParam);
+		SendDlgItemMessageA(hDlg, IDR_EDIT_IPADDRESS, EM_SETLIMITTEXT, 15, 0);
+		return TRUE;
+	}
+	if (uMsg == WM_COMMAND)
+	{
+		switch (LOWORD(wParam))
+		{
+		case IDOK:
+		{
+			char ipAddress[17];
+			unsigned octets[4];
+			char trailing;
+			GetDlgItemTextA(hDlg, IDR_EDIT_IPADDRESS, ipAddress, sizeof(ipAddress));
+			if (strspn(ipAddress, "0123456789.") != strlen(ipAddress) ||
+				sscanf(ipAddress, "%u.%u.%u.%u%c", &octets[0], &octets[1], &octets[2], &octets[3], &trailing) != 4 ||
+				octets[0] > 255 || octets[1] > 255 || octets[2] > 255 || octets[3] > 255)
+			{
+				MessageBoxA(hDlg, "Enter a valid IPv4 address.", "Add Cpu", MB_OK | MB_ICONWARNING);
+				SetFocus(GetDlgItem(hDlg, IDR_EDIT_IPADDRESS));
+				return TRUE;
+			}
+			snprintf(ipAddress, sizeof(ipAddress), "%u.%u.%u.%u", octets[0], octets[1], octets[2], octets[3]);
+			PVIOBJECT *cpuObject = AddPviCpuByIp(ipAddress);
+			if (cpuObject != NULL)
+			{
+				PVIOBJECT **result = reinterpret_cast<PVIOBJECT **>(GetWindowLongPtr(hDlg, DWLP_USER));
+				*result = cpuObject;
+				EndDialog(hDlg, IDOK);
+			}
+			return TRUE;
+		}
+		case IDCANCEL:
+			EndDialog(hDlg, IDCANCEL);
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+PVIOBJECT *DlgAddCpuShowDialog(void)
+{
+	PVIOBJECT *cpuObject = NULL;
+	DialogBoxParamA(g_hInstance, MAKEINTRESOURCEA(DLG_ADD_CPU), g_hwndMainWindow,
+		AddCpuDlgProc, reinterpret_cast<LPARAM>(&cpuObject));
+	return cpuObject;
+}
+
 static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static PVIOBJECT *object;

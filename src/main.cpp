@@ -10,6 +10,7 @@
 #include "settings.h"
 #include "dlg_writepar.h"
 #include "dlg_about.h"
+#include "dlg_editcpu.h"
 #include "dlg_showpviobjects.h"
 #include "compressfile.h"
 #include "resource.h"
@@ -348,6 +349,53 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			// DialogBox(ghInstance, MAKEINTRESOURCE(DLG_SHOWPVIOBJECTS), hWnd, ShowPviObjectsDlgProc);
 			ShowWindowPviObjects();
 			break;
+		case IDM_ADD_CPU:
+		{
+			PVIOBJECT *cpuObject = DlgAddCpuShowDialog();
+			if (cpuObject == NULL)
+				break;
+			HWND tree = mytreeviewparam.hwndTV;
+			for (HTREEITEM deviceItem = TreeView_GetRoot(tree); deviceItem != NULL;
+				deviceItem = TreeView_GetNextSibling(tree, deviceItem))
+			{
+				TVITEMA item = {};
+				item.mask = TVIF_PARAM;
+				item.hItem = deviceItem;
+				if (!SendMessageA(tree, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)))
+					continue;
+				const char *deviceName = reinterpret_cast<const char *>(item.lParam);
+				size_t length = strlen(deviceName);
+				if (strncmp(cpuObject->name, deviceName, length) != 0 || cpuObject->name[length] != '/')
+					continue;
+				if (TreeView_GetChild(tree, deviceItem) == NULL)
+				{
+					PVIOBJECT *deviceObject = FindPviObjectByName(reinterpret_cast<char *>(item.lParam));
+					PVIOBJECT *child = FindPviChildObject(deviceObject, TRUE);
+					while (child != NULL)
+					{
+						MyTreeViewAddItem(&mytreeviewparam, deviceItem, child->descriptor,
+							reinterpret_cast<LPARAM>(child->name), ResourcesGetPviObjectImage(child));
+						child = FindPviChildObject(deviceObject, FALSE);
+					}
+				}
+				HTREEITEM cpuItem = TreeView_GetChild(tree, deviceItem);
+				while (cpuItem != NULL)
+				{
+					item.hItem = cpuItem;
+					if (SendMessageA(tree, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)) &&
+						strcmp(reinterpret_cast<const char *>(item.lParam), cpuObject->name) == 0)
+						break;
+					cpuItem = TreeView_GetNextSibling(tree, cpuItem);
+				}
+				if (cpuItem == NULL)
+					cpuItem = MyTreeViewAddItem(&mytreeviewparam, deviceItem, cpuObject->descriptor,
+						reinterpret_cast<LPARAM>(cpuObject->name), ResourcesGetPviObjectImage(cpuObject));
+				TreeView_Expand(tree, deviceItem, TVE_EXPAND);
+				TreeView_EnsureVisible(tree, cpuItem);
+				break;
+			}
+		}
+		break;
 		case IDM_MNU_REFRESH:
 			if (MessageBoxA(hWnd, "Delete all entries.\n\nAre you sure ?", "Clear Objects", MB_YESNO | MB_ICONWARNING) == IDYES)
 			{

@@ -19,6 +19,7 @@
 #define DLG_WRITE_STRINGS               105
 #define DLG_EDIT_CPU                    106
 #define DLG_EDIT_TASK                   107
+#define DLG_ADD_CPU                     108
 #define IDR_DEFAULT_INI1                115
 
 #define IDC_STATIC_PVIVERSION           1002
@@ -61,6 +62,7 @@
 #define IDM_MNU_REFRESH                 6003
 #define IDM_SAVE_WATCH_FILE             6004
 #define IDM_LOAD_WATCH_FILE             6005
+#define IDM_ADD_CPU                     6006
 #define IDM_CHANGE_VIEW_DECIMAL         6101
 #define IDM_CHANGE_VIEW_HEX             6102
 #define IDM_CHANGE_VIEW_BINARY          6103

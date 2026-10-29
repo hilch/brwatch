@@ -1191,6 +1191,39 @@ PVIOBJECT *ExpandPviObject(PVIOBJECT *object)
 	return NULL;
 }
 
+PVIOBJECT *AddPviCpuByIp(const char *ipAddress)
+{
+	PVIOBJECT *deviceObject = pvirootobject.next;
+	while (deviceObject != NULL && deviceObject->type != POBJ_DEVICE)
+		deviceObject = deviceObject->next;
+	if (deviceObject == NULL || deviceObject->linkid == 0)
+	{
+		MessageBoxA(MainWindowGetHandle(), "The PVI Ethernet device is not ready.", "Add Cpu", MB_OK | MB_ICONWARNING);
+		return NULL;
+	}
+
+	PVIOBJECT cpuObject = {};
+	strncpy(cpuObject.ex.cpu.ethernetCpuInfo.ipAddress, ipAddress, sizeof(cpuObject.ex.cpu.ethernetCpuInfo.ipAddress) - 1);
+	snprintf(cpuObject.descriptor, sizeof(cpuObject.descriptor), "/DAIP=%s", ipAddress);
+	for (PVIOBJECT *existing = deviceObject->next; existing != NULL; existing = existing->next)
+	{
+		if (existing->type == POBJ_CPU && strcmp(existing->descriptor, cpuObject.descriptor) == 0)
+			return existing;
+	}
+	char uniqueName[256];
+	CreateUniqueObjectName(uniqueName, cpuObject.descriptor);
+	snprintf(cpuObject.name, sizeof(cpuObject.name), "%s/CPU%s", deviceObject->name, uniqueName);
+	cpuObject.type = POBJ_CPU;
+	PVIOBJECT *created = AddPviObject(&cpuObject, TRUE);
+	if (created == NULL)
+	{
+		PVIOBJECT *failed = FindPviObjectByName(cpuObject.name);
+		if (failed != NULL)
+			RemovePviObject(failed);
+	}
+	return created;
+}
+
 /* searches for reachable CPUs
 	input: pointer to device object
 	result : pointer to device object or NULL in case of error
