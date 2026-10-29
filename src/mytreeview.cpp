@@ -2,6 +2,7 @@
 #include "mytreeview.h"
 #include "mylistview.h"
 #include "main.h"
+#include "settings.h"
 
 #define CX_BITMAP 16 /* Breite eines Bitmaps */
 #define CY_BITMAP 16 /* Hoehe eines Bitmaps */
@@ -132,13 +133,14 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 		case NM_RCLICK: // right click
 			if (tv->cbrclick != NULL)
 			{
-				hti = TreeView_GetDropHilight(tv->hwndTV);
-				if (hti == NULL)
-					hti = TreeView_GetSelection(tv->hwndTV);
-				else
-					TreeView_SelectItem(tv->hwndTV, hti);
+				TVHITTESTINFO hit = {};
+				GetCursorPos(&hit.pt);
+				ScreenToClient(tv->hwndTV, &hit.pt);
+				hti = TreeView_HitTest(tv->hwndTV, &hit);
+				if (hti == NULL || !(hit.flags & TVHT_ONITEM))
+					return 0;
 				memset(&item, 0, sizeof(item));
-				item.mask = TVIF_HANDLE;
+				item.mask = TVIF_PARAM;
 				item.hItem = hti;
 				SendMessageA(tv->hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item));
 
@@ -338,6 +340,31 @@ void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 			{
 				switch (object->type)
 				{
+				case POBJ_CPU:
+				{
+					HMENU menu = CreatePopupMenu();
+					if (menu == NULL)
+						break;
+					AppendMenuA(menu, MF_STRING, 1, "Store to settings");
+					UINT removeFlags = MF_STRING;
+					if (SettingsFindCpuSection(object->descriptor) == 0)
+						removeFlags |= MF_GRAYED;
+					AppendMenuA(menu, removeFlags, 2, "Remove from settings");
+					POINT position;
+					GetCursorPos(&position);
+					UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+						position.x, position.y, 0, g_hwndMainWindow, NULL);
+					DestroyMenu(menu);
+					BOOL success = TRUE;
+					if (command == 1)
+						success = SettingsStoreCpu(object->descriptor);
+					else if (command == 2)
+						success = SettingsRemoveCpu(object->descriptor);
+					if (!success)
+						MessageBoxA(g_hwndMainWindow, "Could not update the CPU settings. Check that brwatch.ini is writable and has a free CPU slot.",
+							"CPU settings", MB_OK | MB_ICONERROR);
+					break;
+				}
 				case POBJ_DEVICE:
 					break;
 

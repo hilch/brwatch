@@ -60,20 +60,10 @@ static void ReadSettings(void)
 {
 	PVIOBJECT cpuObject; /*, *pObject;*/
 	PVIOBJECT deviceObject;
-	// unsigned int numberOfDevices = 0;
-	unsigned int numberOfCpus = 0;
+
 	char section[20];
 	char key[20];
 	char buffer[80];
-
-	// deviceObject = static_cast<PVIOBJECT *>(calloc(MAX_SUPPORTED_DEVICES, sizeof(PVIOBJECT)));
-	// if (deviceObject == NULL)
-	// {
-	// 	char tempstring[256];
-	// 	snprintf(tempstring, sizeof(tempstring), "Out of memory !");
-	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-	// 	return;
-	// }
 
 	memset(&cpuObject, 0, sizeof(cpuObject));
 	memset(&deviceObject, 0, sizeof(deviceObject));
@@ -84,10 +74,6 @@ static void ReadSettings(void)
 	GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 	PLCDataChangeEvents = atoi(buffer);
 
-	// read devices from brwatch.ini
-	// pObject = deviceObject;
-	// numberOfDevices = 1;
-
 	// create DEVICE object
 	strcpy(deviceObject.descriptor, "/IF=tcpip");
 	CreateUniqueObjectName(tempstring, deviceObject.descriptor);
@@ -95,19 +81,7 @@ static void ReadSettings(void)
 	deviceObject.type = POBJ_DEVICE;
 	deviceObject.ex.dev.number = 1;
 	AddPviObject(&deviceObject, TRUE);
-	// store device's information for later use
-	// memcpy(pObject, &tempobject, sizeof(PVIOBJECT));
 
-	// if (numberOfDevices == 0)
-	// {
-	// 	char tempstring[256];
-	// 	snprintf(tempstring, sizeof(tempstring), "No PVI devices (interfaces) configured in .ini file !");
-	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-	// 	return;
-	// }
-
-	// read CPUs from brwatch.ini
-	numberOfCpus = 0;
 	for (unsigned cpu = 1; cpu <= MAX_SUPPORTED_CPUS; ++cpu)
 	{
 
@@ -118,12 +92,6 @@ static void ReadSettings(void)
 		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
 		strcpy(cpuObject.descriptor, buffer);
 
-		// strcpy(key, "device");
-		// strcpy(buffer, "");
-		// GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
-
-		// create CPU object
-
 		if (strlen(buffer) != 0)
 		{
 			char devicename[256];
@@ -132,42 +100,8 @@ static void ReadSettings(void)
 			snprintf(cpuObject.name, sizeof(cpuObject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
 			cpuObject.type = POBJ_CPU;
 			AddPviObject(&cpuObject, TRUE);
-			++numberOfCpus;
 		}
-
-		// if (strlen(buffer) != 0)
-		// {
-		// 	unsigned int deviceNumber = (unsigned int)atoi(buffer);
-		// 	/* get device's descriptor */
-		// 	pObject = deviceObject;
-		// 	for (unsigned dev = 0; dev < numberOfDevices; ++dev, ++pObject)
-		// 	{
-		// 		if (deviceNumber == pObject->ex.dev.number)
-		// 		{
-		// 			// get device's PVI path name
-		// 			char devicename[256];
-		// 			CreateUniqueObjectName(devicename, pObject->descriptor);
-		// 			// create CPU object
-		// 			CreateUniqueObjectName(tempstring, tempobject.descriptor);
-		// 			snprintf(tempobject.name, sizeof(tempobject.name), "@Pvi/LNBRWATCH/DEV%s/CPU%s", devicename, tempstring);
-		// 			tempobject.type = POBJ_CPU;
-		// 			AddPviObject(&tempobject, TRUE);
-		// 			++numberOfCpus;
-		// 			break;
-		// 		}
-		// 	}
-		// }
 	}
-
-	// if (numberOfCpus == 0)
-	// {
-	// 	char tempstring[256];
-	// 	snprintf(tempstring, sizeof(tempstring), "No CPUs configured in .ini file !");
-	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-	// 	return;
-	// }
-
-	// free(deviceObject);
 }
 
 /* create unique name from descriptor */
