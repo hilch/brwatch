@@ -159,13 +159,13 @@ static void ReadSettings(void)
 		// }
 	}
 
-	if (numberOfCpus == 0)
-	{
-		char tempstring[256];
-		snprintf(tempstring, sizeof(tempstring), "No CPUs configured in .ini file !");
-		MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
-		return;
-	}
+	// if (numberOfCpus == 0)
+	// {
+	// 	char tempstring[256];
+	// 	snprintf(tempstring, sizeof(tempstring), "No CPUs configured in .ini file !");
+	// 	MessageBoxA(MainWindowGetHandle(), tempstring, "Reading *.ini file", MB_OK);
+	// 	return;
+	// }
 
 	// free(deviceObject);
 }
