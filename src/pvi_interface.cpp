@@ -37,6 +37,7 @@ is still required to load the application libraries.
 #include <stdlib.h>
 #include <algorithm>
 #include <new>
+#include <string>
 #include <utility>
 #include <time.h>
 #include <direct.h>
@@ -1853,6 +1854,19 @@ PviObject *PviObject::ReadStructElements()
    log file handling
    ====================================================================================== */
 
+static std::string GetPviLogFileName(void)
+{
+	const char *appData = getenv("APPDATA");
+	BOOL useAppData = appData != nullptr && appData[0] != 0;
+	std::string directory = useAppData ? appData : GetApplicationPath();
+	if (useAppData)
+	{
+		directory += "\\brwatch";
+		CreateDirectoryA(directory.c_str(), nullptr);
+	}
+	return directory + "\\" PVILOGFILE;
+}
+
 /* writes into log file */
 static void AddRowToLog(const char *row, int errcode)
 {
@@ -1860,15 +1874,12 @@ static void AddRowToLog(const char *row, int errcode)
 	char zeit[10];
 	char datum[10];
 	char *pmessage;
-	char filename[MAX_PATH];
-
-	strcpy(filename, GetApplicationPath());
-	strcat(filename, "\\" PVILOGFILE);
+	std::string filename = GetPviLogFileName();
 
 	_strtime(zeit);
 	_strdate(datum);
 
-	f = fopen(filename, "a+");
+	f = fopen(filename.c_str(), "a+");
 
 	if (f != nullptr)
 	{
@@ -1910,11 +1921,8 @@ static void AddRowToLog(const char *row, int errcode)
 
 static void DeleteLog(void)
 {
-	char filename[MAX_PATH];
-
-	strcpy(filename, GetApplicationPath());
-	strcat(filename, "\\" PVILOGFILE);
-	remove(filename);
+	std::string filename = GetPviLogFileName();
+	remove(filename.c_str());
 }
 
 /* =====================================================================================
