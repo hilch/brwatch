@@ -27,6 +27,9 @@
 #include <algorithm>
 
 struct ObjectTreeView::CpuScanTask {
+	explicit CpuScanTask(ObjectTreeView &owner) : view(owner) {}
+
+	ObjectTreeView &view;
 	CpuScanControl control;
 	std::vector<stEthernetCpuInfo> cpus = std::vector<stEthernetCpuInfo>(256);
 	std::string parentName;
@@ -39,6 +42,13 @@ struct ObjectTreeView::CpuScanTask {
 	std::atomic<bool> done{false};
 	int entries = 0;
 	DWORD failure = ERROR_SUCCESS;
+
+	~CpuScanTask()
+	{
+		if (IsWindow(dialog))
+			DestroyWindow(dialog);
+		view.SetCpuScanBusy(false);
+	}
 };
 
 ObjectTreeView::ObjectTreeView() = default;
@@ -53,6 +63,17 @@ HWND ObjectTreeView::GetCpuScanDialogHandle() const
 	return scanTask != nullptr ? scanTask->dialog : nullptr;
 }
 
+void ObjectTreeView::SetCpuScanBusy(bool busy)
+{
+	if (cpuScanBusy == busy)
+		return;
+	cpuScanBusy = busy;
+	if (busy)
+		previousCursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
+	else
+		SetCursor(previousCursor);
+}
+
 void ObjectTreeView::StopCpuScan()
 {
 	if (scanTask == nullptr)
@@ -63,8 +84,6 @@ void ObjectTreeView::StopCpuScan()
 		WaitForSingleObject(scanTask->thread, INFINITE);
 		CloseHandle(scanTask->thread);
 	}
-	if (IsWindow(scanTask->dialog))
-		DestroyWindow(scanTask->dialog);
 	scanTask.reset();
 }
 
@@ -88,12 +107,13 @@ void ObjectTreeView::StartCpuScan(HTREEITEM item, PviObject *parent, unsigned ho
 {
 	try
 	{
-		scanTask = std::make_unique<CpuScanTask>();
+		scanTask = std::make_unique<CpuScanTask>(*this);
 		scanTask->parentName = parent->name;
 	}
 	catch (const std::bad_alloc &)
 	{
 		scanTask.reset();
+		SetCpuScanBusy(false);
 		MessageBoxA(parentWindow, "Not enough memory to start the CPU scan.", "CPU scan", MB_OK | MB_ICONERROR);
 		return;
 	}
@@ -172,10 +192,10 @@ void ObjectTreeView::UpdateCpuScanProgress()
 void ObjectTreeView::FinishCpuScan()
 {
 	auto task = std::move(scanTask);
+	KillTimer(task->dialog, 1);
+	EnableWindow(GetDlgItem(task->dialog, IDCANCEL), FALSE);
 	WaitForSingleObject(task->thread, INFINITE);
 	CloseHandle(task->thread);
-	if (IsWindow(task->dialog))
-		DestroyWindow(task->dialog);
 	if (task->control.cancelRequested.load())
 		return;
 	if (task->failure != ERROR_SUCCESS)
@@ -193,8 +213,11 @@ void ObjectTreeView::FinishCpuScan()
 	item.mask = TVIF_PARAM;
 	if (!IsWindow(window) || !TreeView_GetItem(window, &item) || item.lParam != reinterpret_cast<LPARAM>(parent->name))
 		return;
+	SetDlgItemTextA(task->dialog, IDC_CPU_SCAN_STATUS, "Adding discovered CPUs...");
+	RedrawWindow(task->dialog, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 	parent->AddEthernetCpus(task->cpus.data(), task->entries);
 	InsertExistingChildObjects(task->item, parent);
+	UpdateWindow(window);
 }
 
 INT_PTR CALLBACK ObjectTreeView::CpuScanProgressDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
@@ -203,6 +226,11 @@ INT_PTR CALLBACK ObjectTreeView::CpuScanProgressDlgProc(HWND dialog, UINT messag
 	if (message == WM_INITDIALOG)
 	{
 		SetWindowLongPtrA(dialog, DWLP_USER, lParam);
+		return TRUE;
+	}
+	if (view != nullptr && message == WM_SETCURSOR && view->HandleMessages(message, wParam, lParam) == 0)
+	{
+		SetWindowLongPtrA(dialog, DWLP_MSGRESULT, TRUE);
 		return TRUE;
 	}
 	if (view == nullptr || view->scanTask == nullptr)
@@ -307,6 +335,14 @@ LRESULT ObjectTreeView::HandleMessages(UINT wMsg, WPARAM, LPARAM lParam)
 
 	switch (wMsg)
 	{
+
+	case WM_SETCURSOR:
+		if (cpuScanBusy)
+		{
+			SetCursor(LoadCursor(nullptr, IDC_WAIT));
+			return 0;
+		}
+		break;
 
 	case WM_NOTIFY:
 		pnmtv = (LPNMTREEVIEWA)lParam;
@@ -500,10 +536,14 @@ void ObjectTreeView::ItemSelected(HTREEITEM hti, LPARAM lParam)
 				}
 				unsigned hosts = CpuScanDefaultHosts;
 				bool allowBeyondSubnet = false;
-				if (parent->type == POBJ_DEVICE && !DlgCpuScanShowDialog(parentWindow, hosts, allowBeyondSubnet))
-					return;
 				if (parent->type == POBJ_DEVICE)
 				{
+					SetCpuScanBusy(true);
+					if (!DlgCpuScanShowDialog(parentWindow, hosts, allowBeyondSubnet))
+					{
+						SetCpuScanBusy(false);
+						return;
+					}
 					char descriptor[sizeof(parent->descriptor)];
 					strcpy(descriptor, parent->descriptor);
 					if (strstr(_strupr(descriptor), "/IF=TCPIP") != nullptr)
@@ -515,6 +555,8 @@ void ObjectTreeView::ItemSelected(HTREEITEM hti, LPARAM lParam)
 				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 				InsertChildObjects(hti, parent, hosts, allowBeyondSubnet);
 				SetCursor(oldcursor);
+				if (parent->type == POBJ_DEVICE)
+					SetCpuScanBusy(false);
 			}
 		}
 	}

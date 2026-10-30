@@ -45,6 +45,8 @@ static unsigned errorNotifications;
 static DWORD detachedLinkId;
 static unsigned expectedErrorMessages;
 static unsigned createRequests;
+static HWND registrationDialog;
+static unsigned registrationsWithProgress;
 static const char *expectedMessageCaption = "Error";
 static std::string lastMessage;
 static unsigned browserLaunches;
@@ -369,10 +371,24 @@ extern "C" INT WINAPI PviSetGlobEventMsg(DWORD, LPVOID, DWORD, LPARAM)
 	return 0;
 }
 
-extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR name, DWORD, LPCSTR descriptor,
+extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR name, DWORD type, LPCSTR descriptor,
 							   LPVOID eventCallback, DWORD, LPARAM, LPCSTR)
 {
 	++createRequests;
+	if (type == POBJ_CPU && registrationDialog != nullptr)
+	{
+		CHECK(GetCurrentThreadId() == testUiThread);
+		CHECK(IsWindow(registrationDialog));
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		CHECK(SendMessageA(registrationDialog, WM_SETCURSOR,
+			reinterpret_cast<WPARAM>(registrationDialog), MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)) == TRUE);
+		CHECK(GetCursor() == LoadCursor(nullptr, IDC_WAIT));
+		CHECK(!IsWindowEnabled(GetDlgItem(registrationDialog, IDCANCEL)));
+		char status[180];
+		GetDlgItemTextA(registrationDialog, IDC_CPU_SCAN_STATUS, status, sizeof(status));
+		CHECK(strcmp(status, "Adding discovered CPUs...") == 0);
+		++registrationsWithProgress;
+	}
 	*link = nextLinkId++;
 	if (snmpPropertyResponses && strstr(name, "@Pvi/LnSNMP/Device/Station/") == name)
 		snmpProperties[*link] = descriptor;
@@ -1407,12 +1423,18 @@ static void CheckCpuScanProgress()
 	selection.itemNew.lParam = reinterpret_cast<LPARAM>(device->name);
 	for (UINT cancelMessage : {WM_COMMAND, WM_CLOSE})
 	{
+		HCURSOR savedCursor = SetCursor(LoadCursor(nullptr, IDC_CROSS));
 		readEntered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
 		readRelease = CreateEventA(nullptr, TRUE, FALSE, nullptr);
 		CHECK(readEntered != nullptr && readRelease != nullptr);
 		CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
 		HWND dialog = tree.GetCpuScanDialogHandle();
 		CHECK(dialog != nullptr && IsWindowEnabled(parent));
+		CHECK(GetCursor() == LoadCursor(nullptr, IDC_WAIT));
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		CHECK(tree.HandleMessages(WM_SETCURSOR, reinterpret_cast<WPARAM>(tree.GetHandle()),
+			MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)) == 0);
+		CHECK(GetCursor() == LoadCursor(nullptr, IDC_WAIT));
 		CHECK(GetDlgItem(dialog, IDC_CPU_SCAN_PROGRESS) != nullptr);
 		CHECK((GetWindowLongPtrA(GetDlgItem(dialog, IDC_CPU_SCAN_PROGRESS), GWL_STYLE) & PBS_MARQUEE) != 0);
 		CHECK(WaitForSingleObject(readEntered, 5000) == WAIT_OBJECT_0);
@@ -1424,6 +1446,9 @@ static void CheckCpuScanProgress()
 		CHECK(SetEvent(readRelease));
 		WaitForCpuScan(tree);
 		CHECK(!IsWindow(dialog) && TreeView_GetChild(tree.GetHandle(), root) == nullptr && startupCalls == 0);
+		CHECK(GetCursor() == LoadCursor(nullptr, IDC_CROSS));
+		CHECK(tree.HandleMessages(WM_SETCURSOR, 0, 0) != 0);
+		SetCursor(savedCursor);
 		CHECK(CloseHandle(readEntered) && CloseHandle(readRelease));
 		readEntered = readRelease = nullptr;
 	}
@@ -1477,6 +1502,17 @@ static void CheckCpuScanProgress()
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
 	tree.ClearAll();
 	CHECK(tree.GetCpuScanDialogHandle() == nullptr && TreeView_GetCount(tree.GetHandle()) == 0);
+	stEthernetCpuInfo discoveredCpu = {};
+	strcpy(discoveredCpu.ipAddress, "192.168.10.2");
+	strcpy(discoveredCpu.targetTypeDescription, "Test CPU");
+	unsigned previousCreates = createRequests;
+	DWORD expectedLink = nextLinkId;
+	CHECK(device->AddEthernetCpus(&discoveredCpu, 1) == device);
+	CHECK(createRequests == previousCreates + 1);
+	PviObject *discovered = device->FindChild(TRUE);
+	CHECK(discovered != nullptr && discovered->linkid == expectedLink);
+	CHECK(strcmp(discovered->ex.cpu.cputype, "Test CPU") == 0);
+	discovered->Remove();
 	CHECK(DestroyWindow(parent));
 	device->Remove();
 	ResetSocketTest();
@@ -1531,8 +1567,17 @@ static void CheckCpuScanTree()
 	testAdapters.clear();
 	ResetSocketTest();
 	socketMode = SocketMode::Immediate;
+	HCURSOR savedCursor = SetCursor(LoadCursor(nullptr, IDC_CROSS));
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	registrationDialog = tree.GetCpuScanDialogHandle();
+	CHECK(registrationDialog != nullptr);
+	unsigned previousRegistrations = registrationsWithProgress;
 	WaitForCpuScan(tree);
+	CHECK(registrationsWithProgress == previousRegistrations + 1);
+	CHECK(!IsWindow(registrationDialog));
+	CHECK(GetCursor() == LoadCursor(nullptr, IDC_CROSS));
+	SetCursor(savedCursor);
+	registrationDialog = nullptr;
 	CHECK(TreeView_GetChild(tree.GetHandle(), root) != nullptr);
 	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 1);
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);

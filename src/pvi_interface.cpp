@@ -1234,7 +1234,7 @@ PviObject *PviObject::AddEthernetCpus(const stEthernetCpuInfo *cpus, int entries
 		int result = PviCreate(&cpuObject.linkid, cpuObject.name, cpuObject.type, descriptor,
 			PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=s");
 		if (result == 0)
-			cpuObject.Add(1);
+			cpuObject.Add(FALSE);
 		else
 			AddRowToLog("PviObject::AddEthernetCpus:PviCreate", result);
 	}

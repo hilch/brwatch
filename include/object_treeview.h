@@ -51,6 +51,7 @@ private:
 	void StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet);
 	void FinishCpuScan();
 	void UpdateCpuScanProgress();
+	void SetCpuScanBusy(bool busy);
 	void InsertExistingChildObjects(HTREEITEM item, PviObject *parent);
 	void InsertChildObjects(HTREEITEM item, PviObject *parent, unsigned hostsPerAdapter, bool allowBeyondSubnet);
 	void ItemSelected(HTREEITEM item, LPARAM data);
@@ -62,6 +63,8 @@ private:
 
 	HWND window = nullptr;
 	HWND parentWindow = nullptr;
+	bool cpuScanBusy = false;
+	HCURSOR previousCursor = nullptr;
 	std::unique_ptr<CpuScanTask> scanTask;
 };
 

@@ -362,7 +362,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		return (0);
 
 	if (objectTreeView.HandleMessages(wMsg, wParam, lParam) == 0)
-		return (0);
+		return wMsg == WM_SETCURSOR ? TRUE : 0;
 
 	switch (wMsg)
 	{
