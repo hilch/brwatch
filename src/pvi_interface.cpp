@@ -1610,6 +1610,7 @@ static PVIOBJECT *PviReadPvarList(PVIOBJECT *object)
 /* read struct elements and use them as separate objects */
 static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 {
+	const unsigned int buffer_size = 258084;
 	char *pbuffer;
 	int result;
 	char *s, *d;
@@ -1623,11 +1624,11 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 	if (object->type != POBJ_PVAR && object->ex.pv.type != BR_STRUCT)
 		return NULL;
 
-	pbuffer = (char *)malloc(65535);
+	pbuffer = (char *)calloc(buffer_size, 1);
 
 	if (pbuffer == NULL)
 	{
-		AddRowToLog("PviReadStructElements:malloc(65535)", -1);
+		AddRowToLog("PviReadStructElements:calloc(buffer_size)", -1);
 		return NULL; // error
 	}
 
@@ -1639,12 +1640,19 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 	result = PviCreate(&newobject.linkid, newobject.name, newobject.type, newobject.descriptor, PviCallback, SET_PVICALLBACK_DATA, 0, "Ev=e");
 	if (result == 0 || result == 12002)
 	{
-		result = PviRead(newobject.linkid, POBJ_ACC_TYPE_EXTERN, NULL, 0, pbuffer, 65535);
+		result = PviRead(newobject.linkid, POBJ_ACC_TYPE_EXTERN, NULL, 0, pbuffer, buffer_size );
 	}
 	PviDelete(newobject.name);
 
 	if (result == 0)
 	{
+		if (memchr(pbuffer, '\0', buffer_size) == NULL)
+		{
+			AddRowToLog("PviReadStructElements:unterminated type description", -1);
+			free(pbuffer);
+			return NULL;
+		}
+
 		// AddRowToLog( pbuffer, 0 );
 
 		s = pbuffer;
@@ -1691,8 +1699,14 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 				// count number of points. If > then element is a child
 				if (CountToken(tempstring, '.') > 1)
 				{
-					while (!FindToken(&s, "}"))
-						++s; // ignore everything
+					char *end = strchr(s, '}');
+					if (end == NULL)
+					{
+						AddRowToLog("PviReadStructElements:missing closing brace", -1);
+						free(pbuffer);
+						return NULL;
+					}
+					s = end + 1;
 					element_definition = FALSE;
 				}
 				continue;
@@ -1816,16 +1830,16 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 				}
 				else
 				{
-					newobject.ex.pv.type = static_cast<PVIPVARTYPE>(0); // unbekannt
+					newobject.ex.pv.type = static_cast<PVIPVARTYPE>(0); // unknown
 					newobject.ex.pv.pdatatype = "UNKNOWN";
 					while (*s != ' ' && *s != 0)
-						++s; // Rest ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼berlesen
+						++s; // ignore rest
 				}
 				continue;
 			}
 
-			if (element_definition && !strcmp(newobject.ex.pv.pdatatype, "DATATYPE"))
-			{ // Strukturname des Elementes
+			if (element_definition && newobject.ex.pv.type == BR_STRUCT)
+			{ // Structure name of the element
 				if (FindToken(&s, KWDESC_SNAME "="))
 				{
 					d = tempstring;
@@ -1838,13 +1852,13 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 				}
 			}
 			if (FindToken(&s, KWDESC_PVCNT "="))
-			{ // Anzahl der Elemente
+			{ // Number of elements
 				newobject.ex.pv.dimension = GetIntValue(&s);
 				continue;
 			}
 
 			if (FindToken(&s, "}") || *(s + 1) == 0)
-			{ // Ende des Eintrags oder der gesamten Liste
+			{ // End of the entry or the entire list
 				PVIOBJECT newelement;
 				int i;
 				//				int j;
@@ -1877,9 +1891,9 @@ static PVIOBJECT *PviReadStructElements(PVIOBJECT *object)
 						}
 #endif
 
-						strncpy(newelement.ex.pv.scope, object->ex.pv.scope, 1); // GÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼ltigkeitsbereich wird geerbt
-						newelement.ex.pv.task = object->ex.pv.task;				 // Task wird geerbt
-						newelement.ex.pv.cpu = object->ex.pv.cpu;				 // Task wird geerbt
+						strncpy(newelement.ex.pv.scope, object->ex.pv.scope, 1); // Scope is inherited
+						newelement.ex.pv.task = object->ex.pv.task;				 // Task is inherited
+						newelement.ex.pv.cpu = object->ex.pv.cpu;				 // CPU is inherited
 						if ((o = AddPviObject(&newelement, FALSE)) != NULL)
 						{
 							// object->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde fÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼r das Objekt angelegt
