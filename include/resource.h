@@ -23,11 +23,13 @@
 
 #ifndef RC_INVOKED
 #include "pvi_interface.h"
+#else
+#include "git_info.h"
 #endif
 #include <commctrl.h>
 
-#define VER_PRODUCTVERSION          2,0,0,0
-#define VER_PRODUCTVERSION_STR      "2.0.0"
+#define VER_PRODUCTVERSION          BRWATCH_PRODUCTVERSION
+#define VER_PRODUCTVERSION_STR      BRWATCH_PRODUCTVERSION_STR
 
 // Used by main.rc
 //
