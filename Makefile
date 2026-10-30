@@ -47,7 +47,7 @@ CPP_SOURCES = \
 	logger.cpp \
 	main.cpp \
 	mylistview.cpp \
-	mytreeview.cpp \
+	object_treeview.cpp \
 	pvi_interface.cpp \
 	resource.cpp \
 	settings.cpp \

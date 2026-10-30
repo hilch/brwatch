@@ -1,7 +1,9 @@
 #include "main.h"
 #include "mylistview.h"
+#include "object_treeview.h"
 #include "dlg_about.h"
 #include "resource.h"
+#include "settings.h"
 #include <shellapi.h>
 #include <type_traits>
 #include <vector>
@@ -356,6 +358,144 @@ static void CheckStringListInsertion(PviObject *task)
 	object->Remove();
 }
 
+static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *testDirectory)
+{
+	HINSTANCE instance = GetModuleHandleA(nullptr);
+	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
+								 0, 0, 640, 480, nullptr, nullptr, instance, nullptr);
+	CHECK(parent != nullptr);
+	ObjectTreeView first;
+	ObjectTreeView second;
+	CHECK(first.GetHandle() == nullptr && second.GetHandle() == nullptr);
+	CHECK(first.Create(instance, parent) != nullptr);
+	CHECK(second.Create(instance, parent) != nullptr);
+	CHECK(first.GetHandle() != second.GetHandle());
+	CHECK(MoveWindow(first.GetHandle(), 0, 0, 300, 240, FALSE) != 0);
+	CHECK(MoveWindow(second.GetHandle(), 300, 0, 300, 240, FALSE) != 0);
+	mylistviewparam = {};
+	mylistviewparam.hinstance = instance;
+	mylistviewparam.hwndParent = parent;
+	const char *columns[] = {"Name", "Type", "Scope", "Value"};
+	for (unsigned i = 0; i < 4; ++i)
+		mylistviewparam.column[i].name = columns[i];
+	CHECK(MyListViewCreateWindow(&mylistviewparam) != nullptr);
+
+	PviObject *array = AddObject("@Pvi/Tree/Values", "Values", POBJ_PVAR);
+	array->ex.pv.type = BR_DINT;
+	array->ex.pv.pdatatype = "DINT";
+	array->ex.pv.dimension = 3;
+	array->ex.pv.length = sizeof(LONG);
+	array->ex.pv.task = task;
+	array->ex.pv.cpu = cpu;
+	HTREEITEM root = first.AddItem(TVI_ROOT, array->descriptor, reinterpret_cast<LPARAM>(array->name), 0);
+	CHECK(root != nullptr);
+	CHECK(second.AddItem(TVI_ROOT, array->descriptor, reinterpret_cast<LPARAM>(array->name), 0) != nullptr);
+	NMTREEVIEWA selection = {};
+	selection.hdr.hwndFrom = first.GetHandle();
+	selection.hdr.code = TVN_SELCHANGEDA;
+	selection.itemNew.hItem = root;
+	selection.itemNew.lParam = reinterpret_cast<LPARAM>(array->name);
+	CHECK(second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 1);
+	CHECK(first.HandleMessages(WM_SIZE, 0, 0) == 1);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(TreeView_GetCount(first.GetHandle()) == 4);
+	CHECK(TreeView_GetCount(second.GetHandle()) == 1);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(TreeView_GetCount(first.GetHandle()) == 4);
+	char label[80];
+	TVITEMA item = {};
+	item.mask = TVIF_TEXT;
+	item.hItem = root;
+	item.pszText = label;
+	item.cchTextMax = sizeof(label);
+	CHECK(SendMessageA(first.GetHandle(), TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)) != 0);
+	CHECK(strcmp(label, "Values   :DINT[3]") == 0);
+
+	NMHDR doubleClick = {};
+	doubleClick.hwndFrom = first.GetHandle();
+	doubleClick.code = NM_DBLCLK;
+	CHECK(TreeView_SelectItem(first.GetHandle(), root) != 0);
+	unsigned previousCreates = createRequests;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
+	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 0);
+	CHECK(array->watchsort == -1 && createRequests == previousCreates);
+	HTREEITEM childItem = TreeView_GetChild(first.GetHandle(), root);
+	CHECK(childItem != nullptr);
+	PviObject *element = PviObject::FindByName("@Pvi/Tree/Values[0]");
+	CHECK(element != nullptr);
+	CHECK(TreeView_SelectItem(first.GetHandle(), childItem) != 0);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
+	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 1);
+	CHECK(element->watchsort == 0 && element->ex.pv.pvalue != nullptr);
+	LVITEMA listItem = {};
+	listItem.mask = LVIF_PARAM;
+	CHECK(ListView_GetItem(mylistviewparam.hwndLV, &listItem) != 0);
+	CHECK(reinterpret_cast<const char *>(listItem.lParam) == element->name);
+
+	NMTREEVIEWA drag = {};
+	drag.hdr.hwndFrom = first.GetHandle();
+	drag.hdr.code = TVN_BEGINDRAGA;
+	drag.itemNew.hItem = childItem;
+	drag.itemNew.lParam = reinterpret_cast<LPARAM>(element->name);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&drag)) == 0);
+	CHECK(g_draggedPVIObject == element);
+	CHECK(GetCapture() == parent);
+	CHECK(TreeView_GetDropHilight(first.GetHandle()) == childItem);
+	CHECK(TreeView_GetDropHilight(second.GetHandle()) == nullptr);
+	ImageList_EndDrag();
+	ImageList_DragLeave(parent);
+	ReleaseCapture();
+	g_draggedPVIObject = nullptr;
+
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, SettingsGetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\tree-settings.ini", testDirectory);
+	strcpy(SettingsGetFileName(), settingsFile);
+	HMENU menu = CreatePopupMenu();
+	CHECK(menu != nullptr);
+	CHECK(AppendMenuA(menu, MF_STRING, IDM_STORE_CPU_SETTINGS, "Store") != 0);
+	CHECK(AppendMenuA(menu, MF_STRING, IDM_REMOVE_CPU_SETTINGS, "Remove") != 0);
+	second.UpdateCpuSettingsMenu(menu);
+	CHECK((GetMenuState(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	CHECK((GetMenuState(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	HTREEITEM cpuItem = second.AddItem(TVI_ROOT, cpu->descriptor, reinterpret_cast<LPARAM>(cpu->name), 0);
+	CHECK(cpuItem != nullptr);
+	CHECK(TreeView_SelectItem(second.GetHandle(), cpuItem) != 0);
+	second.UpdateCpuSettingsMenu(menu);
+	CHECK((GetMenuState(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) == 0);
+	CHECK((GetMenuState(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	second.CpuSettingsCommand(IDM_STORE_CPU_SETTINGS);
+	CHECK(SettingsFindCpuSection(cpu->descriptor) != 0);
+	second.UpdateCpuSettingsMenu(menu);
+	CHECK((GetMenuState(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	CHECK((GetMenuState(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) == 0);
+	second.CpuSettingsCommand(IDM_REMOVE_CPU_SETTINGS);
+	CHECK(SettingsFindCpuSection(cpu->descriptor) == 0);
+	first.CpuSettingsCommand(IDM_STORE_CPU_SETTINGS);
+	CHECK(SettingsFindCpuSection(cpu->descriptor) == 0);
+	CHECK(DestroyMenu(menu) != 0);
+	CHECK(DeleteFileA(settingsFile) != 0);
+	strcpy(SettingsGetFileName(), originalSettings);
+
+	second.ClearAll();
+	CHECK(TreeView_GetCount(second.GetHandle()) == 0);
+	CHECK(TreeView_GetCount(first.GetHandle()) == 4);
+	first.ClearAll();
+	CHECK(TreeView_GetCount(first.GetHandle()) == 0);
+	CHECK(DestroyWindow(parent) != 0);
+	mylistviewparam = {};
+	for (unsigned i = 0; i < 3; ++i)
+	{
+		char name[80];
+		snprintf(name, sizeof(name), "@Pvi/Tree/Values[%u]", i);
+		PviObject *child = PviObject::FindByName(name);
+		CHECK(child != nullptr);
+		child->Remove();
+	}
+	array->Remove();
+}
+
 static void CheckAboutLink()
 {
 	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_LINK_CLASS};
@@ -519,6 +659,7 @@ int main()
 	CheckStringCallbacks(BR_STRING);
 	CheckStringCallbacks(BR_WSTRING);
 	CheckStringListInsertion(task);
+	CheckObjectTreeView(cpu, task, testDirectory);
 	CheckAboutLink();
 	CHECK(variable->Watch(FALSE) == variable);
 	CHECK(variable->ex.pv.pvalue == nullptr && variable->linkid == 0);
@@ -550,6 +691,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watch insertion, About hyperlink, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watch insertion, ObjectTreeView, About hyperlink, and watch files");
 	return 0;
 }

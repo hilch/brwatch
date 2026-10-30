@@ -2,7 +2,7 @@
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 
 #include "main.h"
-#include "mytreeview.h"
+#include "object_treeview.h"
 #include "mylistview.h"
 #include "pvi_interface.h"
 #include "stringtools.h"
@@ -43,8 +43,8 @@ char g_PVIVersionString[50] = {0};
 /* Global variables (extern in mylistview.h) */
 MYLISTVIEWPARAM mylistviewparam = {};
 
-/* Global variables (extern in mytreeview.h) */
-MYTREEVIEWPARAM mytreeviewparam = {};
+/* Global variables (extern in object_treeview.h) */
+ObjectTreeView objectTreeView;
 
 /* Global variables (extern in pvi_interface.h) */
 PVIOBJECTNOTIFICATION pvi_interface_notify = {};
@@ -185,7 +185,7 @@ static void PviObjectsValid(void)
 	{
 		if (object->type == POBJ_DEVICE)
 		{
-			MyTreeViewAddItem(&mytreeviewparam, TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
+			objectTreeView.AddItem(TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
 		}
 	}
 
@@ -336,14 +336,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 	if (MyListViewHandleMessages(&mylistviewparam, wMsg, wParam, lParam) == 0)
 		return (0);
 
-	if (MyTreeViewHandleMessages(&mytreeviewparam, wMsg, wParam, lParam) == 0)
+	if (objectTreeView.HandleMessages(wMsg, wParam, lParam) == 0)
 		return (0);
 
 	switch (wMsg)
 	{
 
 	case WM_INITMENUPOPUP:
-		MyTreeViewUpdateCpuSettingsMenu(reinterpret_cast<HMENU>(wParam));
+		objectTreeView.UpdateCpuSettingsMenu(reinterpret_cast<HMENU>(wParam));
 		break;
 
 	case WM_COMMAND:
@@ -351,7 +351,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		{
 		case IDM_STORE_CPU_SETTINGS:
 		case IDM_REMOVE_CPU_SETTINGS:
-			MyTreeViewCpuSettingsCommand(static_cast<UINT>(wParam));
+			objectTreeView.CpuSettingsCommand(static_cast<UINT>(wParam));
 			break;
 
 		case IDM_ABOUT:
@@ -367,7 +367,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			PviObject *cpuObject = DlgAddCpuShowDialog();
 			if (cpuObject == nullptr)
 				break;
-			HWND tree = mytreeviewparam.hwndTV;
+			HWND tree = objectTreeView.GetHandle();
 			for (HTREEITEM deviceItem = TreeView_GetRoot(tree); deviceItem != nullptr;
 				deviceItem = TreeView_GetNextSibling(tree, deviceItem))
 			{
@@ -386,7 +386,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					PviObject *child = deviceObject != nullptr ? deviceObject->FindChild(TRUE) : nullptr;
 					while (child != nullptr)
 					{
-						MyTreeViewAddItem(&mytreeviewparam, deviceItem, child->descriptor,
+						objectTreeView.AddItem(deviceItem, child->descriptor,
 							reinterpret_cast<LPARAM>(child->name), ResourcesGetPviObjectImage(child));
 						child = deviceObject->FindChild(FALSE);
 					}
@@ -401,7 +401,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					cpuItem = TreeView_GetNextSibling(tree, cpuItem);
 				}
 				if (cpuItem == nullptr)
-					cpuItem = MyTreeViewAddItem(&mytreeviewparam, deviceItem, cpuObject->descriptor,
+					cpuItem = objectTreeView.AddItem(deviceItem, cpuObject->descriptor,
 						reinterpret_cast<LPARAM>(cpuObject->name), ResourcesGetPviObjectImage(cpuObject));
 				TreeView_Expand(tree, deviceItem, TVE_EXPAND);
 				TreeView_EnsureVisible(tree, cpuItem);
@@ -415,7 +415,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 				HCURSOR oldcursor;
 
 				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
-				TreeView_DeleteAllItems(mytreeviewparam.hwndTV);
+				objectTreeView.ClearAll();
 				ListView_DeleteAllItems(mylistviewparam.hwndLV);
 				PviObject::Stop();
 				Sleep(1000);
@@ -632,7 +632,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		int nHeight = HIWORD(lParam); // height of client area
 
 		// für Splitter
-		MoveWindow(mytreeviewparam.hwndTV, 0, 0, splitter_xpos - 1, nHeight, TRUE);
+		MoveWindow(objectTreeView.GetHandle(), 0, 0, splitter_xpos - 1, nHeight, TRUE);
 		MoveWindow(mylistviewparam.hwndLV, splitter_xpos + 1, 0, nWidth - 101, nHeight - writewnd_height, TRUE);
 		//		MoveWindow(mywritelistviewparam.hwndLV, splitter_xpos + 1, nHeight-writewnd_height, nWidth - 101, writewnd_height, TRUE);
 	}
@@ -658,7 +658,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			g_draggedPVIObject->watchsort = drop_target_index;
 			MyListViewInsertPVIObjects(g_draggedPVIObject);
 			g_draggedPVIObject = nullptr;
-			TreeView_Select(mytreeviewparam.hwndTV, 0, TVGN_DROPHILITE); // only for nicer view
+			TreeView_Select(objectTreeView.GetHandle(), 0, TVGN_DROPHILITE); // only for nicer view
 		}
 		return 0;
 
@@ -666,7 +666,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		switch (wParam)
 		{
 		case VK_TAB:
-			SetFocus(mytreeviewparam.hwndTV);
+			SetFocus(objectTreeView.GetHandle());
 			break;
 		}
 		return 0;
@@ -677,7 +677,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			GetClientRect(hWnd, &rect);
 			if ((LOWORD(lParam) > 50) && (LOWORD(lParam) < (rect.right) - 50))
 			{
-				MoveWindow(mytreeviewparam.hwndTV, 0, 0, LOWORD(lParam) - 1, rect.bottom, TRUE);
+				MoveWindow(objectTreeView.GetHandle(), 0, 0, LOWORD(lParam) - 1, rect.bottom, TRUE);
 				MoveWindow(mylistviewparam.hwndLV, LOWORD(lParam) + 1, 0, rect.right - LOWORD(lParam) + 1, rect.bottom - writewnd_height, TRUE);
 				//				MoveWindow(mywritelistviewparam.hwndLV, LOWORD(lParam) + 1, rect.bottom - writewnd_height, rect.right - LOWORD(lParam) + 1, writewnd_height, TRUE);
 				splitter_xpos = LOWORD(lParam);
@@ -736,7 +736,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			// logger was started...
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop");
 			EnableWindow(mylistviewparam.hwndLV, FALSE);
-			EnableWindow(mytreeviewparam.hwndTV, FALSE);
+			EnableWindow(objectTreeView.GetHandle(), FALSE);
 			WritePrivateProfileStringA("General", "LoggerActive", "1", SettingsGetFileName());
 			strcpy(logger_watch_file, GetApplicationPath());
 			strcat(logger_watch_file, "\\_logger.wtc");
@@ -747,7 +747,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			// logger was stopped
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start");
 			EnableWindow(mylistviewparam.hwndLV, TRUE);
-			EnableWindow(mytreeviewparam.hwndTV, TRUE);
+			EnableWindow(objectTreeView.GetHandle(), TRUE);
 			WritePrivateProfileStringA("General", "LoggerActive", "0", SettingsGetFileName());
 		}
 		break;
@@ -760,17 +760,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		g_draggedPVIObject = nullptr;
 
 		/* TreeView */
-		memset(&mytreeviewparam, 0, sizeof(mytreeviewparam));
-		mytreeviewparam.hinstance = g_hInstance;
-		mytreeviewparam.hwndParent = hWnd;
-		mytreeviewparam.cbselected = MyTreeViewItemSelected; // Callback
-		mytreeviewparam.cbbegindrag = MyTreeViewBeginDragging;
-		mytreeviewparam.cbdblclick = MyTreeViewDblClick;
-		mytreeviewparam.cbrclick = MyTreeViewRClick;
-
-		MyTreeViewCreateWindow(&mytreeviewparam);
-		TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_NORMAL);
-		// TreeView_SetImageList(mytreeviewparam.hwndTV, himl, TVSIL_STATE );
+		if (objectTreeView.Create(g_hInstance, hWnd) == nullptr)
+			return -1;
+		TreeView_SetImageList(objectTreeView.GetHandle(), himl, TVSIL_NORMAL);
 
 		/* Listview */
 		memset(&mylistviewparam, 0, sizeof(mylistviewparam));
