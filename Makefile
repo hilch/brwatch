@@ -28,7 +28,7 @@ BUILD_DIR = build
 # Compiler flags
 CFLAGS   = -m64 -Wall -Wextra -I$(INC_DIR)
 CXXFLAGS = $(CFLAGS) -std=c++14
-LDFLAGS  = -m64 -mwindows -static-libgcc -static-libstdc++
+LDFLAGS  = -m64 -mwindows -static -static-libgcc -static-libstdc++
 LIBS     = -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 -lshell32 -L$(LIB_DIR) $(LIB_DIR)/PviCom64.lib
 
 # Resource
