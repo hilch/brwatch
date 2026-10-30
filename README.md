@@ -95,6 +95,17 @@ mingw32-make.exe -f Makefile SHELL=cmd clean all
 The 64-bit executable will be generated as `build/brwatch.exe`. Run a clean build
 when switching from the previous 32-bit build to discard incompatible object files.
 
+The VS Code debug build tasks define `__DEBUG__` and enable a console. Debug
+launch configurations open a separate console window (not the Debug Console).
+When an Ethernet CPU search starts, debug builds print the adapter count and
+each adapter's description (name), IP address, and subnet mask before SNMP
+discovery begins. Release builds omit this output and the console.
+Use the clean build tasks when switching between debug and release builds.
+
+Ethernet CPU searches also probe `127.0.0.1:11169` to discover local controllers,
+including when no Ethernet adapter is available. Only `127.0.0.1` is probed on
+the loopback network.
+
 Every build checks Git metadata and updates the About dialog's commit hash and
 the tag pointing at the current commit. Commits without a tag show `untagged`.
 Builds without Git or repository metadata show `unknown` for the hash.

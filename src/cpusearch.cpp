@@ -18,6 +18,21 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
 int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
 int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries);
 
+#ifdef __DEBUG__
+static void PrintEthernetAdapters(const struct stAdapterInfo *adapters, int count)
+{
+	printf("CPU scan adapters (IPv4 addresses): %d\n", count);
+	for (int i = 0; i < count; ++i)
+	{
+		printf("Adapter: %.*s\n  IP address: %.*s\n  Subnet mask: %.*s\n",
+			   static_cast<int>(sizeof(adapters[i].description)), adapters[i].description,
+			   static_cast<int>(sizeof(adapters[i].ipAddress)), adapters[i].ipAddress,
+			   static_cast<int>(sizeof(adapters[i].subnetMask)), adapters[i].subnetMask);
+	}
+	fflush(stdout);
+}
+#endif
+
 /* -----------------------------------------------------------------------------------------
 	start searching CPUs via TCP port 11169
 	----------------------------------------------------------------------------------------
@@ -38,18 +53,20 @@ int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo
 	unsigned long network = localIp & subnetMask;
 	unsigned long broadcast = network | ~subnetMask;
 	unsigned long scanNetwork = localIp & 0xFFFFFF00UL;
+	bool loopback = localIp == INADDR_LOOPBACK;
+	unsigned hostLimit = loopback ? 2 : 255;
 
-	for (unsigned host = 1; host < 255 && entries < maxEntries;)
+	for (unsigned host = 1; host < hostLimit && entries < maxEntries;)
 	{
 		SOCKET sockets[32];
 		IN_ADDR addresses[32];
 		int pending = 0;
 
-		while (host < 255 && pending < 32 && entries < maxEntries)
+		while (host < hostLimit && pending < 32 && entries < maxEntries)
 		{
 			unsigned long targetIp = scanNetwork | host++;
-			if (targetIp == localIp || targetIp <= network || targetIp >= broadcast ||
-				(targetIp & subnetMask) != network)
+			if (!loopback && (targetIp == localIp || targetIp <= network || targetIp >= broadcast ||
+				(targetIp & subnetMask) != network))
 				continue;
 
 			SOCKET connection = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -328,21 +345,23 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 */
 int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 {
+	struct stAdapterInfo adapters[21] = {
+		{"127.0.0.1", "255.0.0.0", "Loopback (localhost)"}};
+	int noOfAdapters = 1 + ListNetworkAdapters(adapters + 1, 20);
+
+#ifdef __DEBUG__
+	PrintEthernetAdapters(adapters, noOfAdapters);
+#endif
+
 	int noOfCPUs = SearchCpuViaSnmp(ethernetCpuInfo, maxEntries);
-
-	struct stAdapterInfo adapters[20];
-	memset(adapters, 0, sizeof(adapters));
-
-	int noOfEthernetAdapters = ListNetworkAdapters(adapters, 20);
 
 	/* Also discover CPUs with SNMP disabled via TCP port 11169. */
 	unsigned long buflen = 256 * sizeof(struct stEthernetCpuInfo);
 	struct stEthernetCpuInfo *ethernetScanCpuInfo = (struct stEthernetCpuInfo *)malloc(buflen);
 	if (ethernetScanCpuInfo != NULL)
 	{
-		for (int i = 0; i < noOfEthernetAdapters; ++i)
+		for (int i = 0; i < noOfAdapters; ++i)
 		{
-			// printf("%s  %s   %s\n", adapters[i].ipAddress, adapters[i].subnetMask, adapters[i].description );
 			memset(ethernetScanCpuInfo, 0, buflen);
 			int result = SearchCpuViaPortScan(&adapters[i], ethernetScanCpuInfo, 256);
 			if (result > 0)
@@ -351,7 +370,7 @@ int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries
 				{
 #ifdef __DEBUG__
 					printf("%s / %s \n", ethernetScanCpuInfo[i].ipAddress, ethernetScanCpuInfo[i].subnetMask);
-#endif // __DEBUG__
+#endif
 					int found = 0;
 					for (int n = 0; n < noOfCPUs; ++n)
 					{ /* discard dublicates */
