@@ -1,6 +1,6 @@
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 #include "object_treeview.h"
-#include "mylistview.h"
+#include "watch_listview.h"
 #include "main.h"
 #include "settings.h"
 
@@ -285,8 +285,8 @@ void ObjectTreeView::DblClick(HTREEITEM /* hti */, LPARAM lParam)
 				return; // do not insert structures or arrays
 			}
 		}
-		object->watchsort = ListView_GetItemCount(mylistviewparam.hwndLV);
-		MyListViewInsertPVIObjects(object);
+		object->watchsort = ListView_GetItemCount(watchListView.GetHandle());
+		watchListView.InsertPVIObjects(object);
 	}
 }
 

@@ -1,5 +1,5 @@
 #include "main.h"
-#include "mylistview.h"
+#include "watch_listview.h"
 #include "object_treeview.h"
 #include "dlg_about.h"
 #include "resource.h"
@@ -24,6 +24,11 @@ static unsigned createRequests;
 static const char *expectedMessageCaption = "Error";
 static unsigned browserLaunches;
 static INT_PTR browserResult = 33;
+static unsigned editDialogs;
+static UINT editDialogResource;
+static PviObject *editDialogObject;
+static HMENU lastPopupMenu;
+static HWND lastPopupOwner;
 
 static void Check(bool condition, const char *expression, int line)
 {
@@ -53,10 +58,28 @@ static HINSTANCE WINAPI TestShellExecuteW(HWND, LPCWSTR operation, LPCWSTR url, 
 	return reinterpret_cast<HINSTANCE>(browserResult);
 }
 
+static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGPROC, LPARAM data)
+{
+	CHECK(IS_INTRESOURCE(resource));
+	++editDialogs;
+	editDialogResource = static_cast<UINT>(reinterpret_cast<ULONG_PTR>(resource));
+	editDialogObject = reinterpret_cast<PviObject *>(data);
+	return IDCANCEL;
+}
+
+static BOOL WINAPI TestTrackPopupMenu(HMENU menu, UINT, int, int, int, HWND owner, const RECT *)
+{
+	lastPopupMenu = menu;
+	lastPopupOwner = owner;
+	return TRUE;
+}
+
 extern "C"
 {
 	decltype(&MessageBoxA) __imp_MessageBoxA = TestMessageBoxA;
 	decltype(&ShellExecuteW) __imp_ShellExecuteW = TestShellExecuteW;
+	decltype(&DialogBoxParamA) __imp_DialogBoxParamA = TestDialogBoxParamA;
+	decltype(&TrackPopupMenu) __imp_TrackPopupMenu = TestTrackPopupMenu;
 }
 
 extern "C" INT WINAPI PviInitialize(LONG, LONG, LPCSTR, LPVOID)
@@ -125,6 +148,11 @@ extern "C" INT WINAPI PviUnlink(DWORD linkid)
 static void DataChanged(PviObject *)
 {
 	++dataNotifications;
+}
+
+static void WatchDataChanged(PviObject *object)
+{
+	watchListView.UpdateValue(object);
 }
 
 static void ErrorChanged(PviObject *, int)
@@ -269,13 +297,7 @@ static void CheckStringListInsertion(PviObject *task)
 	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
 								 0, 0, 640, 480, nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
 	CHECK(parent != nullptr);
-	mylistviewparam = {};
-	mylistviewparam.hinstance = GetModuleHandleA(nullptr);
-	mylistviewparam.hwndParent = parent;
-	const char *columns[] = {"Name", "Type", "Scope", "Value"};
-	for (unsigned i = 0; i < 4; ++i)
-		mylistviewparam.column[i].name = columns[i];
-	CHECK(MyListViewCreateWindow(&mylistviewparam) != nullptr);
+	CHECK(watchListView.Create(GetModuleHandleA(nullptr), parent) != nullptr);
 
 	PviObject *array = AddObject("@Pvi/StringList/errorTexts", "gAxisHandling.ax[0].errorText", POBJ_PVAR);
 	array->ex.pv.type = BR_STRING;
@@ -287,8 +309,8 @@ static void CheckStringListInsertion(PviObject *task)
 	unsigned previousCreates = createRequests;
 	expectedMessageCaption = "Watch list";
 	expectedErrorMessages = 1;
-	MyListViewInsertPVIObjects(array);
-	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 0);
+	watchListView.InsertPVIObjects(array);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
 	CHECK(expectedErrorMessages == 0);
 	CHECK(createRequests == previousCreates);
 	CHECK(array->watchsort == -1 && array->linkid == 0);
@@ -304,10 +326,10 @@ static void CheckStringListInsertion(PviObject *task)
 	CHECK(element != nullptr && element->ex.pv.dimension == 1);
 	CHECK(element->ex.pv.length == 121);
 	element->watchsort = 0;
-	MyListViewInsertPVIObjects(element);
-	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 1);
+	watchListView.InsertPVIObjects(element);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 1);
 	CHECK(element->ex.pv.pvalue != nullptr);
-	CHECK(ListView_DeleteAllItems(mylistviewparam.hwndLV) != 0);
+	CHECK(ListView_DeleteAllItems(watchListView.GetHandle()) != 0);
 	element->Remove();
 
 	array->ex.pv.type = BR_STRUCT;
@@ -328,10 +350,10 @@ static void CheckStringListInsertion(PviObject *task)
 	object->ex.pv.length = 4097;
 	object->ex.pv.task = task;
 	object->watchsort = 0;
-	MyListViewInsertPVIObjects(object);
-	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 1);
+	watchListView.InsertPVIObjects(object);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 1);
 	CHECK(object->ex.pv.pvalue != nullptr);
-	pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
+	pvi_interface_notify.cbdata_changed = WatchDataChanged;
 	T_RESPONSE_INFO info = {};
 	info.nType = POBJ_EVENT_DATA;
 	info.LinkID = object->linkid;
@@ -346,7 +368,7 @@ static void CheckStringListInsertion(PviObject *task)
 		item.iSubItem = 3;
 		item.pszText = displayed.data();
 		item.cchTextMax = static_cast<int>(displayed.size());
-		CHECK(SendMessageA(mylistviewparam.hwndLV, LVM_GETITEMTEXTA, 0,
+		CHECK(SendMessageA(watchListView.GetHandle(), LVM_GETITEMTEXTA, 0,
 						   reinterpret_cast<LPARAM>(&item)) == 4096 * 5);
 		for (unsigned i = 0; i < 4096; ++i)
 			CHECK(memcmp(displayed.data() + i * 5, "\\x001", 5) == 0);
@@ -354,7 +376,6 @@ static void CheckStringListInsertion(PviObject *task)
 	}
 	pvi_interface_notify.cbdata_changed = DataChanged;
 	CHECK(DestroyWindow(parent) != 0);
-	mylistviewparam = {};
 	object->Remove();
 }
 
@@ -372,13 +393,7 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	CHECK(first.GetHandle() != second.GetHandle());
 	CHECK(MoveWindow(first.GetHandle(), 0, 0, 300, 240, FALSE) != 0);
 	CHECK(MoveWindow(second.GetHandle(), 300, 0, 300, 240, FALSE) != 0);
-	mylistviewparam = {};
-	mylistviewparam.hinstance = instance;
-	mylistviewparam.hwndParent = parent;
-	const char *columns[] = {"Name", "Type", "Scope", "Value"};
-	for (unsigned i = 0; i < 4; ++i)
-		mylistviewparam.column[i].name = columns[i];
-	CHECK(MyListViewCreateWindow(&mylistviewparam) != nullptr);
+	CHECK(watchListView.Create(instance, parent) != nullptr);
 
 	PviObject *array = AddObject("@Pvi/Tree/Values", "Values", POBJ_PVAR);
 	array->ex.pv.type = BR_DINT;
@@ -417,7 +432,7 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	CHECK(TreeView_SelectItem(first.GetHandle(), root) != 0);
 	unsigned previousCreates = createRequests;
 	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
-	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 0);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
 	CHECK(array->watchsort == -1 && createRequests == previousCreates);
 	HTREEITEM childItem = TreeView_GetChild(first.GetHandle(), root);
 	CHECK(childItem != nullptr);
@@ -425,11 +440,11 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	CHECK(element != nullptr);
 	CHECK(TreeView_SelectItem(first.GetHandle(), childItem) != 0);
 	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
-	CHECK(ListView_GetItemCount(mylistviewparam.hwndLV) == 1);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 1);
 	CHECK(element->watchsort == 0 && element->ex.pv.pvalue != nullptr);
 	LVITEMA listItem = {};
 	listItem.mask = LVIF_PARAM;
-	CHECK(ListView_GetItem(mylistviewparam.hwndLV, &listItem) != 0);
+	CHECK(ListView_GetItem(watchListView.GetHandle(), &listItem) != 0);
 	CHECK(reinterpret_cast<const char *>(listItem.lParam) == element->name);
 
 	NMTREEVIEWA drag = {};
@@ -484,7 +499,6 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	first.ClearAll();
 	CHECK(TreeView_GetCount(first.GetHandle()) == 0);
 	CHECK(DestroyWindow(parent) != 0);
-	mylistviewparam = {};
 	for (unsigned i = 0; i < 3; ++i)
 	{
 		char name[80];
@@ -494,6 +508,166 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 		child->Remove();
 	}
 	array->Remove();
+}
+
+static void CheckWatchListView(const char *testDirectory)
+{
+	HINSTANCE instance = GetModuleHandleA(nullptr);
+	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
+								 0, 0, 640, 480, nullptr, nullptr, instance, nullptr);
+	CHECK(parent != nullptr);
+	WatchListView first;
+	WatchListView second;
+	CHECK(first.GetHandle() == nullptr && second.GetHandle() == nullptr);
+	CHECK(first.Create(instance, parent) != nullptr);
+	CHECK(second.Create(instance, parent) != nullptr);
+	CHECK(first.GetHandle() != second.GetHandle());
+	CHECK(MoveWindow(first.GetHandle(), 0, 0, 300, 240, FALSE) != 0);
+	CHECK(MoveWindow(second.GetHandle(), 300, 0, 300, 240, FALSE) != 0);
+	CHECK(Header_GetItemCount(ListView_GetHeader(first.GetHandle())) == 4);
+	CHECK(ListView_GetColumnWidth(first.GetHandle(), 0) == 100);
+	CHECK(ListView_GetColumnWidth(first.GetHandle(), 3) == 600);
+
+	PviObject *number = AddObject("@Pvi/Watch/Number", "Number", POBJ_PVAR);
+	number->ex.pv.type = BR_DINT;
+	number->ex.pv.pdatatype = "DINT";
+	number->ex.pv.dimension = 1;
+	number->ex.pv.length = sizeof(LONG);
+	number->watchsort = 0;
+	first.InsertPVIObjects(number);
+	unsigned previousCreates = createRequests;
+	first.InsertPVIObjects(number);
+	CHECK(createRequests == previousCreates);
+	CHECK(ListView_GetItemCount(first.GetHandle()) == 1);
+	CHECK(ListView_GetItemCount(second.GetHandle()) == 0);
+	*static_cast<LONG *>(number->ex.pv.pvalue) = 42;
+	number->gui_info.display_as_hex = 1;
+	number->gui_info.display_as_binary = 1;
+	first.UpdateValue(number);
+	char text[160];
+	LVITEMA item = {};
+	item.iSubItem = 3;
+	item.pszText = text;
+	item.cchTextMax = sizeof(text);
+	CHECK(SendMessageA(first.GetHandle(), LVM_GETITEMTEXTA, 0, reinterpret_cast<LPARAM>(&item)) != 0);
+	CHECK(strstr(text, "16#0000002A") != nullptr);
+	CHECK(strstr(text, "2#0000_0000_0000_0000_0000_0000_0010_1010") != nullptr);
+
+	const WCHAR wideText[] = L"Wide \u03a9";
+	PviObject *wide = AddObject("@Pvi/Watch/Wide", "Wide", POBJ_PVAR);
+	wide->ex.pv.type = BR_WSTRING;
+	wide->ex.pv.pdatatype = "WSTRING";
+	wide->ex.pv.dimension = 1;
+	wide->ex.pv.length = sizeof(wideText);
+	wide->watchsort = 0;
+	second.InsertPVIObjects(wide);
+	memcpy(wide->ex.pv.pvalue, wideText, sizeof(wideText));
+	second.UpdateValue(wide);
+	WCHAR wideDisplay[80];
+	LVITEMW wideItem = {};
+	wideItem.iSubItem = 3;
+	wideItem.pszText = wideDisplay;
+	wideItem.cchTextMax = 80;
+	CHECK(SendMessageW(second.GetHandle(), LVM_GETITEMTEXTW, 0, reinterpret_cast<LPARAM>(&wideItem)) != 0);
+	CHECK(lstrcmpW(wideDisplay, wideText) == 0);
+	CHECK(ListView_GetItemCount(first.GetHandle()) == 1);
+
+	PviObject *real = AddObject("@Pvi/Watch/Real", "Real", POBJ_PVAR);
+	real->ex.pv.type = BR_REAL;
+	real->ex.pv.pdatatype = "REAL";
+	real->ex.pv.dimension = 1;
+	real->ex.pv.length = sizeof(float);
+	real->watchsort = 1;
+	second.InsertPVIObjects(real);
+	*static_cast<float *>(real->ex.pv.pvalue) = 42.5f;
+	second.UpdateValue(real);
+	CHECK(SendMessageA(second.GetHandle(), LVM_GETITEMTEXTA, 1, reinterpret_cast<LPARAM>(&item)) != 0);
+	CHECK(strcmp(text, "42.5") == 0);
+	PviObject *cpu = AddObject("@Pvi/Watch/CPU", "/IP=127.0.0.1", POBJ_CPU);
+	cpu->watchsort = 2;
+	cpu->ex.cpu.running = TRUE;
+	second.InsertPVIObjects(cpu);
+	second.UpdateValue(cpu);
+	PviObject *task = AddObject("@Pvi/Watch/CPU/Task", "Task", POBJ_TASK);
+	task->ex.task.cpu = cpu;
+	strcpy(task->ex.task.status, "RUN");
+	task->watchsort = 3;
+	second.InsertPVIObjects(task);
+	second.UpdateValue(task);
+	CHECK(SendMessageA(second.GetHandle(), LVM_GETITEMTEXTA, 3, reinterpret_cast<LPARAM>(&item)) != 0);
+	CHECK(strcmp(text, "RUN") == 0);
+
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, SettingsGetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\watch-settings.ini", testDirectory);
+	strcpy(SettingsGetFileName(), settingsFile);
+	CHECK(WritePrivateProfileStringA("General", "WriteAllowed", "0", settingsFile) != 0);
+	NMLISTVIEW notification = {};
+	notification.hdr.hwndFrom = first.GetHandle();
+	notification.hdr.code = NM_DBLCLK;
+	notification.iItem = 0;
+	unsigned previousDialogs = editDialogs;
+	CHECK(second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 1);
+	CHECK(first.HandleMessages(WM_SIZE, 0, 0) == 1);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 0);
+	CHECK(editDialogs == previousDialogs);
+	CHECK(WritePrivateProfileStringA("General", "WriteAllowed", "1", settingsFile) != 0);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 0);
+	CHECK(editDialogs == previousDialogs + 1);
+	CHECK(editDialogResource == DLG_WRITE_NUMBERS && editDialogObject == number);
+	notification.hdr.hwndFrom = second.GetHandle();
+	notification.iItem = 2;
+	second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification));
+	CHECK(editDialogResource == DLG_EDIT_CPU && editDialogObject == cpu);
+	notification.iItem = 3;
+	second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification));
+	CHECK(editDialogResource == DLG_EDIT_TASK && editDialogObject == task);
+	ListView_SetItemState(first.GetHandle(), 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	NMLVKEYDOWN key = {};
+	key.hdr.hwndFrom = first.GetHandle();
+	key.hdr.code = LVN_KEYDOWN;
+	key.wVKey = VK_RETURN;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&key)) == 0);
+	CHECK(editDialogResource == DLG_WRITE_NUMBERS && editDialogObject == number);
+	notification.hdr.hwndFrom = first.GetHandle();
+	notification.hdr.code = LVN_ITEMACTIVATE;
+	notification.iItem = 0;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 0);
+	notification.hdr.code = NM_RCLICK;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 0);
+	CHECK(g_selectedPVIObject == number);
+	CHECK(lastPopupOwner == parent && lastPopupMenu != nullptr);
+	CHECK(GetMenuState(lastPopupMenu, IDM_DELETE_OBJECT_FROM_LIST, MF_BYCOMMAND) != static_cast<UINT>(-1));
+	CHECK(DestroyMenu(lastPopupMenu) != 0);
+	lastPopupMenu = nullptr;
+
+	notification.hdr.hwndFrom = second.GetHandle();
+	notification.hdr.code = LVN_BEGINDRAG;
+	notification.iItem = 1;
+	CHECK(second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&notification)) == 0);
+	CHECK(g_draggedPVIObject == real && GetCapture() == parent);
+	CHECK(real->ex.pv.pvalue == nullptr && real->watchsort == -1);
+	CHECK(ListView_GetItemCount(second.GetHandle()) == 3);
+	CHECK(ListView_GetItemCount(first.GetHandle()) == 1);
+	ImageList_EndDrag();
+	ImageList_DragLeave(parent);
+	ReleaseCapture();
+	g_draggedPVIObject = nullptr;
+	real->watchsort = 1;
+	first.InsertPVIObjects(real);
+	CHECK(ListView_GetItemCount(first.GetHandle()) == 2 && real->ex.pv.pvalue != nullptr);
+	key.wVKey = VK_DELETE;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&key)) == 0);
+	CHECK(number->ex.pv.pvalue == nullptr && number->watchsort == -1 && number->linkid == 0);
+	CHECK(ListView_GetItemCount(first.GetHandle()) == 1);
+	CHECK(ListView_GetItemCount(second.GetHandle()) == 3);
+	CHECK(DeleteFileA(settingsFile) != 0);
+	strcpy(SettingsGetFileName(), originalSettings);
+	CHECK(DestroyWindow(parent) != 0);
+	g_selectedPVIObject = nullptr;
+	for (PviObject *object : {number, wide, real, task, cpu})
+		object->Remove();
 }
 
 static void CheckAboutLink()
@@ -660,6 +834,7 @@ int main()
 	CheckStringCallbacks(BR_WSTRING);
 	CheckStringListInsertion(task);
 	CheckObjectTreeView(cpu, task, testDirectory);
+	CheckWatchListView(testDirectory);
 	CheckAboutLink();
 	CHECK(variable->Watch(FALSE) == variable);
 	CHECK(variable->ex.pv.pvalue == nullptr && variable->linkid == 0);
@@ -691,6 +866,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watch insertion, ObjectTreeView, About hyperlink, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watch insertion, ObjectTreeView, WatchListView, About hyperlink, and watch files");
 	return 0;
 }

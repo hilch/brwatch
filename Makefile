@@ -46,7 +46,7 @@ CPP_SOURCES = \
 	dlg_writepvar.cpp \
 	logger.cpp \
 	main.cpp \
-	mylistview.cpp \
+	watch_listview.cpp \
 	object_treeview.cpp \
 	pvi_interface.cpp \
 	resource.cpp \

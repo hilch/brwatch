@@ -1,7 +1,7 @@
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 #include <windows.h>
 #include <vector>
-#include "mylistview.h"
+#include "watch_listview.h"
 #include "main.h"
 #include "stringtools.h"
 #include "settings.h"
@@ -9,7 +9,13 @@
 #include "dlg_editcpu.h"
 #include "dlg_edittask.h"
 
-static void SetListViewItemTextA(HWND window, int index, int subItem, char *text)
+/*
+The parent owns the native window; GetHandle() returns a borrowed HWND.
+Notifications are forwarded to HandleMessages(). PVI callbacks call UpdateValue()
+through the application's callback bridge.
+*/
+
+void WatchListView::SetItemText(int index, int subItem, char *text)
 {
 	LVITEMA item = {};
 	item.iSubItem = subItem;
@@ -17,51 +23,51 @@ static void SetListViewItemTextA(HWND window, int index, int subItem, char *text
 	SendMessageA(window, LVM_SETITEMTEXTA, index, reinterpret_cast<LPARAM>(&item));
 }
 
-HWND MyListViewCreateWindow(MYLISTVIEWPARAM *param)
+HWND WatchListView::Create(HINSTANCE instance, HWND parent)
 {
 	HFONT hfont;
 	LVCOLUMNA lvcolumn;
 	int i;
 
-	param->hwndLV = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT,
-									0, 0, 0, 0, param->hwndParent, 0, param->hinstance, nullptr);
-	// ListView_SetUnicodeFormat(param->hwndLV, TRUE );
-
-	for (i = 0; i < MAX_MYLISTVIEW_COLS; ++i)
+	parentWindow = parent;
+	window = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT,
+							0, 0, 0, 0, parentWindow, nullptr, instance, nullptr);
+	if (window == nullptr)
 	{
-		if (param->column[i].name == nullptr)
-			break;
-		if (param->column[i].width == 0)
-		{
-			param->column[i].width = 50;
-		}
+		MessageBoxA(parentWindow, "Could not create the watch list view.", "Error", MB_OK | MB_ICONERROR);
+		return nullptr;
+	}
+
+	const char *columnNames[] = {"Name", "Type", "Scope", "Value"};
+	const int columnWidths[] = {100, 100, 100, 600};
+	for (i = 0; i < 4; ++i)
+	{
 		memset(&lvcolumn, 0, sizeof(lvcolumn));
 		lvcolumn.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
 		lvcolumn.fmt = LVCF_TEXT;
-		lvcolumn.cx = param->column[i].width;
-		lvcolumn.cchTextMax = (int)strlen(param->column[i].name);
+		lvcolumn.cx = columnWidths[i];
+		lvcolumn.cchTextMax = (int)strlen(columnNames[i]);
 		lvcolumn.iSubItem = i;
-		std::vector<char> columnName(param->column[i].name,
-									 param->column[i].name + strlen(param->column[i].name) + 1);
+		std::vector<char> columnName(columnNames[i], columnNames[i] + strlen(columnNames[i]) + 1);
 		lvcolumn.pszText = columnName.data();
-		SendMessageA(param->hwndLV, LVM_INSERTCOLUMNA, i, reinterpret_cast<LPARAM>(&lvcolumn));
+		SendMessageA(window, LVM_INSERTCOLUMNA, i, reinterpret_cast<LPARAM>(&lvcolumn));
 	}
 
-	ListView_SetExtendedListViewStyleEx(param->hwndLV, 0,
+	ListView_SetExtendedListViewStyleEx(window, 0,
 										LVS_EX_FULLROWSELECT		// select full row
-											| LVS_EX_GRIDLINES		// Tabellenmarkierung
-											| LVS_EX_HEADERDRAGDROP // Spalten können verschoben werden
-											| LVS_EX_SUBITEMIMAGES	// auch Subitems können Images haben
-											| LVS_EX_TRACKSELECT	// Element auswählen, wenn Cursor längere Zeit darüber ist
+											| LVS_EX_GRIDLINES
+											| LVS_EX_HEADERDRAGDROP
+											| LVS_EX_SUBITEMIMAGES
+											| LVS_EX_TRACKSELECT
 	);
 
 	hfont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-	SendMessage(param->hwndLV, WM_SETFONT, (WPARAM)hfont, TRUE);
+	SendMessage(window, WM_SETFONT, (WPARAM)hfont, TRUE);
 
-	return param->hwndLV;
+	return window;
 }
 
-LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM *lv, UINT wMsg, WPARAM /*wParam*/, LPARAM lParam)
+LRESULT WatchListView::HandleMessages(UINT wMsg, WPARAM /*wParam*/, LPARAM lParam)
 {
 	LPNMLISTVIEW pnmlv;
 	LPNMLVKEYDOWN pnkd;
@@ -72,7 +78,7 @@ LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM *lv, UINT wMsg, WPARAM
 	case WM_NOTIFY:
 		pnmlv = (LPNMLISTVIEW)lParam;
 
-		if (pnmlv->hdr.hwndFrom != lv->hwndLV)
+		if (pnmlv->hdr.hwndFrom != window)
 		{
 			return 1;
 		}
@@ -80,43 +86,28 @@ LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM *lv, UINT wMsg, WPARAM
 		switch (pnmlv->hdr.code)
 		{
 		case NM_DBLCLK:
-			if (lv->cbdblclick != nullptr)
-			{
-				lv->cbdblclick(pnmlv);
-			}
+			DblClick(pnmlv);
 			return 0;
 			break;
 
 		case NM_RCLICK:
-			if (lv->cbrclick != nullptr)
-			{
-				lv->cbrclick(pnmlv);
-			}
+			RClick(pnmlv);
 			return 0;
 			break;
 
 		case LVN_KEYDOWN:
 			pnkd = (LPNMLVKEYDOWN)lParam;
-			if (lv->cbkeydown != nullptr)
-			{
-				lv->cbkeydown(pnkd->wVKey);
-			}
+			Keydown(pnkd->wVKey);
 			return 0;
 			break;
 
 		case LVN_ITEMACTIVATE:
-			if (lv->cbactivate != nullptr)
-			{
-				lv->cbactivate(pnmlv);
-			}
+			Activate(pnmlv);
 			return 0;
 			break;
 
 		case LVN_BEGINDRAG: // Begin Draggin
-			if (lv->cbbegindrag != nullptr)
-			{
-				(lv->cbbegindrag)(pnmlv->iItem);
-			}
+			BeginDragging(pnmlv->iItem);
 			return 0;
 		}
 
@@ -132,7 +123,7 @@ LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM *lv, UINT wMsg, WPARAM
 
 /* insert object to list view */
 
-void MyListViewInsertPVIObjects(PviObject *object)
+void WatchListView::InsertPVIObjects(PviObject *object)
 {
 	LVITEMA lvitem;
 	char *text;
@@ -143,13 +134,13 @@ void MyListViewInsertPVIObjects(PviObject *object)
 	{
 		// do not insert if item already exists
 		found = FALSE;
-		i = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+		i = ListView_GetNextItem(window, -1, LVNI_ALL);
 		while (i != -1)
 		{
 			memset(&lvitem, 0, sizeof(lvitem));
 			lvitem.mask = LVIF_PARAM;
 			lvitem.iItem = i;
-			ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_GetItem(window, &lvitem);
 			if (lvitem.lParam != 0)
 			{
 				if (strcmp(object->name, (char *)lvitem.lParam) == 0)
@@ -157,7 +148,7 @@ void MyListViewInsertPVIObjects(PviObject *object)
 					found = TRUE;
 				}
 			}
-			i = ListView_GetNextItem(mylistviewparam.hwndLV, i, LVNI_ALL);
+			i = ListView_GetNextItem(window, i, LVNI_ALL);
 		}
 
 		if (found == TRUE)
@@ -196,8 +187,8 @@ void MyListViewInsertPVIObjects(PviObject *object)
 				lvitem.iItem = object->watchsort;
 
 				/* name */
-				SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
-				ListView_SetColumnWidth(mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE);
+				SendMessageA(window, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
+				ListView_SetColumnWidth(window, 0, LVSCW_AUTOSIZE);
 
 				/* data type */
 				if (object->ex.pv.type == BR_STRING)
@@ -213,14 +204,14 @@ void MyListViewInsertPVIObjects(PviObject *object)
 					sprintf(tempstring, "%1s%s", object->ex.pv.scope[0] == 'd' ? "*" : "", object->ex.pv.pdatatype);
 				}
 				text = tempstring;
-				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, text); // data type
+				SetItemText(lvitem.iItem, 1, text); // data type
 				memset(&lvitem, 0, sizeof(lvitem));
 				lvitem.mask = LVIF_IMAGE;
 				lvitem.iImage = ResourcesGetPviObjectImage(object);
 				lvitem.iSubItem = 1;
 				lvitem.iItem = object->watchsort;
-				SendMessageA(mylistviewparam.hwndLV, LVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&lvitem)); // set icon
-				ListView_SetColumnWidth(mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
+				SendMessageA(window, LVM_SETITEMA, 0, reinterpret_cast<LPARAM>(&lvitem)); // set icon
+				ListView_SetColumnWidth(window, 1, LVSCW_AUTOSIZE);
 
 				/* value range */
 				switch (object->ex.pv.scope[0])
@@ -235,15 +226,15 @@ void MyListViewInsertPVIObjects(PviObject *object)
 					strcpy(text, "<DYNAM.>");
 					break;
 				}
-				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 2, text); // Scope
-				ListView_SetColumnWidth(mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE);
+				SetItemText(lvitem.iItem, 2, text); // Scope
+				ListView_SetColumnWidth(window, 2, LVSCW_AUTOSIZE);
 
 				/* value */
 				strcpy(text, " ");
-				SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 3, text); // value
+				SetItemText(lvitem.iItem, 3, text); // value
 				//
-				ListView_EnsureVisible(mylistviewparam.hwndLV, lvitem.iItem, TRUE);
-				ListView_SetColumnWidth(mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE);
+				ListView_EnsureVisible(window, lvitem.iItem, TRUE);
+				ListView_SetColumnWidth(window, 3, LVSCW_AUTOSIZE);
 			}
 
 			/* insert a CPU */
@@ -261,16 +252,16 @@ void MyListViewInsertPVIObjects(PviObject *object)
 			lvitem.iItem = object->watchsort;
 
 			/* name */
-			SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE_USEHEADER);
+			SendMessageA(window, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
+			ListView_SetColumnWidth(window, 0, LVSCW_AUTOSIZE_USEHEADER);
 
 			/* type */
 			strcpy(tempstring, "CPU ");
-			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, tempstring);
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE_USEHEADER);
+			SetItemText(lvitem.iItem, 1, tempstring);
+			ListView_SetColumnWidth(window, 1, LVSCW_AUTOSIZE_USEHEADER);
 
 			/* scope */
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 2, LVSCW_AUTOSIZE_USEHEADER);
+			ListView_SetColumnWidth(window, 2, LVSCW_AUTOSIZE_USEHEADER);
 
 			/* value */
 			switch (object->error)
@@ -288,8 +279,8 @@ void MyListViewInsertPVIObjects(PviObject *object)
 				sprintf(tempstring, "Err:%i", object->error);
 				break;
 			}
-			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 3, tempstring); // value
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 3, LVSCW_AUTOSIZE);
+			SetItemText(lvitem.iItem, 3, tempstring); // value
+			ListView_SetColumnWidth(window, 3, LVSCW_AUTOSIZE);
 
 			/* insert a task */
 		}
@@ -307,28 +298,24 @@ void MyListViewInsertPVIObjects(PviObject *object)
 			lvitem.iItem = object->watchsort;
 
 			/* name */
-			SendMessageA(mylistviewparam.hwndLV, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 0, LVSCW_AUTOSIZE);
+			SendMessageA(window, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(&lvitem));
+			ListView_SetColumnWidth(window, 0, LVSCW_AUTOSIZE);
 
 			/* type */
 			strcpy(tempstring, "TASK");
-			SetListViewItemTextA(mylistviewparam.hwndLV, lvitem.iItem, 1, tempstring);
-			ListView_SetColumnWidth(mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
+			SetItemText(lvitem.iItem, 1, tempstring);
+			ListView_SetColumnWidth(window, 1, LVSCW_AUTOSIZE);
 
-			/* scope */
-			// strcpy( tempstring, ((PviObject*) object->ex.task.cpu)->descriptor );
-			// ListView_SetItemText(mylistviewparam.hwndLV, lvitem.iItem, 2, tempstring );
-			// ListView_SetColumnWidth( mylistviewparam.hwndLV, 1, LVSCW_AUTOSIZE);
 		}
 
 		// save list index of element into object information
-		i = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+		i = ListView_GetNextItem(window, -1, LVNI_ALL);
 		while (i != -1)
 		{
 			memset(&lvitem, 0, sizeof(lvitem));
 			lvitem.mask = LVIF_PARAM;
 			lvitem.iItem = i;
-			ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_GetItem(window, &lvitem);
 			if (lvitem.lParam != 0)
 			{
 				object = PviObject::FindByName((char *)lvitem.lParam);
@@ -337,14 +324,14 @@ void MyListViewInsertPVIObjects(PviObject *object)
 					object->watchsort = lvitem.iItem;
 				}
 			}
-			i = ListView_GetNextItem(mylistviewparam.hwndLV, i, LVNI_ALL);
+			i = ListView_GetNextItem(window, i, LVNI_ALL);
 		}
 	}
 }
 
 /* translates ojbect's data into ASCII and enters them into list view */
 
-void MyListViewUpdateValue(PviObject *object)
+void WatchListView::UpdateValue(PviObject *object)
 {
 	LVFINDINFO lvfindinfo;
 	int index;
@@ -363,7 +350,7 @@ void MyListViewUpdateValue(PviObject *object)
 	lvfindinfo.flags = LVFI_PARAM;
 	lvfindinfo.lParam = (LPARAM)object->name;
 
-	index = ListView_FindItem(mylistviewparam.hwndLV, -1, &lvfindinfo);
+	index = ListView_FindItem(window, -1, &lvfindinfo);
 	if (index >= 0)
 	{ // found object in list view
 		switch (object->type)
@@ -510,7 +497,7 @@ void MyListViewUpdateValue(PviObject *object)
 					const auto oemText = text;
 					OemToCharA(oemText.data(), text.data());
 				}
-				SetListViewItemTextA(mylistviewparam.hwndLV, index, 3, text.data());
+				SetItemText(index, 3, text.data());
 				return;
 			}
 
@@ -520,7 +507,7 @@ void MyListViewUpdateValue(PviObject *object)
 					LV_ITEMW item;
 					item.iSubItem = 3;
 					item.pszText = static_cast<LPWSTR>(object->ex.pv.pvalue);
-					SendMessageW(mylistviewparam.hwndLV, LVM_SETITEMTEXTW, index, (LPARAM)(LV_ITEMW *)&item);
+					SendMessageW(window, LVM_SETITEMTEXTW, index, (LPARAM)(LV_ITEMW *)&item);
 				}
 				return;
 
@@ -635,13 +622,13 @@ void MyListViewUpdateValue(PviObject *object)
 			break;
 		}
 
-		SetListViewItemTextA(mylistviewparam.hwndLV, index, 3, value);
+		SetItemText(index, 3, value);
 	}
 }
 
 /* is called on key change in list view */
 
-void MyListViewKeydown(WORD vkey)
+void WatchListView::Keydown(WORD vkey)
 {
 	int index;
 	LVITEM lvitem;
@@ -650,29 +637,29 @@ void MyListViewKeydown(WORD vkey)
 	switch (vkey)
 	{
 	case VK_DELETE:
-		index = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_SELECTED);
+		index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
 		while (index != -1)
 		{
 			memset(&lvitem, 0, sizeof(lvitem));
 			lvitem.iItem = index;
 			lvitem.mask = LVIF_PARAM;
-			ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_GetItem(window, &lvitem);
 			object = PviObject::FindByName((char *)lvitem.lParam);
 			if (object != nullptr)
 				object->Watch(FALSE);
-			ListView_DeleteItem(mylistviewparam.hwndLV, index); // remove from list view
-			index = ListView_GetNextItem(mylistviewparam.hwndLV, index, LVNI_SELECTED);
+			ListView_DeleteItem(window, index); // remove from list view
+			index = ListView_GetNextItem(window, index, LVNI_SELECTED);
 		}
 		break;
 
 	case VK_RETURN:
-		index = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_SELECTED);
+		index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
 		if (index != -1)
 		{
 			memset(&lvitem, 0, sizeof(lvitem));
 			lvitem.iItem = index;
 			lvitem.mask = LVIF_PARAM;
-			ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+			ListView_GetItem(window, &lvitem);
 
 			if (lvitem.lParam != 0)
 			{
@@ -688,13 +675,13 @@ void MyListViewKeydown(WORD vkey)
 
 /* is called on double click in list view */
 
-void MyListViewDblClick(LPNMLISTVIEW lpnm)
+void WatchListView::DblClick(LPNMLISTVIEW lpnm)
 {
 	LVITEM lvitem;
 	PviObject *object;
 	BOOL write_allowed;
 
-	// Ini- Datei lesen
+	// Read write permissions from the INI file.
 	write_allowed = GetPrivateProfileIntA("General", "WriteAllowed", 0, SettingsGetFileName());
 
 	if (!write_allowed)
@@ -703,7 +690,7 @@ void MyListViewDblClick(LPNMLISTVIEW lpnm)
 	memset(&lvitem, 0, sizeof(lvitem));
 	lvitem.mask = LVIF_PARAM;
 	lvitem.iItem = lpnm->iItem;
-	ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+	ListView_GetItem(window, &lvitem);
 
 	if (lvitem.lParam != 0)
 	{
@@ -714,7 +701,7 @@ void MyListViewDblClick(LPNMLISTVIEW lpnm)
 	}
 }
 
-void MyListViewRClick(LPNMLISTVIEW lpnm)
+void WatchListView::RClick(LPNMLISTVIEW lpnm)
 {
 	HMENU hmenu;
 	// RECT offset;
@@ -726,7 +713,7 @@ void MyListViewRClick(LPNMLISTVIEW lpnm)
 	memset(&lvitem, 0, sizeof(lvitem));
 	lvitem.mask = LVIF_PARAM;
 	lvitem.iItem = lpnm->iItem;
-	ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+	ListView_GetItem(window, &lvitem);
 
 	if (lvitem.lParam == 0)
 		return; // should not happen :-)
@@ -736,7 +723,6 @@ void MyListViewRClick(LPNMLISTVIEW lpnm)
 	if (g_selectedPVIObject == nullptr)
 		return; // should also not happen :-)
 
-	// GetWindowRect( mylistviewparam.hwndLV, &offset );
 	GetCursorPos(&pt);
 
 	hmenu = CreatePopupMenu();
@@ -791,20 +777,20 @@ void MyListViewRClick(LPNMLISTVIEW lpnm)
 
 	AppendMenuA(hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "remove this object");
 	// TrackPopupMenu( hmenu, TPM_VERTICAL, offset.left + lpnm->ptAction.x , offset.top + lpnm->ptAction.y, 0, hMainWindow, NULL );
-	TrackPopupMenu(hmenu, TPM_VERTICAL, pt.x, pt.y, 0, g_hwndMainWindow, nullptr);
+	TrackPopupMenu(hmenu, TPM_VERTICAL, pt.x, pt.y, 0, parentWindow, nullptr);
 }
 
-void MyListViewActivate(LPNMLISTVIEW lpnm)
+void WatchListView::Activate(LPNMLISTVIEW lpnm)
 {
 	LVITEM lvitem;
 
 	memset(&lvitem, 0, sizeof(lvitem));
 	lvitem.mask = LVIF_PARAM;
 	lvitem.iItem = lpnm->iItem;
-	ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+	ListView_GetItem(window, &lvitem);
 }
 
-void MyListViewBeginDragging(int iItem)
+void WatchListView::BeginDragging(int iItem)
 {
 	HIMAGELIST himl;
 	LVITEM lvitem;
@@ -814,27 +800,27 @@ void MyListViewBeginDragging(int iItem)
 	ZeroMemory(&rect_mainwindow, sizeof(rect_mainwindow));
 	ZeroMemory(&rect_listview, sizeof(rect_listview));
 
-	GetWindowRect(mylistviewparam.hwndLV, &rect_listview);
-	GetWindowRect(g_hwndMainWindow, &rect_mainwindow);
+	GetWindowRect(window, &rect_listview);
+	GetWindowRect(parentWindow, &rect_mainwindow);
 
 	memset(&lvitem, 0, sizeof(lvitem));
 	lvitem.mask = LVIF_PARAM;
 	lvitem.iItem = iItem;
-	ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+	ListView_GetItem(window, &lvitem);
 	g_draggedPVIObject = PviObject::FindByName((char *)lvitem.lParam);
 
 	if (g_draggedPVIObject == nullptr)
 		return;
 
-	himl = ListView_CreateDragImage(mylistviewparam.hwndLV, iItem, &p);
+	himl = ListView_CreateDragImage(window, iItem, &p);
 	ImageList_BeginDrag(himl, 0, 0, 0);
 	// start drag effect
-	ImageList_DragEnter(g_hwndMainWindow, rect_listview.left - rect_mainwindow.left,
+	ImageList_DragEnter(parentWindow, rect_listview.left - rect_mainwindow.left,
 						rect_listview.top - rect_mainwindow.top);
-	SetCapture(g_hwndMainWindow);
+	SetCapture(parentWindow);
 
 	if (g_draggedPVIObject != nullptr)
 		g_draggedPVIObject->Watch(FALSE);
-	ListView_DeleteItem(mylistviewparam.hwndLV, iItem);
-	ListView_Update(mylistviewparam.hwndLV, iItem);
+	ListView_DeleteItem(window, iItem);
+	ListView_Update(window, iItem);
 }

@@ -3,7 +3,7 @@
 
 #include "main.h"
 #include "object_treeview.h"
-#include "mylistview.h"
+#include "watch_listview.h"
 #include "pvi_interface.h"
 #include "stringtools.h"
 #include "logger.h"
@@ -22,7 +22,7 @@ static LRESULT WINAPI WndProc(HWND, UINT, WPARAM, LPARAM);
 // static void Main_OnDestroy(HWND);
 static void PviObjectsValid(void);
 static void PviObjectErrorChanged(PviObject *object, int errcode);
-// static void PviObjectDataChanged(PviObject *object, char* value );
+static void PviObjectDataChanged(PviObject *object);
 // static void PviObjectStatusChanged( PviObject *object, char* status );
 
 static void LoadWatchFile(char *filename);
@@ -40,8 +40,8 @@ PviObject *g_draggedPVIObject = nullptr;
 PviObject *g_selectedPVIObject = nullptr;
 char g_PVIVersionString[50] = {0};
 
-/* Global variables (extern in mylistview.h) */
-MYLISTVIEWPARAM mylistviewparam = {};
+/* Global variables (extern in watch_listview.h) */
+WatchListView watchListView;
 
 /* Global variables (extern in object_treeview.h) */
 ObjectTreeView objectTreeView;
@@ -161,7 +161,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	// set callback functions for PVI
 	pvi_interface_notify.cbobjects_valid = PviObjectsValid;
 	pvi_interface_notify.cberror_changed = PviObjectErrorChanged;
-	pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
+	pvi_interface_notify.cbdata_changed = PviObjectDataChanged;
 
 	while (GetMessageA(&msg, nullptr, 0, 0))
 	{
@@ -202,6 +202,11 @@ static void PviObjectsValid(void)
 	}
 }
 
+static void PviObjectDataChanged(PviObject *object)
+{
+	watchListView.UpdateValue(object);
+}
+
 /* is called when error status of object has changed */
 
 static void PviObjectErrorChanged(PviObject *object, int errcode)
@@ -215,7 +220,7 @@ static void PviObjectErrorChanged(PviObject *object, int errcode)
 	lvfindinfo.flags = LVFI_PARAM;
 	lvfindinfo.lParam = (LPARAM)object->name;
 
-	index = ListView_FindItem(mylistviewparam.hwndLV, -1, &lvfindinfo);
+	index = ListView_FindItem(watchListView.GetHandle(), -1, &lvfindinfo);
 	if (index >= 0)
 	{
 		switch (errcode)
@@ -244,7 +249,7 @@ static void PviObjectErrorChanged(PviObject *object, int errcode)
 		LVITEMA item = {};
 		item.iSubItem = 3;
 		item.pszText = errtext;
-		SendMessageA(mylistviewparam.hwndLV, LVM_SETITEMTEXTA, index, reinterpret_cast<LPARAM>(&item));
+		SendMessageA(watchListView.GetHandle(), LVM_SETITEMTEXTA, index, reinterpret_cast<LPARAM>(&item));
 	}
 }
 
@@ -257,13 +262,13 @@ static void SaveWatchFile(char *filename)
 	PviObject *object;
 
 	remove(filename);
-	index = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+	index = ListView_GetNextItem(watchListView.GetHandle(), -1, LVNI_ALL);
 	while (index != -1)
 	{
 		memset(&lvitem, 0, sizeof(lvitem));
 		lvitem.mask = LVIF_PARAM;
 		lvitem.iItem = index;
-		ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+		ListView_GetItem(watchListView.GetHandle(), &lvitem);
 		if (lvitem.lParam != 0)
 		{
 			object = PviObject::FindByName((char *)lvitem.lParam);
@@ -273,7 +278,7 @@ static void SaveWatchFile(char *filename)
 				object->AddToWatchFile(filename);
 			}
 		}
-		index = ListView_GetNextItem(mylistviewparam.hwndLV, index, LVNI_ALL);
+		index = ListView_GetNextItem(watchListView.GetHandle(), index, LVNI_ALL);
 	}
 }
 
@@ -312,12 +317,12 @@ static void LoadWatchFile(char *filename)
 				object->gui_info.loaded_from_file = 0;
 				++sort;
 				--n;
-				MyListViewInsertPVIObjects(object);
+				watchListView.InsertPVIObjects(object);
 			}
 		}
 	}
 
-	UpdateWindow(mylistviewparam.hwndLV);
+	UpdateWindow(watchListView.GetHandle());
 	SetCursor(oldcursor);
 }
 
@@ -333,7 +338,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 	RECT rect;
 	HIMAGELIST himl;
 
-	if (MyListViewHandleMessages(&mylistviewparam, wMsg, wParam, lParam) == 0)
+	if (watchListView.HandleMessages(wMsg, wParam, lParam) == 0)
 		return (0);
 
 	if (objectTreeView.HandleMessages(wMsg, wParam, lParam) == 0)
@@ -416,7 +421,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 				objectTreeView.ClearAll();
-				ListView_DeleteAllItems(mylistviewparam.hwndLV);
+				ListView_DeleteAllItems(watchListView.GetHandle());
 				PviObject::Stop();
 				Sleep(1000);
 				PviObject::Start();
@@ -509,7 +514,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_decimal ^= 1;
-				MyListViewUpdateValue(g_selectedPVIObject);
+				watchListView.UpdateValue(g_selectedPVIObject);
 			}
 			break;
 
@@ -517,7 +522,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_hex ^= 1;
-				MyListViewUpdateValue(g_selectedPVIObject);
+				watchListView.UpdateValue(g_selectedPVIObject);
 			}
 			break;
 
@@ -525,7 +530,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_binary ^= 1;
-				MyListViewUpdateValue(g_selectedPVIObject);
+				watchListView.UpdateValue(g_selectedPVIObject);
 			}
 			break;
 
@@ -533,7 +538,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_char ^= 1;
-				MyListViewUpdateValue(g_selectedPVIObject);
+				watchListView.UpdateValue(g_selectedPVIObject);
 			}
 			break;
 
@@ -541,7 +546,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.interpret_as_oem ^= 1;
-				MyListViewUpdateValue(g_selectedPVIObject);
+				watchListView.UpdateValue(g_selectedPVIObject);
 			}
 			break;
 
@@ -551,24 +556,24 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			int i;
 			// char *temp;
 
-			i = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
+			i = ListView_GetNextItem(watchListView.GetHandle(), -1, LVNI_ALL);
 			while (i != -1)
 			{
 				memset(&lvitem, 0, sizeof(lvitem));
 				lvitem.mask = LVIF_PARAM;
 				lvitem.iItem = i;
-				ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
+				ListView_GetItem(watchListView.GetHandle(), &lvitem);
 				if (lvitem.lParam != 0)
 				{
 					// temp = (char*) lvitem.lParam;
 					if (strcmp(g_selectedPVIObject->name, (char *)lvitem.lParam) == 0)
 					{
 						g_selectedPVIObject->Watch(FALSE);		// remove from watch
-						ListView_DeleteItem(mylistviewparam.hwndLV, i); // remove from list view
+						ListView_DeleteItem(watchListView.GetHandle(), i); // remove from list view
 						break;
 					}
 				}
-				i = ListView_GetNextItem(mylistviewparam.hwndLV, i, LVNI_ALL);
+				i = ListView_GetNextItem(watchListView.GetHandle(), i, LVNI_ALL);
 			}
 		}
 		break;
@@ -576,7 +581,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		case IDM_VIEW_SETDEFAULTFONT:
 		{
 			HFONT hfont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-			SendMessage(mylistviewparam.hwndLV, WM_SETFONT, (WPARAM)hfont, TRUE);
+			SendMessage(watchListView.GetHandle(), WM_SETFONT, (WPARAM)hfont, TRUE);
 			if (hfont_watchlist != nullptr)
 			{
 				DeleteObject(hfont_watchlist);
@@ -610,7 +615,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if (ChooseFontA(&cf))
 			{
 				hfont_watchlist = CreateFontIndirectA(&font);
-				SendMessage(mylistviewparam.hwndLV, WM_SETFONT, (WPARAM)hfont_watchlist, 1);
+				SendMessage(watchListView.GetHandle(), WM_SETFONT, (WPARAM)hfont_watchlist, 1);
 			}
 		}
 		break;
@@ -633,7 +638,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 		// für Splitter
 		MoveWindow(objectTreeView.GetHandle(), 0, 0, splitter_xpos - 1, nHeight, TRUE);
-		MoveWindow(mylistviewparam.hwndLV, splitter_xpos + 1, 0, nWidth - 101, nHeight - writewnd_height, TRUE);
+		MoveWindow(watchListView.GetHandle(), splitter_xpos + 1, 0, nWidth - 101, nHeight - writewnd_height, TRUE);
 		//		MoveWindow(mywritelistviewparam.hwndLV, splitter_xpos + 1, nHeight-writewnd_height, nWidth - 101, writewnd_height, TRUE);
 	}
 		return 0;
@@ -656,7 +661,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			ImageList_DragLeave(g_hwndMainWindow);
 			ReleaseCapture();
 			g_draggedPVIObject->watchsort = drop_target_index;
-			MyListViewInsertPVIObjects(g_draggedPVIObject);
+			watchListView.InsertPVIObjects(g_draggedPVIObject);
 			g_draggedPVIObject = nullptr;
 			TreeView_Select(objectTreeView.GetHandle(), 0, TVGN_DROPHILITE); // only for nicer view
 		}
@@ -678,7 +683,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			if ((LOWORD(lParam) > 50) && (LOWORD(lParam) < (rect.right) - 50))
 			{
 				MoveWindow(objectTreeView.GetHandle(), 0, 0, LOWORD(lParam) - 1, rect.bottom, TRUE);
-				MoveWindow(mylistviewparam.hwndLV, LOWORD(lParam) + 1, 0, rect.right - LOWORD(lParam) + 1, rect.bottom - writewnd_height, TRUE);
+				MoveWindow(watchListView.GetHandle(), LOWORD(lParam) + 1, 0, rect.right - LOWORD(lParam) + 1, rect.bottom - writewnd_height, TRUE);
 				//				MoveWindow(mywritelistviewparam.hwndLV, LOWORD(lParam) + 1, rect.bottom - writewnd_height, rect.right - LOWORD(lParam) + 1, writewnd_height, TRUE);
 				splitter_xpos = LOWORD(lParam);
 			}
@@ -694,10 +699,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			memset(&lvht, 0, sizeof(lvht));
 			lvht.pt.x = Pos.x;
 			lvht.pt.y = Pos.y;
-			ListView_HitTest(mylistviewparam.hwndLV, &lvht);
+			ListView_HitTest(watchListView.GetHandle(), &lvht);
 			if (lvht.flags & LVHT_NOWHERE)
 			{																	   // drag within list view and not over other entry ?
-				drop_target_index = ListView_GetItemCount(mylistviewparam.hwndLV); // to end of list
+				drop_target_index = ListView_GetItemCount(watchListView.GetHandle()); // to end of list
 			}
 			else if (lvht.flags & LVHT_ONITEM)
 			{
@@ -705,7 +710,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			}
 			else
 				drop_target_index = -1; // do not insert
-			ListView_SetHotItem(mylistviewparam.hwndLV, lvht.iItem);
+			ListView_SetHotItem(watchListView.GetHandle(), lvht.iItem);
 		}
 		return 0;
 
@@ -735,7 +740,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 			// logger was started...
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop");
-			EnableWindow(mylistviewparam.hwndLV, FALSE);
+			EnableWindow(watchListView.GetHandle(), FALSE);
 			EnableWindow(objectTreeView.GetHandle(), FALSE);
 			WritePrivateProfileStringA("General", "LoggerActive", "1", SettingsGetFileName());
 			strcpy(logger_watch_file, GetApplicationPath());
@@ -746,7 +751,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		{
 			// logger was stopped
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start");
-			EnableWindow(mylistviewparam.hwndLV, TRUE);
+			EnableWindow(watchListView.GetHandle(), TRUE);
 			EnableWindow(objectTreeView.GetHandle(), TRUE);
 			WritePrivateProfileStringA("General", "LoggerActive", "0", SettingsGetFileName());
 		}
@@ -765,25 +770,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		TreeView_SetImageList(objectTreeView.GetHandle(), himl, TVSIL_NORMAL);
 
 		/* Listview */
-		memset(&mylistviewparam, 0, sizeof(mylistviewparam));
-		mylistviewparam.hinstance = g_hInstance;
-		mylistviewparam.hwndParent = hWnd;
-		mylistviewparam.column[0].name = "Name";
-		mylistviewparam.column[0].width = 100;
-		mylistviewparam.column[1].name = "Type";
-		mylistviewparam.column[1].width = 100;
-		mylistviewparam.column[2].name = "Scope";
-		mylistviewparam.column[2].width = 100;
-		mylistviewparam.column[3].name = "Value";
-		mylistviewparam.column[3].width = 600;
-		mylistviewparam.cbkeydown = MyListViewKeydown; // Callbacks
-		mylistviewparam.cbdblclick = MyListViewDblClick;
-		mylistviewparam.cbrclick = MyListViewRClick;
-		mylistviewparam.cbbegindrag = MyListViewBeginDragging;
-		mylistviewparam.cbactivate = MyListViewActivate;
-
-		MyListViewCreateWindow(&mylistviewparam);
-		ListView_SetImageList(mylistviewparam.hwndLV, himl, LVSIL_SMALL);
+		if (watchListView.Create(g_hInstance, hWnd) == nullptr)
+			return -1;
+		ListView_SetImageList(watchListView.GetHandle(), himl, LVSIL_SMALL);
 
 		/* Schreibfenster */
 		writewnd_height = 0;
