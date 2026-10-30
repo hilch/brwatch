@@ -354,7 +354,7 @@ IDR_ICO_VARIABLE_STRING ICON                    "string.ico"
 IDR_ICO_VARIABLE_WSTRING ICON					"wstring.ico"
 IDR_ICO_VARIABLE_REAL   ICON                    "real.ico"
 IDR_ICO_VARIABLE_LREAL   ICON                   "lreal.ico"
-IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "daten_and_time.ico"
+IDR_ICO_VARIABLE_DATE_AND_TIME ICON             "data_and_time.ico"
 IDR_ICO_VARIABLE_TIME   ICON                    "time.ico"
 
 

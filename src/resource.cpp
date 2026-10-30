@@ -54,14 +54,14 @@ HIMAGELIST ResourcesCreateImageList(void)
 	int i;
 
 	// Imagelist erzeugen
-	if ((himl = ImageList_Create(16, 16, FALSE, sizeof(images) / sizeof(images[0]) - 1, 0)) == nullptr)
+	if ((himl = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, sizeof(images) / sizeof(images[0]) - 1, 0)) == nullptr)
 		return nullptr;
 
 	// Images hinzufügen
 	i = 0;
 	while (images[i] != 0)
 	{
-		hicon = static_cast<HICON>(LoadImage(g_hInstance, MAKEINTRESOURCE(images[i]), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_LOADTRANSPARENT | LR_VGACOLOR));
+		hicon = static_cast<HICON>(LoadImage(g_hInstance, MAKEINTRESOURCE(images[i]), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR));
 		ImageList_AddIcon(himl, hicon);
 		DestroyIcon(hicon);
 		++i;
