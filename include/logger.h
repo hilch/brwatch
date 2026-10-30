@@ -5,7 +5,7 @@
 INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL Logger( void );
 BOOL IsLoggerRunning( void );
-void LoggerDataChanged( PVIOBJECT *object );
+void LoggerDataChanged( PviObject *object );
 
 #define UTF8BOM	"\xef\xbb\xbf" 					
 #define LOGFILE_HEADER				UTF8BOM "cycle@rtc(yyyy/mm/dd-hh:mm:ss);ticks(ms)"

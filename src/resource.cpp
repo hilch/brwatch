@@ -37,8 +37,8 @@ HIMAGELIST ResourcesCreateImageList(void)
 	int i;
 
 	// Imagelist erzeugen
-	if ((himl = ImageList_Create(16, 16, FALSE, sizeof(images) / sizeof(images[0]) - 1, 0)) == NULL)
-		return NULL;
+	if ((himl = ImageList_Create(16, 16, FALSE, sizeof(images) / sizeof(images[0]) - 1, 0)) == nullptr)
+		return nullptr;
 
 	// Images hinzufügen
 	i = 0;
@@ -66,11 +66,11 @@ int ResourcesGetImageIndex(WORD resource)
 	return 0;
 }
 
-int ResourcesGetPviObjectImage(PVIOBJECT *object)
+int ResourcesGetPviObjectImage(PviObject *object)
 {
 	int imageindex = 0;
 
-	if (object == NULL)
+	if (object == nullptr)
 		return 0;
 
 	switch (object->type)

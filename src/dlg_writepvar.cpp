@@ -10,11 +10,11 @@
 #include "pvi_interface.h"
 #include "resource.h"
 
-static int WritePviPvar(PVIOBJECT *object, void *value);
+static int WritePviPvar(PviObject *object, void *value);
 
 static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	static PVIOBJECT *object;
+	static PviObject *object;
 	int result;
 
 	switch (uMsg)
@@ -29,7 +29,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		EnableWindow(GetDlgItem(hDlg, IDC_EDIT_MILLISECONDS), FALSE);
 		if (lParam != 0)
 		{
-			object = (PVIOBJECT *)lParam;
+			object = (PviObject *)lParam;
 			SetDlgItemTextA(hDlg, IDR_STATIC_NAME, object->descriptor);
 			SetDlgItemTextA(hDlg, IDR_EDIT_VALUE, "");
 			switch (object->ex.pv.type)
@@ -40,7 +40,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				sprintf(tempstring, "STRING(%lu) = %lu Bytes", object->ex.pv.length - 1, object->ex.pv.length);
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, tempstring);
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					SetDlgItemTextA(hDlg, IDR_EDIT_VALUE, static_cast<const char *>(object->ex.pv.pvalue));
 				}
@@ -53,7 +53,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				_swprintf(tempstring, L"WSTRING(%lu) = %lu Bytes", object->ex.pv.length / 2 - 1, object->ex.pv.length);
 				SetDlgItemTextW(hDlg, IDC_STATIC_VARTYPE, tempstring);
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					SetDlgItemTextW(hDlg, IDR_EDIT_VALUE, static_cast<const wchar_t *>(object->ex.pv.pvalue));
 				}
@@ -62,49 +62,49 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			case BR_BOOL:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "BOOL (0 ... 1)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((unsigned char *)object->ex.pv.pvalue), 0);
 				break;
 
 			case BR_USINT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "USINT (0 ... +255)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((unsigned char *)object->ex.pv.pvalue), 0);
 				break;
 
 			case BR_SINT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "SINT (-128 ... +127)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((signed char *)object->ex.pv.pvalue), 1);
 				break;
 
 			case BR_UINT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "UINT (0 ... +65535)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((unsigned short *)object->ex.pv.pvalue), 0);
 				break;
 
 			case BR_INT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "INT (-32768 ... +32767)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((signed short *)object->ex.pv.pvalue), 1);
 				break;
 
 			case BR_UDINT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "UDINT (0 ... +4294967295)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((unsigned int *)object->ex.pv.pvalue), 0);
 				break;
 
 			case BR_DINT:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DINT (-2147483648 ... +2147483647)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((signed int *)object->ex.pv.pvalue), 1);
 				break;
 
 			case BR_REAL:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "REAL (-3.4e38 ... +3.4e38)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					char tempstring[256];
 					sprintf(tempstring, "%g", *(float *)object->ex.pv.pvalue);
@@ -114,7 +114,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			case BR_LREAL:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "LREAL (-1.79769e308 ... +1.79769e308)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					char tempstring[256];
 					sprintf(tempstring, "%g", *(double *)object->ex.pv.pvalue);
@@ -124,13 +124,13 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			case BR_TIME:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "TIME (-2147483648ms ... +2147483647ms)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 					SetDlgItemInt(hDlg, IDR_EDIT_VALUE, *((signed int *)object->ex.pv.pvalue), 1);
 				break;
 
 			case BR_DATI:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DATE_AND_TIME (DT#1970-01-01-00:00 ... DT#2106-02-06-06:28:15)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					__time64_t t = 0;
 					struct tm *ptst;
@@ -138,7 +138,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					memcpy(&t, object->ex.pv.pvalue, sizeof(time_t));
 					ptst = _gmtime64(&t);
 
-					if (ptst == NULL)
+					if (ptst == nullptr)
 					{
 						time_t t = time(0);
 						ptst = gmtime(&t);
@@ -162,7 +162,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			case BR_DATE:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DATE (D#1970-01-01 ... D#2106-02-07 )");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					__time64_t t = 0;
 					struct tm *ptst;
@@ -170,7 +170,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					memcpy(&t, object->ex.pv.pvalue, sizeof(time_t));
 					ptst = _gmtime64(&t);
 
-					if (ptst == NULL)
+					if (ptst == nullptr)
 					{
 						time_t t = time(0);
 						ptst = gmtime(&t);
@@ -190,7 +190,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			case BR_TOD:
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "TIME_OF_DAY (TOD#00:00:00.000 ... TOD#23:59:59.999)");
-				if (object->ex.pv.pvalue != NULL)
+				if (object->ex.pv.pvalue != nullptr)
 				{
 					unsigned int intval, hour, minute, milliseconds;
 					memcpy(&intval, object->ex.pv.pvalue, 4);
@@ -217,9 +217,9 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 				break;
 			}
 			// get name of task and cpu
-			if (object->ex.pv.task != NULL)
+			if (object->ex.pv.task != nullptr)
 			{
-				PVIOBJECT *o;
+				PviObject *o;
 				char tempstring[512];
 
 				o = object->ex.pv.task;
@@ -241,7 +241,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case ID_APPLY:
 
 			result = -1; // assume we have an error
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char tempstring[256];
 
@@ -374,12 +374,12 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 					memset(&tst, 0, sizeof(tst));
 
-					tst.tm_year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, NULL, FALSE) - 1900;
-					tst.tm_mon = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, NULL, FALSE) - 1;
-					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, NULL, FALSE);
-					tst.tm_hour = GetDlgItemInt(hDlg, IDC_EDIT_HOUR, NULL, FALSE);
-					tst.tm_min = GetDlgItemInt(hDlg, IDC_EDIT_MINUTE, NULL, FALSE);
-					tst.tm_sec = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, NULL, FALSE) / 1000;
+					tst.tm_year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, nullptr, FALSE) - 1900;
+					tst.tm_mon = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, nullptr, FALSE) - 1;
+					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, nullptr, FALSE);
+					tst.tm_hour = GetDlgItemInt(hDlg, IDC_EDIT_HOUR, nullptr, FALSE);
+					tst.tm_min = GetDlgItemInt(hDlg, IDC_EDIT_MINUTE, nullptr, FALSE);
+					tst.tm_sec = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, nullptr, FALSE) / 1000;
 
 					if (tst.tm_year > 138 || tst.tm_year < 70)
 					{
@@ -450,9 +450,9 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 					memset(&tst, 0, sizeof(tst));
 					tst.tm_hour = tst.tm_min = tst.tm_sec = 0;
-					tst.tm_year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, NULL, FALSE) - 1900;
-					tst.tm_mon = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, NULL, FALSE) - 1;
-					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, NULL, FALSE);
+					tst.tm_year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, nullptr, FALSE) - 1900;
+					tst.tm_mon = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, nullptr, FALSE) - 1;
+					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, nullptr, FALSE);
 					if (tst.tm_year > 106 || tst.tm_year < 70)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_YEAR);
@@ -498,9 +498,9 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 				case BR_TOD:
 				{
 					unsigned int hour, minute, milliseconds;
-					hour = GetDlgItemInt(hDlg, IDC_EDIT_HOUR, NULL, FALSE);
-					minute = GetDlgItemInt(hDlg, IDC_EDIT_MINUTE, NULL, FALSE);
-					milliseconds = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, NULL, FALSE);
+					hour = GetDlgItemInt(hDlg, IDC_EDIT_HOUR, nullptr, FALSE);
+					minute = GetDlgItemInt(hDlg, IDC_EDIT_MINUTE, nullptr, FALSE);
+					milliseconds = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, nullptr, FALSE);
 					if (hour > 23)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_HOUR);
@@ -569,7 +569,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return FALSE;
 }
 
-void DlgWritePvarShowDialog(PVIOBJECT *object)
+void DlgWritePvarShowDialog(PviObject *object)
 {
 	if (object->type == POBJ_PVAR)
 	{
@@ -601,7 +601,7 @@ void DlgWritePvarShowDialog(PVIOBJECT *object)
 }
 
 /* write value to a PVAR */
-int WritePviPvar(PVIOBJECT *object, void *value)
+int WritePviPvar(PviObject *object, void *value)
 {
 	DWORD length = object->ex.pv.length;
 	int result;

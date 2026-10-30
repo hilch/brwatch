@@ -3,7 +3,9 @@
 
 
 
+#ifndef RC_INVOKED
 #include "pvi_interface.h"
+#endif
 #include <commctrl.h>
 
 #define VER_PRODUCTVERSION          2,0,0,0
@@ -55,6 +57,8 @@
 #define IDC_STATIC_GIT_TAG              1045
 #define IDC_EDIT_CPU_TIMEOUT            1046
 #define IDC_BUTTON_SETTINGS_DEFAULTS    1047
+#define IDC_STATIC_BUILD_INFO           1048
+#define IDC_LINK_PROJECT                1049
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001
@@ -127,8 +131,10 @@
 #define IDC_STATIC                      -1
 
 
+#ifndef RC_INVOKED
 HIMAGELIST ResourcesCreateImageList(void);
 int ResourcesGetImageIndex( WORD resource );
-int ResourcesGetPviObjectImage( PVIOBJECT *object );
+int ResourcesGetPviObjectImage( PviObject *object );
+#endif
 
 #endif // RESOURCE_H

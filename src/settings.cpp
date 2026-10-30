@@ -36,12 +36,12 @@ static BOOL SettingsWriteText(const std::string &text)
 	char temporary[MAX_PATH];
 	if (!GetTempFileNameA(directory.c_str(), "brw", 0, temporary))
 		return FALSE;
-	HANDLE file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE file = CreateFileA(temporary, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 	BOOL success = FALSE;
 	if (file != INVALID_HANDLE_VALUE)
 	{
 		DWORD written = 0;
-		success = WriteFile(file, text.data(), static_cast<DWORD>(text.size()), &written, NULL) &&
+		success = WriteFile(file, text.data(), static_cast<DWORD>(text.size()), &written, nullptr) &&
 			written == text.size();
 		if (!CloseHandle(file))
 			success = FALSE;
@@ -54,14 +54,14 @@ static BOOL SettingsWriteText(const std::string &text)
 
 static BOOL SettingsSortCpuSections(void)
 {
-	WritePrivateProfileStringA(NULL, NULL, NULL, inifile);
+	WritePrivateProfileStringA(nullptr, nullptr, nullptr, inifile);
 	std::ifstream input(inifile, std::ios::binary);
 	if (!input)
 		return FALSE;
 	std::map<unsigned, std::string> cpuSections;
 	std::string remaining;
 	std::string line;
-	std::string *currentCpu = NULL;
+	std::string *currentCpu = nullptr;
 	const char *marker = "; enter next CPU here...";
 	std::string newline = "\r\n";
 	bool foundNewline = false;
@@ -78,10 +78,10 @@ static BOOL SettingsSortCpuSections(void)
 		}
 		size_t start = line.find_first_not_of(" \t\r\n");
 		if (start != std::string::npos && line.compare(start, strlen(marker), marker) == 0)
-			currentCpu = NULL;
+			currentCpu = nullptr;
 		else if (start != std::string::npos && line[start] == '[')
 		{
-			currentCpu = NULL;
+			currentCpu = nullptr;
 			size_t end = line.find(']', start + 1);
 			if (end != std::string::npos)
 			{
@@ -89,13 +89,13 @@ static BOOL SettingsSortCpuSections(void)
 				if (name.size() > 3 && _strnicmp(name.c_str(), "CPU", 3) == 0 &&
 					name.find_first_not_of("0123456789", 3) == std::string::npos)
 				{
-					unsigned long cpu = strtoul(name.c_str() + 3, NULL, 10);
+					unsigned long cpu = strtoul(name.c_str() + 3, nullptr, 10);
 					if (cpu >= 1 && cpu <= 256)
 						currentCpu = &cpuSections[static_cast<unsigned>(cpu)];
 				}
 			}
 		}
-		if (currentCpu != NULL)
+		if (currentCpu != nullptr)
 			*currentCpu += line;
 		else
 			remaining += line;
@@ -156,7 +156,7 @@ BOOL SettingsRemoveCpu(const char *descriptor)
 	{
 		char section[20];
 		snprintf(section, sizeof(section), "CPU%u", cpu);
-		if (!WritePrivateProfileStringA(section, NULL, NULL, inifile))
+		if (!WritePrivateProfileStringA(section, nullptr, nullptr, inifile))
 			return FALSE;
 	}
 	return TRUE;
@@ -173,7 +173,7 @@ void SettingsInitialize(void)
 	char errorMessage[256];
 
 	const char *appData = getenv("APPDATA");
-	BOOL useAppData = appData != NULL && appData[0] != 0;
+	BOOL useAppData = appData != nullptr && appData[0] != 0;
 	std::string directory = useAppData ? appData : GetApplicationPath();
 	if (useAppData)
 		directory += "\\brwatch";
@@ -184,23 +184,23 @@ void SettingsInitialize(void)
 		return;
 	}
 	strcpy(inifile, filename.c_str());
-	if (useAppData && !CreateDirectoryA(directory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	if (useAppData && !CreateDirectoryA(directory.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
 	{
 		MessageBoxA(MainWindowGetHandle(), "Could not create the settings directory in APPDATA.", "Settings", MB_OK | MB_ICONERROR);
 		return;
 	}
 
 	file = fopen(inifile, "r");
-	if (file == NULL)
+	if (file == nullptr)
 	{
-		if ((hrsrc = FindResourceA(NULL, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI")) != NULL)
+		if ((hrsrc = FindResourceA(nullptr, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI")) != nullptr)
 		{
-			if ((hglobal = LoadResource(NULL, hrsrc)) != NULL)
+			if ((hglobal = LoadResource(nullptr, hrsrc)) != nullptr)
 			{
-				length = SizeofResource(NULL, hrsrc);
-				if ((p = LockResource(hglobal)) != NULL)
+				length = SizeofResource(nullptr, hrsrc);
+				if ((p = LockResource(hglobal)) != nullptr)
 				{
-					if ((file = fopen(inifile, "wb+")) != NULL)
+					if ((file = fopen(inifile, "wb+")) != nullptr)
 					{
 						if (fwrite(p, 1, length, file) == length)
 						{
@@ -260,7 +260,7 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		SendDlgItemMessageA(hDlg, IDC_EDIT1, EM_SETLIMITTEXT, 0, 0);
 		HFONT hfont = static_cast<HFONT>(GetStockObject(SYSTEM_FIXED_FONT));
 		SendDlgItemMessage(hDlg, IDC_EDIT1, WM_SETFONT, (WPARAM)hfont, TRUE);
-		WritePrivateProfileStringA(NULL, NULL, NULL, inifile);
+		WritePrivateProfileStringA(nullptr, nullptr, nullptr, inifile);
 		std::ifstream input(inifile, std::ios::binary);
 		if (!input)
 		{
@@ -321,15 +321,15 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 		case IDC_BUTTON_SETTINGS_DEFAULTS:
 		{
-			HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI");
-			HGLOBAL loaded = resource != NULL ? LoadResource(NULL, resource) : NULL;
-			const char *data = loaded != NULL ? static_cast<const char *>(LockResource(loaded)) : NULL;
-			if (data == NULL)
+			HRSRC resource = FindResourceA(nullptr, MAKEINTRESOURCEA(IDR_DEFAULT_INI1), "DEFAULT_INI");
+			HGLOBAL loaded = resource != nullptr ? LoadResource(nullptr, resource) : nullptr;
+			const char *data = loaded != nullptr ? static_cast<const char *>(LockResource(loaded)) : nullptr;
+			if (data == nullptr)
 			{
 				MessageBoxA(hDlg, "Could not load the default settings.", "Settings", MB_OK | MB_ICONERROR);
 				return TRUE;
 			}
-			SettingsSetEditorText(hDlg, std::string(data, SizeofResource(NULL, resource)));
+			SettingsSetEditorText(hDlg, std::string(data, SizeofResource(nullptr, resource)));
 			return TRUE;
 		}
 		case IDOK:
@@ -338,7 +338,7 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			std::string text(static_cast<size_t>(length) + 1, '\0');
 			int copied = GetDlgItemTextA(hDlg, IDC_EDIT1, &text[0], length + 1);
 			text.resize(static_cast<size_t>(copied));
-			WritePrivateProfileStringA(NULL, NULL, NULL, inifile);
+			WritePrivateProfileStringA(nullptr, nullptr, nullptr, inifile);
 			if (copied == length && SettingsWriteText(text))
 			{
 				EndDialog(hDlg, IDOK);

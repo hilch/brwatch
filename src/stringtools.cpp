@@ -72,7 +72,7 @@ int GetIntValue(char **source)
 
 int validate_ip4(const char *buffer)
 {
-	if (NULL == buffer)
+	if (nullptr == buffer)
 		return 0;
 
 	const char *pos = buffer;

@@ -19,7 +19,7 @@ void ShowWindowPviObjects(void)
 	hWndListView = CreateWindowA(WC_LISTVIEWA, "",
 								 WS_POPUPWINDOW | WS_CAPTION | LVS_REPORT | LVS_EDITLABELS,
 								 rect.right - 640, rect.bottom - 480, 640, 480,
-								 hWndMainWindow, 0, (HINSTANCE)((LONG_PTR)GetWindowLongPtr(hWndMainWindow, GWLP_HINSTANCE)), NULL);
+								 hWndMainWindow, 0, (HINSTANCE)((LONG_PTR)GetWindowLongPtr(hWndMainWindow, GWLP_HINSTANCE)), nullptr);
 	ShowWindow(hWndListView, SW_SHOW);
 	ShowPviObjectsInitListView(hWndListView);
 	ShowPviObjectsFillListView(hWndListView);
@@ -53,28 +53,28 @@ static void ShowPviObjectsInitListView(HWND hlistview)
 	lvcolumn.cx = 200;
 	strcpy(columnName, "Extended");
 	SendMessageA(hlistview, LVM_INSERTCOLUMNA, 4, reinterpret_cast<LPARAM>(&lvcolumn));
-	ListView_SetItemCount(hlistview, GetNumberOfPviObjects());
+	ListView_SetItemCount(hlistview, PviObject::Count());
 }
 
 static void ShowPviObjectsFillListView(HWND hlistview)
 {
 	LVITEMA lvitem;
 	int i;
-	PVIOBJECT *p;
+	PviObject *p;
 	char tempstring[256];
 	int no_of_items;
 
 	ListView_DeleteAllItems(hlistview);
 
-	p = GetNextPviObject(1);
-	no_of_items = GetNumberOfPviObjects();
+	p = PviObject::GetNext(1);
+	no_of_items = PviObject::Count();
 
 	sprintf(tempstring, "List of Pvi-Objects - count = %u", no_of_items);
 	SetWindowTextA(hlistview, tempstring);
 
 	for (i = 0; i < no_of_items; ++i)
 	{
-		if ((p = GetNextPviObject(0)) == NULL)
+		if ((p = PviObject::GetNext(0)) == nullptr)
 			break; // Ende der Liste
 		memset(&lvitem, 0, sizeof(lvitem));
 		lvitem.mask = LVIF_TEXT;

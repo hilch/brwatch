@@ -51,10 +51,10 @@ static INT_PTR CALLBACK AddCpuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
 				SetFocus(GetDlgItem(hDlg, IDC_EDIT_CPU_TIMEOUT));
 				return TRUE;
 			}
-			PVIOBJECT *cpuObject = AddPviCpuByIp(ipAddress, timeoutMs);
-			if (cpuObject != NULL)
+			PviObject *cpuObject = PviObject::AddCpuByIp(ipAddress, timeoutMs);
+			if (cpuObject != nullptr)
 			{
-				PVIOBJECT **result = reinterpret_cast<PVIOBJECT **>(GetWindowLongPtr(hDlg, DWLP_USER));
+				PviObject **result = reinterpret_cast<PviObject **>(GetWindowLongPtr(hDlg, DWLP_USER));
 				*result = cpuObject;
 				EndDialog(hDlg, IDOK);
 			}
@@ -68,9 +68,9 @@ static INT_PTR CALLBACK AddCpuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
 	return FALSE;
 }
 
-PVIOBJECT *DlgAddCpuShowDialog(void)
+PviObject *DlgAddCpuShowDialog(void)
 {
-	PVIOBJECT *cpuObject = NULL;
+	PviObject *cpuObject = nullptr;
 	DialogBoxParamA(g_hInstance, MAKEINTRESOURCEA(DLG_ADD_CPU), g_hwndMainWindow,
 		AddCpuDlgProc, reinterpret_cast<LPARAM>(&cpuObject));
 	return cpuObject;
@@ -78,7 +78,7 @@ PVIOBJECT *DlgAddCpuShowDialog(void)
 
 static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	static PVIOBJECT *object;
+	static PviObject *object;
 
 	switch (uMsg)
 	{
@@ -86,7 +86,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		if (lParam != 0)
 		{
 			char tempstring[512];
-			object = (PVIOBJECT *)lParam;
+			object = (PviObject *)lParam;
 			sprintf(tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor);
 			SetDlgItemTextA(hDlg, IDC_STATIC_CPU, tempstring);
 			if (strlen(object->ex.cpu.ethernetCpuInfo.macAddress) == 0)
@@ -146,7 +146,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return TRUE;
 		}
 		else
-			object = NULL;
+			object = nullptr;
 		return FALSE;
 
 	case WM_COMMAND:
@@ -155,7 +155,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		{
 
 		case IDR_BUTTON_CHANGEIP:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				struct stEthernetCpuInfo cpuInfo;
 				int result;
@@ -177,7 +177,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_STOP:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[] = {"ST=Reset"};
 				PviWrite(object->linkid, POBJ_ACC_STATUS, command, strlen(command), 0, 0);
@@ -187,7 +187,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_WARMSTART:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[] = {"ST=Warmstart"};
 				PviWrite(object->linkid, POBJ_ACC_STATUS, command, strlen(command), 0, 0);
@@ -197,7 +197,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_COLDSTART:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[] = {"ST=Coldstart"};
 				PviWrite(object->linkid, POBJ_ACC_STATUS, command, strlen(command), 0, 0);
@@ -207,7 +207,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_DIAGNOSIS:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[] = {"ST=Diagnose"};
 				PviWrite(object->linkid, POBJ_ACC_STATUS, command, strlen(command), 0, 0);
@@ -217,7 +217,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_CHECK_DHCP_CLIENT:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				HWND hwndButton = (HWND)lParam;
 				if (HIWORD(wParam) == BN_CLICKED)
@@ -254,7 +254,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return FALSE;
 }
 
-void DlgEditCpuShowDialog(PVIOBJECT *object)
+void DlgEditCpuShowDialog(PviObject *object)
 {
 	if (object->type == POBJ_CPU)
 	{
@@ -297,7 +297,7 @@ int SetCPUIpParameters(struct stEthernetCpuInfo *cpuInfo)
 			{
 				DWORD linkIdPvar;
 				result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-				result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)&cpuInfo->ipMethod, sizeof(cpuInfo->ipMethod), NULL, 0);
+				result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)&cpuInfo->ipMethod, sizeof(cpuInfo->ipMethod), nullptr, 0);
 				if (result != 0)
 					error = 1;
 				PviUnlink(linkIdPvar);
@@ -305,21 +305,21 @@ int SetCPUIpParameters(struct stEthernetCpuInfo *cpuInfo)
 				{ /* fixed IP ? */
 					/* set gateway */
 					result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->gateway, strlen(cpuInfo->gateway), NULL, 0);
+					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->gateway, strlen(cpuInfo->gateway), nullptr, 0);
 					if (result != 0)
 						error = 1;
 					PviUnlink(linkIdPvar);
 
 					/* set subnet mask */
 					result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->subnetMask, strlen(cpuInfo->subnetMask), NULL, 0);
+					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->subnetMask, strlen(cpuInfo->subnetMask), nullptr, 0);
 					if (result != 0)
 						error = 1;
 					PviUnlink(linkIdPvar);
 
 					/* set ip address */
 					result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Ip", POBJ_PVAR, "CD=ipAddress", PviSnmpProc, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->ipAddress, strlen(cpuInfo->ipAddress), NULL, 0);
+					result = PviWrite(linkIdPvar, POBJ_ACC_DATA, (void *)cpuInfo->ipAddress, strlen(cpuInfo->ipAddress), nullptr, 0);
 					if (result != 0)
 						error = 1;
 					PviUnlink(linkIdPvar);

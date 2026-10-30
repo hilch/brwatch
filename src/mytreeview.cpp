@@ -35,7 +35,7 @@ HWND MyTreeViewCreateWindow(MYTREEVIEWPARAM *param)
 
 	// GetClientRect( param->hwndParent, &rcClient);
 
-	param->hwndTV = CreateWindowExA(WS_EX_CLIENTEDGE, WC_TREEVIEWA, "Select Object", MY_TREEVIEW_STYLE, 0, 0, 0, 0, param->hwndParent, NULL, param->hinstance, NULL);
+	param->hwndTV = CreateWindowExA(WS_EX_CLIENTEDGE, WC_TREEVIEWA, "Select Object", MY_TREEVIEW_STYLE, 0, 0, 0, 0, param->hwndParent, nullptr, param->hinstance, nullptr);
 
 	hfont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
 	SendMessage(param->hwndTV, WM_SETFONT, (WPARAM)hfont, 1);
@@ -114,7 +114,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 		switch (pnmtv->hdr.code)
 		{
 		case NM_DBLCLK: // double click
-			if (tv->cbdblclick != NULL)
+			if (tv->cbdblclick != nullptr)
 			{
 				hti = TreeView_GetSelection(tv->hwndTV);
 				memset(&item, 0, sizeof(item));
@@ -122,7 +122,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 				item.hItem = hti;
 				SendMessageA(tv->hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item));
 
-				if (hti != NULL)
+				if (hti != nullptr)
 				{
 					(tv->cbdblclick)(hti, item.lParam);
 				}
@@ -131,20 +131,20 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 			break;
 
 		case NM_RCLICK: // right click
-			if (tv->cbrclick != NULL)
+			if (tv->cbrclick != nullptr)
 			{
 				TVHITTESTINFO hit = {};
 				GetCursorPos(&hit.pt);
 				ScreenToClient(tv->hwndTV, &hit.pt);
 				hti = TreeView_HitTest(tv->hwndTV, &hit);
-				if (hti == NULL || !(hit.flags & TVHT_ONITEM))
+				if (hti == nullptr || !(hit.flags & TVHT_ONITEM))
 					return 0;
 				memset(&item, 0, sizeof(item));
 				item.mask = TVIF_PARAM;
 				item.hItem = hti;
 				SendMessageA(tv->hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item));
 
-				if (hti != NULL)
+				if (hti != nullptr)
 				{
 					(tv->cbrclick)(hti, item.lParam);
 				}
@@ -153,7 +153,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 			break;
 
 		case TVN_SELCHANGEDA: // Selection changed
-			if (tv->cbselected != NULL)
+			if (tv->cbselected != nullptr)
 			{
 				(tv->cbselected)(pnmtv->itemNew.hItem, pnmtv->itemNew.lParam);
 			}
@@ -161,7 +161,7 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 			break;
 
 		case TVN_BEGINDRAGA: // Begin Draggin
-			if (tv->cbbegindrag != NULL)
+			if (tv->cbbegindrag != nullptr)
 			{
 				(tv->cbbegindrag)(pnmtv->itemNew.hItem, pnmtv->itemNew.lParam);
 			}
@@ -174,16 +174,16 @@ LRESULT CALLBACK MyTreeViewHandleMessages(MYTREEVIEWPARAM *tv, UINT wMsg, WPARAM
 
 /* get all child of object and enters them in tree view */
 
-static void TreeViewInsertChildObjects(HTREEITEM hti, PVIOBJECT *parent)
+static void TreeViewInsertChildObjects(HTREEITEM hti, PviObject *parent)
 {
-	PVIOBJECT *child;
+	PviObject *child;
 	int imageindex;
 	TVITEMA tvitem;
 
-	if (parent != NULL)
+	if (parent != nullptr)
 	{
 
-		ExpandPviObject(parent);
+		parent->Expand();
 
 		// there are more information after expanding
 		if (parent->type == POBJ_CPU)
@@ -229,8 +229,8 @@ static void TreeViewInsertChildObjects(HTREEITEM hti, PVIOBJECT *parent)
 			}
 		}
 
-		child = FindPviChildObject(parent, TRUE);
-		while (child != NULL)
+		child = parent->FindChild(TRUE);
+		while (child != nullptr)
 		{
 			char tempstring[512];
 
@@ -259,7 +259,7 @@ static void TreeViewInsertChildObjects(HTREEITEM hti, PVIOBJECT *parent)
 			imageindex = ResourcesGetPviObjectImage(child);
 
 			MyTreeViewAddItem(&mytreeviewparam, hti, tempstring, (LPARAM)child->name, imageindex);
-			child = FindPviChildObject(parent, FALSE);
+			child = parent->FindChild(FALSE);
 		} /* End while()*/
 	}
 }
@@ -268,17 +268,17 @@ static void TreeViewInsertChildObjects(HTREEITEM hti, PVIOBJECT *parent)
 
 void MyTreeViewItemSelected(HTREEITEM hti, LPARAM lParam)
 {
-	PVIOBJECT *parent; // das angeklickte Objekte ist parent
+	PviObject *parent; // das angeklickte Objekte ist parent
 	HCURSOR oldcursor;
 
-	if (TreeView_GetChild(mytreeviewparam.hwndTV, hti) == NULL)
+	if (TreeView_GetChild(mytreeviewparam.hwndTV, hti) == nullptr)
 	{ // noch nix eingelesen
-		parent = FindPviObjectByName((char *)lParam);
-		if (parent != NULL)
+		parent = PviObject::FindByName((char *)lParam);
+		if (parent != nullptr)
 		{
 			if (parent->error == 0)
 			{
-				oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 				TreeViewInsertChildObjects(hti, parent);
 				SetCursor(oldcursor);
 			}
@@ -298,16 +298,16 @@ void MyTreeViewBeginDragging(HTREEITEM hti, LPARAM lParam)
 	ImageList_DragEnter(g_hwndMainWindow, 0, 0);
 	SetCapture(g_hwndMainWindow);
 
-	g_draggedPVIObject = FindPviObjectByName((char *)lParam);
+	g_draggedPVIObject = PviObject::FindByName((char *)lParam);
 }
 
 /* an element in tree view was double clicked */
 
 void MyTreeViewDblClick(HTREEITEM /* hti */, LPARAM lParam)
 {
-	PVIOBJECT *object;
-	object = FindPviObjectByName((char *)lParam);
-	if (object != NULL)
+	PviObject *object;
+	object = PviObject::FindByName((char *)lParam);
+	if (object != nullptr)
 	{
 		if (object->type == POBJ_PVAR)
 		{
@@ -322,22 +322,22 @@ void MyTreeViewDblClick(HTREEITEM /* hti */, LPARAM lParam)
 	}
 }
 
-static PVIOBJECT *MyTreeViewGetSelectedCpu(void)
+static PviObject *MyTreeViewGetSelectedCpu(void)
 {
 	TVITEMA item = {};
 	item.hItem = TreeView_GetSelection(mytreeviewparam.hwndTV);
 	item.mask = TVIF_PARAM;
-	if (item.hItem == NULL ||
+	if (item.hItem == nullptr ||
 		!SendMessageA(mytreeviewparam.hwndTV, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)) ||
 		item.lParam == 0)
-		return NULL;
-	PVIOBJECT *object = FindPviObjectByName(reinterpret_cast<char *>(item.lParam));
-	return object != NULL && object->type == POBJ_CPU ? object : NULL;
+		return nullptr;
+	PviObject *object = PviObject::FindByName(reinterpret_cast<char *>(item.lParam));
+	return object != nullptr && object->type == POBJ_CPU ? object : nullptr;
 }
 
-static void MyTreeViewUpdateCpuSettings(PVIOBJECT *object, UINT command)
+static void MyTreeViewUpdateCpuSettings(PviObject *object, UINT command)
 {
-	if (object == NULL || object->type != POBJ_CPU)
+	if (object == nullptr || object->type != POBJ_CPU)
 		return;
 	BOOL success = TRUE;
 	if (command == IDM_STORE_CPU_SETTINGS)
@@ -351,10 +351,10 @@ static void MyTreeViewUpdateCpuSettings(PVIOBJECT *object, UINT command)
 
 void MyTreeViewUpdateCpuSettingsMenu(HMENU menu)
 {
-	PVIOBJECT *object = MyTreeViewGetSelectedCpu();
-	BOOL stored = object != NULL && SettingsFindCpuSection(object->descriptor) != 0;
+	PviObject *object = MyTreeViewGetSelectedCpu();
+	BOOL stored = object != nullptr && SettingsFindCpuSection(object->descriptor) != 0;
 	EnableMenuItem(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND |
-		(object != NULL && !stored ? MF_ENABLED : MF_GRAYED));
+		(object != nullptr && !stored ? MF_ENABLED : MF_GRAYED));
 	EnableMenuItem(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND |
 		(stored ? MF_ENABLED : MF_GRAYED));
 }
@@ -367,7 +367,7 @@ void MyTreeViewCpuSettingsCommand(UINT command)
 /* mouse right click on tree view */
 void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 {
-	PVIOBJECT *object;
+	PviObject *object;
 	RECT rect_window;
 	RECT rect_item;
 	LPRECT lprect_item = &rect_item;
@@ -377,15 +377,15 @@ void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 		if (TreeView_GetItemRect(mytreeviewparam.hwndTV, hti, lprect_item, TRUE))
 		{
 
-			object = FindPviObjectByName((char *)lParam);
-			if (object != NULL)
+			object = PviObject::FindByName((char *)lParam);
+			if (object != nullptr)
 			{
 				switch (object->type)
 				{
 				case POBJ_CPU:
 				{
 					HMENU menu = CreatePopupMenu();
-					if (menu == NULL)
+					if (menu == nullptr)
 						break;
 					BOOL stored = SettingsFindCpuSection(object->descriptor) != 0;
 					AppendMenuA(menu, MF_STRING | (stored ? MF_GRAYED : MF_ENABLED),
@@ -395,7 +395,7 @@ void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 					POINT position;
 					GetCursorPos(&position);
 					UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
-						position.x, position.y, 0, g_hwndMainWindow, NULL);
+						position.x, position.y, 0, g_hwndMainWindow, nullptr);
 					DestroyMenu(menu);
 					MyTreeViewUpdateCpuSettings(object, command);
 					break;
@@ -408,7 +408,7 @@ void MyTreeViewRClick(HTREEITEM hti, LPARAM lParam)
 					{
 					case BR_STRUCT:
 						MyTreeViewItemSelected(hti, lParam);
-						if (object->ex.pv.pdatatype != NULL)
+						if (object->ex.pv.pdatatype != nullptr)
 						{
 						}
 						break;

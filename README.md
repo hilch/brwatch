@@ -41,7 +41,7 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 
 ## Development
 
-The application is written in C++ and uses the Win32 API. Bundled zlib sources remain C.
+The application is written in C++14 and uses the Win32 API. Bundled zlib sources remain C.
 Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 
 ### Build from Source

@@ -16,14 +16,14 @@ int CompressFile(char *filename)
 
 	// open source file
 	in = fopen(filename, "rb");
-	if (in == NULL)
+	if (in == nullptr)
 		return -1;
 
 	// open output file
 
 	out = gzopen(outfilename, "wb9f");
 
-	if (out == NULL)
+	if (out == nullptr)
 	{
 		fclose(in);
 		return -2;
@@ -83,14 +83,14 @@ int DecompressFile(char *zipfilename)
 	// open source file
 	in = gzopen(zipfilename, "rb");
 
-	if (in == NULL)
+	if (in == nullptr)
 		return -2;
 
 	// open output file
 	snprintf(outfilename, sizeof(outfilename), "%s%s%s", drive, directory, filename);
 	out = fopen(outfilename, "w+b");
 
-	if (out == NULL)
+	if (out == nullptr)
 	{
 		return -3;
 	}

@@ -1,2 +1,2 @@
 
-void DlgEditTaskShowDialog( PVIOBJECT *object );
+void DlgEditTaskShowDialog( PviObject *object );

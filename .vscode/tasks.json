@@ -33,7 +33,7 @@
             "args": [
                 "SHELL=cmd",
                 "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
-                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "CXXFLAGS=-std=c++14 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
                 "LDFLAGS=-m64 -mconsole -static-libgcc -static-libstdc++ -g",
                 "all"
             ],
@@ -59,7 +59,7 @@
                 "SHELL=cmd",
                 "clean",
                 "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
-                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "CXXFLAGS=-std=c++14 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
                 "LDFLAGS=-m64 -mconsole -static-libgcc -static-libstdc++ -g",
                 "all"
             ],

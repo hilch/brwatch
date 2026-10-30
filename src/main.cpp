@@ -21,9 +21,9 @@
 static LRESULT WINAPI WndProc(HWND, UINT, WPARAM, LPARAM);
 // static void Main_OnDestroy(HWND);
 static void PviObjectsValid(void);
-static void PviObjectErrorChanged(PVIOBJECT *object, int errcode);
-// static void PviObjectDataChanged(PVIOBJECT *object, char* value );
-// static void PviObjectStatusChanged( PVIOBJECT *object, char* status );
+static void PviObjectErrorChanged(PviObject *object, int errcode);
+// static void PviObjectDataChanged(PviObject *object, char* value );
+// static void PviObjectStatusChanged( PviObject *object, char* status );
 
 static void LoadWatchFile(char *filename);
 static void SaveWatchFile(char *filename);
@@ -34,10 +34,10 @@ static char application_path[MAX_PATH];
 static LPSTR commandLine;
 
 /* Global variables (extern in main.h) */
-HWND g_hwndMainWindow = NULL;
-HINSTANCE g_hInstance = NULL;
-PVIOBJECT *g_draggedPVIObject = NULL;
-PVIOBJECT *g_selectedPVIObject = NULL;
+HWND g_hwndMainWindow = nullptr;
+HINSTANCE g_hInstance = nullptr;
+PviObject *g_draggedPVIObject = nullptr;
+PviObject *g_selectedPVIObject = nullptr;
 char g_PVIVersionString[50] = {0};
 
 /* Global variables (extern in mylistview.h) */
@@ -97,7 +97,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 			pFunc();
 		}
 		FreeLibrary(m_user32Dll);
-		m_user32Dll = NULL;
+		m_user32Dll = nullptr;
 	}
 
 	// save application path
@@ -106,7 +106,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	}
 	else
 	{
-		MessageBoxA(NULL, "GetCurrentDirectory", "Error", MB_OK);
+		MessageBoxA(nullptr, "GetCurrentDirectory", "Error", MB_OK);
 		return -1;
 	}
 
@@ -118,7 +118,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 
 	sprintf(windowname, APPLICATION_NAME " {%u. instance}", instance_counter);
 
-	InitCommonControls();
+	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES | ICC_LINK_CLASS};
+	if (!InitCommonControlsEx(&controls))
+	{
+		MessageBoxA(nullptr, "Could not initialize Windows common controls.", "Error", MB_OK | MB_ICONERROR);
+		return -1;
+	}
 
 	g_hInstance = hInstance;
 	memset(&wc, 0, sizeof(wc));
@@ -129,7 +134,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	wc.hInstance = hInstance;
 	wc.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDR_ICO_MAIN));
 	// wc.hCursor    = LoadCursor(NULL, IDC_ARROW);
-	wc.hCursor = LoadCursor(NULL, IDC_SIZEWE); // for splitter
+	wc.hCursor = LoadCursor(nullptr, IDC_SIZEWE); // for splitter
 	wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
 	wc.lpszMenuName = MAKEINTRESOURCEA(IDR_MNU_MAIN);
 	wc.lpszClassName = "brwatchClass";
@@ -137,7 +142,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	if (!RegisterClassA(&wc))
 		return 0;
 
-	g_hwndMainWindow = CreateWindowA("brwatchClass", windowname, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+	g_hwndMainWindow = CreateWindowA("brwatchClass", windowname, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr, hInstance, nullptr);
 	if (!g_hwndMainWindow)
 		return 0;
 	ShowWindow(g_hwndMainWindow, nCmdShow);
@@ -158,13 +163,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	pvi_interface_notify.cberror_changed = PviObjectErrorChanged;
 	pvi_interface_notify.cbdata_changed = MyListViewUpdateValue;
 
-	while (GetMessageA(&msg, NULL, 0, 0))
+	while (GetMessageA(&msg, nullptr, 0, 0))
 	{
 		TranslateMessage(&msg);
 		DispatchMessageA(&msg);
 	}
 
-	StopPvi();
+	PviObject::Stop();
 	return (int)msg.wParam;
 }
 
@@ -172,13 +177,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 
 static void PviObjectsValid(void)
 {
-	PVIOBJECT *object;
+	PviObject *object;
 	char logger_watch_file[MAX_PATH];
 
-	object = GetNextPviObject(TRUE);
-	while (object->next != NULL)
+	object = PviObject::GetNext(TRUE);
+	while ((object = PviObject::GetNext(FALSE)) != nullptr)
 	{
-		object = object->next;
 		if (object->type == POBJ_DEVICE)
 		{
 			MyTreeViewAddItem(&mytreeviewparam, TVI_ROOT, object->descriptor, (LPARAM)object->name, 0);
@@ -200,7 +204,7 @@ static void PviObjectsValid(void)
 
 /* is called when error status of object has changed */
 
-static void PviObjectErrorChanged(PVIOBJECT *object, int errcode)
+static void PviObjectErrorChanged(PviObject *object, int errcode)
 {
 	LVFINDINFO lvfindinfo;
 	int index;
@@ -250,7 +254,7 @@ static void SaveWatchFile(char *filename)
 {
 	int index;
 	LVITEM lvitem;
-	PVIOBJECT *object;
+	PviObject *object;
 
 	remove(filename);
 	index = ListView_GetNextItem(mylistviewparam.hwndLV, -1, LVNI_ALL);
@@ -262,11 +266,11 @@ static void SaveWatchFile(char *filename)
 		ListView_GetItem(mylistviewparam.hwndLV, &lvitem);
 		if (lvitem.lParam != 0)
 		{
-			object = FindPviObjectByName((char *)lvitem.lParam);
-			if (object != NULL)
+			object = PviObject::FindByName((char *)lvitem.lParam);
+			if (object != nullptr)
 			{
 				object->watchsort = lvitem.iItem;
-				AddToPviWatchFile(object, filename);
+				object->AddToWatchFile(filename);
 			}
 		}
 		index = ListView_GetNextItem(mylistviewparam.hwndLV, index, LVNI_ALL);
@@ -278,18 +282,18 @@ static void SaveWatchFile(char *filename)
 static void LoadWatchFile(char *filename)
 {
 	const T_POBJ_TYPE objectTypes[] = {POBJ_DEVICE, POBJ_CPU, POBJ_TASK, POBJ_PVAR};
-	PVIOBJECT *object;
+	PviObject *object;
 	HCURSOR oldcursor;
 	int result, n;
 	int sort = 0;
 
-	oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+	oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 
 	// load objects from file
 	n = 0;
 	for (const T_POBJ_TYPE objectType : objectTypes)
 	{
-		result = LoadPviObjectsFromWatchFile(objectType, filename);
+		result = PviObject::LoadFromWatchFile(objectType, filename);
 		if (result > 0)
 		{
 			n += result;
@@ -300,8 +304,8 @@ static void LoadWatchFile(char *filename)
 
 	while (n)
 	{
-		object = GetNextPviObject(TRUE);
-		while ((object = GetNextPviObject(FALSE)) != NULL)
+		object = PviObject::GetNext(TRUE);
+		while ((object = PviObject::GetNext(FALSE)) != nullptr)
 		{
 			if (object->gui_info.loaded_from_file && object->watchsort == sort)
 			{
@@ -325,7 +329,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 	static UINT splitter_xpos = 250;	 // for splitter
 	static UINT writewnd_height = 0;	 // height of write window
 										 //	static HWND hwndSettings=NULL; // settings- window
-	static HFONT hfont_watchlist = NULL; // font for ListView
+	static HFONT hfont_watchlist = nullptr; // font for ListView
 	RECT rect;
 	HIMAGELIST himl;
 
@@ -360,11 +364,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 		case IDM_ADD_CPU:
 		{
-			PVIOBJECT *cpuObject = DlgAddCpuShowDialog();
-			if (cpuObject == NULL)
+			PviObject *cpuObject = DlgAddCpuShowDialog();
+			if (cpuObject == nullptr)
 				break;
 			HWND tree = mytreeviewparam.hwndTV;
-			for (HTREEITEM deviceItem = TreeView_GetRoot(tree); deviceItem != NULL;
+			for (HTREEITEM deviceItem = TreeView_GetRoot(tree); deviceItem != nullptr;
 				deviceItem = TreeView_GetNextSibling(tree, deviceItem))
 			{
 				TVITEMA item = {};
@@ -376,19 +380,19 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 				size_t length = strlen(deviceName);
 				if (strncmp(cpuObject->name, deviceName, length) != 0 || cpuObject->name[length] != '/')
 					continue;
-				if (TreeView_GetChild(tree, deviceItem) == NULL)
+				if (TreeView_GetChild(tree, deviceItem) == nullptr)
 				{
-					PVIOBJECT *deviceObject = FindPviObjectByName(reinterpret_cast<char *>(item.lParam));
-					PVIOBJECT *child = FindPviChildObject(deviceObject, TRUE);
-					while (child != NULL)
+					PviObject *deviceObject = PviObject::FindByName(reinterpret_cast<char *>(item.lParam));
+					PviObject *child = deviceObject != nullptr ? deviceObject->FindChild(TRUE) : nullptr;
+					while (child != nullptr)
 					{
 						MyTreeViewAddItem(&mytreeviewparam, deviceItem, child->descriptor,
 							reinterpret_cast<LPARAM>(child->name), ResourcesGetPviObjectImage(child));
-						child = FindPviChildObject(deviceObject, FALSE);
+						child = deviceObject->FindChild(FALSE);
 					}
 				}
 				HTREEITEM cpuItem = TreeView_GetChild(tree, deviceItem);
-				while (cpuItem != NULL)
+				while (cpuItem != nullptr)
 				{
 					item.hItem = cpuItem;
 					if (SendMessageA(tree, TVM_GETITEMA, 0, reinterpret_cast<LPARAM>(&item)) &&
@@ -396,7 +400,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 						break;
 					cpuItem = TreeView_GetNextSibling(tree, cpuItem);
 				}
-				if (cpuItem == NULL)
+				if (cpuItem == nullptr)
 					cpuItem = MyTreeViewAddItem(&mytreeviewparam, deviceItem, cpuObject->descriptor,
 						reinterpret_cast<LPARAM>(cpuObject->name), ResourcesGetPviObjectImage(cpuObject));
 				TreeView_Expand(tree, deviceItem, TVE_EXPAND);
@@ -410,12 +414,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			{
 				HCURSOR oldcursor;
 
-				oldcursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 				TreeView_DeleteAllItems(mytreeviewparam.hwndTV);
 				ListView_DeleteAllItems(mylistviewparam.hwndLV);
-				StopPvi();
+				PviObject::Stop();
 				Sleep(1000);
-				StartPvi();
+				PviObject::Start();
 				SetCursor(oldcursor);
 			}
 			break;
@@ -502,7 +506,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 		case IDM_CHANGE_VIEW_DECIMAL:
-			if (g_selectedPVIObject != NULL)
+			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_decimal ^= 1;
 				MyListViewUpdateValue(g_selectedPVIObject);
@@ -510,7 +514,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 
 		case IDM_CHANGE_VIEW_HEX:
-			if (g_selectedPVIObject != NULL)
+			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_hex ^= 1;
 				MyListViewUpdateValue(g_selectedPVIObject);
@@ -518,7 +522,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 
 		case IDM_CHANGE_VIEW_BINARY:
-			if (g_selectedPVIObject != NULL)
+			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_binary ^= 1;
 				MyListViewUpdateValue(g_selectedPVIObject);
@@ -526,7 +530,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 
 		case IDM_CHANGE_VIEW_CHAR:
-			if (g_selectedPVIObject != NULL)
+			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.display_as_char ^= 1;
 				MyListViewUpdateValue(g_selectedPVIObject);
@@ -534,7 +538,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 
 		case IDM_CHANGE_VIEW_OEMCHAR:
-			if (g_selectedPVIObject != NULL)
+			if (g_selectedPVIObject != nullptr)
 			{
 				g_selectedPVIObject->gui_info.interpret_as_oem ^= 1;
 				MyListViewUpdateValue(g_selectedPVIObject);
@@ -559,7 +563,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 					// temp = (char*) lvitem.lParam;
 					if (strcmp(g_selectedPVIObject->name, (char *)lvitem.lParam) == 0)
 					{
-						WatchPviObject(g_selectedPVIObject, FALSE);		// remove from watch
+						g_selectedPVIObject->Watch(FALSE);		// remove from watch
 						ListView_DeleteItem(mylistviewparam.hwndLV, i); // remove from list view
 						break;
 					}
@@ -573,10 +577,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		{
 			HFONT hfont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
 			SendMessage(mylistviewparam.hwndLV, WM_SETFONT, (WPARAM)hfont, TRUE);
-			if (hfont_watchlist != NULL)
+			if (hfont_watchlist != nullptr)
 			{
 				DeleteObject(hfont_watchlist);
-				hfont_watchlist = NULL;
+				hfont_watchlist = nullptr;
 			}
 		}
 		break;
@@ -586,10 +590,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			CHOOSEFONTA cf;
 			LOGFONTA font;
 
-			if (hfont_watchlist != NULL)
+			if (hfont_watchlist != nullptr)
 			{
 				DeleteObject(hfont_watchlist);
-				hfont_watchlist = NULL;
+				hfont_watchlist = nullptr;
 			}
 
 			ZeroMemory(&font, sizeof(font));
@@ -646,14 +650,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		drag_splitter = FALSE;
 
 		// drop object
-		if (g_draggedPVIObject != NULL)
+		if (g_draggedPVIObject != nullptr)
 		{
 			ImageList_EndDrag();
 			ImageList_DragLeave(g_hwndMainWindow);
 			ReleaseCapture();
 			g_draggedPVIObject->watchsort = drop_target_index;
 			MyListViewInsertPVIObjects(g_draggedPVIObject);
-			g_draggedPVIObject = NULL;
+			g_draggedPVIObject = nullptr;
 			TreeView_Select(mytreeviewparam.hwndTV, 0, TVGN_DROPHILITE); // only for nicer view
 		}
 		return 0;
@@ -679,7 +683,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 				splitter_xpos = LOWORD(lParam);
 			}
 		}
-		if (g_draggedPVIObject != NULL)
+		if (g_draggedPVIObject != nullptr)
 		{ // drag object from tree view to list view
 			POINTS Pos;
 			LVHITTESTINFO lvht;
@@ -753,7 +757,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		/* Imagelist */
 		himl = ResourcesCreateImageList();
 
-		g_draggedPVIObject = NULL;
+		g_draggedPVIObject = nullptr;
 
 		/* TreeView */
 		memset(&mytreeviewparam, 0, sizeof(mytreeviewparam));
@@ -797,17 +801,17 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		// 0, 0, 0, 0, hWnd, 0, ghInstance, NULL);
 		// }
 
-		if (StartPvi())
+		if (PviObject::Start())
 			MessageBoxA(g_hwndMainWindow, "Error during PVI initialization.\nssee log file !", "Error", MB_OK);
 		EnableMenuItem(GetMenu(hWnd), IDM_LOGGER_UNZIPLOGGERFILE, MF_ENABLED);
 
 		return (0);
 
 	case WM_DESTROY:
-		if (hfont_watchlist != NULL)
+		if (hfont_watchlist != nullptr)
 		{
 			DeleteObject(hfont_watchlist);
-			hfont_watchlist = NULL;
+			hfont_watchlist = nullptr;
 		}
 		PostQuitMessage(0);
 		return (0);

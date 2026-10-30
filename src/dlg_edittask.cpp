@@ -11,7 +11,7 @@
 
 static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	static PVIOBJECT *object;
+	static PviObject *object;
 
 	switch (uMsg)
 	{
@@ -19,7 +19,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		if (lParam != 0)
 		{
 			char tempstring[256];
-			object = (PVIOBJECT *)lParam;
+			object = (PviObject *)lParam;
 			sprintf(tempstring, object->descriptor);
 			SetDlgItemTextA(hDlg, IDC_STATIC_TASK, tempstring);
 			SetDlgItemTextA(hDlg, IDR_STATIC_TASK_STATUS, object->ex.task.status);
@@ -27,7 +27,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return TRUE;
 		}
 		else
-			object = NULL;
+			object = nullptr;
 		return FALSE;
 
 	case WM_COMMAND:
@@ -35,7 +35,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		switch (wParam)
 		{
 		case IDR_BUTTON_STOP:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[] = {"ST=Stop"};
 				PviWrite(object->linkid, POBJ_ACC_STATUS, command, strlen(command), 0, 0);
@@ -44,7 +44,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_RESUME:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char command[100];
 				sprintf(command, "%s", "ST=Cycle");
@@ -56,7 +56,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			return FALSE;
 
 		case IDR_BUTTON_START:
-			if (object != NULL)
+			if (object != nullptr)
 			{
 				char tempstring[20];
 				tempstring[0] = 0;
@@ -82,7 +82,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return FALSE;
 }
 
-void DlgEditTaskShowDialog(PVIOBJECT *object)
+void DlgEditTaskShowDialog(PviObject *object)
 {
 	if (object->type == POBJ_TASK)
 	{

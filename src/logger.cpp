@@ -30,7 +30,7 @@ static int filesize;
 static int cycletime;
 static BOOL logger_is_running = 0;
 static BOOL start_write_by_change = 0;
-static PVIOBJECT *cpu_timemaster = NULL;
+static PviObject *cpu_timemaster = nullptr;
 
 #define START_LOGGING 10
 #define RENAME_OLD_FILE 20
@@ -40,7 +40,7 @@ static PVIOBJECT *cpu_timemaster = NULL;
 #define COMPRESS_FILE 60
 #define STOP_LOGGING 70
 
-static PVIOBJECT **logged_object = NULL; // point to list with objects to be logged
+static PviObject **logged_object = nullptr; // point to list with objects to be logged
 static int no_of_logged_objects = 0;	 // number of logged objects
 static int estimated_row_size;			 // estimated row size
 static volatile int logger_step;
@@ -54,28 +54,28 @@ BOOL IsLoggerRunning(void)
 
 static int CountLoggedObjects(void)
 {
-	PVIOBJECT *object;
-	PVIOBJECT **p;
+	PviObject *object;
+	PviObject **p;
 
 	no_of_logged_objects = 0;
 	estimated_row_size = 0;
 
-	if (logged_object != NULL)
+	if (logged_object != nullptr)
 	{
 		free(logged_object);
-		logged_object = NULL;
+		logged_object = nullptr;
 	}
 
-	object = GetNextPviObject(TRUE);
-	while ((object = GetNextPviObject(FALSE)) != NULL)
+	object = PviObject::GetNext(TRUE);
+	while ((object = PviObject::GetNext(FALSE)) != nullptr)
 	{
 		if (object->watchsort >= 0)
 		{ // is object in watch list ?
 			switch (object->type)
 			{
 			case POBJ_PVAR:
-				p = static_cast<PVIOBJECT **>(realloc(logged_object, sizeof(PVIOBJECT *) * (no_of_logged_objects + 1)));
-				if (p == NULL)
+				p = static_cast<PviObject **>(realloc(logged_object, sizeof(PviObject *) * (no_of_logged_objects + 1)));
+				if (p == nullptr)
 				{
 					break;
 				}
@@ -101,7 +101,7 @@ static int CountLoggedObjects(void)
 
 static void ReadSettings(void)
 {
-	PVIOBJECT *object;
+	PviObject *object;
 	int last_watchsort;
 
 	GetPrivateProfileStringA("Logger", "Filename", "C:\\temp\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName());
@@ -111,11 +111,11 @@ static void ReadSettings(void)
 	write_by_change = GetPrivateProfileIntA("Logger", "write_by_change", 0, SettingsGetFileName());
 
 	// the first CPU is time master
-	cpu_timemaster = NULL;
-	object = GetNextPviObject(TRUE);
+	cpu_timemaster = nullptr;
+	object = PviObject::GetNext(TRUE);
 	last_watchsort = (int)1e6;
 
-	while ((object = GetNextPviObject(FALSE)) != NULL)
+	while ((object = PviObject::GetNext(FALSE)) != nullptr)
 	{
 		if (object->type == POBJ_CPU && object->watchsort >= 0 && object->watchsort < last_watchsort)
 		{
@@ -125,14 +125,14 @@ static void ReadSettings(void)
 	}
 
 	/* if no CPU object is found we retrieve it from the first variable */
-	if (cpu_timemaster == NULL)
+	if (cpu_timemaster == nullptr)
 	{
-		object = GetNextPviObject(TRUE);
-		while ((object = GetNextPviObject(FALSE)) != NULL)
+		object = PviObject::GetNext(TRUE);
+		while ((object = PviObject::GetNext(FALSE)) != nullptr)
 		{
 			if (object->type == POBJ_PVAR && object->watchsort >= 0 && object->watchsort < last_watchsort)
 			{
-				if (object->ex.pv.task != NULL)
+				if (object->ex.pv.task != nullptr)
 				{
 					object = object->ex.pv.task;
 					if (object->ex.task.cpu)
@@ -163,7 +163,7 @@ static BOOL ValidateSettings(void)
 		return FALSE;
 	}
 
-	if (cpu_timemaster == NULL)
+	if (cpu_timemaster == nullptr)
 	{
 		MessageBoxA(MainWindowGetHandle(), "no cpu for timestamp found !", "Logger Error - No Timestamp- CPU", MB_OK | MB_ICONERROR);
 		return FALSE;
@@ -188,7 +188,7 @@ BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 	char filename[FILENAME_MAX];
 	char extension[FILENAME_MAX];
 
-	hFile = CreateFileA(oldfilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	hFile = CreateFileA(oldfilename, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -196,7 +196,7 @@ BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 	}
 
 	// Retrieve the file times for the file.
-	if (!GetFileTime(hFile, NULL, NULL, &ftWrite))
+	if (!GetFileTime(hFile, nullptr, nullptr, &ftWrite))
 	{
 		CloseHandle(hFile);
 		return FALSE;
@@ -206,7 +206,7 @@ BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 
 	// Convert the last-write time to local time.
 	FileTimeToSystemTime(&ftWrite, &stUTC);
-	SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+	SystemTimeToTzSpecificLocalTime(nullptr, &stUTC, &stLocal);
 
 	_splitpath(oldfilename, drive, directory, filename, extension);
 
@@ -222,7 +222,7 @@ BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 
 /* is called by PVI callback when process variables have been changed */
 
-void LoggerDataChanged(PVIOBJECT *object)
+void LoggerDataChanged(PviObject *object)
 {
 	static FILE *f;
 	//    char *p_step_str;
@@ -262,7 +262,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 				strcpy(errstring, "");
 				cache = static_cast<char *>(malloc(CACHESIZE));
 				milliseconds = 0;
-				if (cache == NULL)
+				if (cache == nullptr)
 				{
 					strcpy(errstring, "Logger: can't allocate cache. To less memory !");
 					logger_step = STOP_LOGGING;
@@ -297,7 +297,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 							   //					p_step_str = "WRITE_HEADER";
 				written_chars = 0;
 				f = fopen(loggerfile, "w+");
-				if (f == NULL)
+				if (f == nullptr)
 				{
 					strcpy(errstring, "Logger: can't open logfile !");
 					logger_step = STOP_LOGGING;
@@ -308,7 +308,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 					result = fprintf(f, LOGFILE_HEADER_BY_CHANGE "\n");
 				}
 				fclose(f);
-				f = NULL;
+				f = nullptr;
 
 				if (result < 0)
 				{
@@ -326,7 +326,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 			case OPEN_FILE:
 				//					p_step_str = "OPEN_FILE";
 				f = fopen(loggerfile, "a+");
-				if (f == NULL)
+				if (f == nullptr)
 				{
 					strcpy(errstring, "Logger: can't open logfile !");
 					logger_step = STOP_LOGGING;
@@ -342,11 +342,11 @@ void LoggerDataChanged(PVIOBJECT *object)
 			case WRITE_TO_FILE: // Daten Schreiben
 				//				p_step_str = "WRITE_TO_FILE";
 
-				if (object == NULL)
+				if (object == nullptr)
 				{ // logger was stopped
 					strcpy(errstring, "");
 					fclose(f);
-					f = NULL;
+					f = nullptr;
 					logger_step = STOP_LOGGING;
 					break;
 				}
@@ -367,8 +367,8 @@ void LoggerDataChanged(PVIOBJECT *object)
 
 					if (object->type == POBJ_PVAR)
 					{
-						PVIOBJECT *task = object->ex.pv.task;
-						PVIOBJECT *cpu = object->ex.pv.cpu;
+						PviObject *task = object->ex.pv.task;
+						PviObject *cpu = object->ex.pv.cpu;
 
 						// Name
 						if (object->ex.pv.scope[0] == 'l' || object->ex.pv.scope[0] == 'd')
@@ -430,7 +430,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 						break;
 
 						case BR_STRING:
-							if (object->ex.pv.pvalue != NULL)
+							if (object->ex.pv.pvalue != nullptr)
 							{
 								char *s;
 								char *d;
@@ -466,7 +466,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 							break;
 
 						case BR_WSTRING:
-							if (object->ex.pv.pvalue != NULL)
+							if (object->ex.pv.pvalue != nullptr)
 							{
 								fwprintf(f, L",\"%.120s\"", object->ex.pv.pvalue);
 							}
@@ -501,14 +501,14 @@ void LoggerDataChanged(PVIOBJECT *object)
 				{ // Fehler
 					strcpy(errstring, "Logger: can't write into logfile !");
 					fclose(f);
-					f = NULL;
+					f = nullptr;
 					logger_step = STOP_LOGGING;
 				}
 
 				else if (written_chars >= (filesize * 1024))
 				{ // max. size of log file reached ?
 					fclose(f);
-					f = NULL;
+					f = nullptr;
 					logger_step = COMPRESS_FILE;
 				}
 				break;
@@ -542,7 +542,7 @@ void LoggerDataChanged(PVIOBJECT *object)
 				SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
 				if (strcmp(errstring, ""))
 				{
-					MessageBoxA(NULL, errstring, APPLICATION_NAME " - Logger", MB_OK | MB_ICONERROR);
+					MessageBoxA(nullptr, errstring, APPLICATION_NAME " - Logger", MB_OK | MB_ICONERROR);
 				}
 				break;
 
@@ -591,7 +591,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 		milliseconds = 0;
 		strcpy(errstring, "");
 		cache = static_cast<char *>(malloc(CACHESIZE));
-		if (cache == NULL)
+		if (cache == nullptr)
 		{
 			strcpy(errstring, "Logger: can't allocate cache. To less memory !");
 			logger_step = STOP_LOGGING;
@@ -627,7 +627,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 		//		p_step_str = "WRITE_HEADER";
 		written_chars = 0;
 		f = fopen(loggerfile, "w+");
-		if (f == NULL)
+		if (f == nullptr)
 		{
 			strcpy(errstring, "Logger: can't open logfile !");
 			logger_step = STOP_LOGGING;
@@ -644,9 +644,9 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 					if (logged_object[i]->type == POBJ_PVAR)
 					{
 
-						if (logged_object[i]->ex.pv.task != NULL)
+						if (logged_object[i]->ex.pv.task != nullptr)
 						{ // get name of task of variable
-							PVIOBJECT *task = logged_object[i]->ex.pv.task;
+							PviObject *task = logged_object[i]->ex.pv.task;
 							result = fprintf(f, ";%s:%s", task->descriptor, logged_object[i]->descriptor);
 						}
 						else
@@ -666,7 +666,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 				}
 				fprintf(f, "\n");
 				fclose(f);
-				f = NULL;
+				f = nullptr;
 				logger_step = OPEN_FILE;
 			}
 		}
@@ -682,7 +682,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 	case OPEN_FILE: // open file and set cache size
 					//			p_step_str = "OPEN_FILE";
 		f = fopen(loggerfile, "a+");
-		if (f == NULL)
+		if (f == nullptr)
 		{
 			strcpy(errstring, "Logger: can't open logfile !");
 			logger_step = STOP_LOGGING;
@@ -772,7 +772,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 					break;
 
 					case BR_STRING:
-						if (logged_object[i]->ex.pv.pvalue != NULL)
+						if (logged_object[i]->ex.pv.pvalue != nullptr)
 						{
 							char *s;
 							char *d;
@@ -808,7 +808,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 						break;
 
 					case BR_WSTRING:
-						if (logged_object[i]->ex.pv.pvalue != NULL)
+						if (logged_object[i]->ex.pv.pvalue != nullptr)
 						{
 							result = fwprintf(f, L";\"%.120s\"", logged_object[i]->ex.pv.pvalue);
 						}
@@ -841,7 +841,7 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 		{ // Fehler
 			strcpy(errstring, "Logger: can't write into logfile !");
 			fclose(f);
-			f = NULL;
+			f = nullptr;
 			logger_step = STOP_LOGGING;
 		}
 
@@ -849,14 +849,14 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 		{ // logger was stopped
 			strcpy(errstring, "");
 			fclose(f);
-			f = NULL;
+			f = nullptr;
 			logger_step = STOP_LOGGING;
 		}
 
 		else if (written_chars >= (filesize * 1024))
 		{ // max. size of logger file reached ?
 			fclose(f);
-			f = NULL;
+			f = nullptr;
 			logger_step = COMPRESS_FILE;
 		}
 		break;
@@ -884,13 +884,13 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 
 	case STOP_LOGGING:
 		//			p_step_str = "STOP_LOGGING";
-		KillTimer(NULL, idEvent); // function kills itself
+		KillTimer(nullptr, idEvent); // function kills itself
 		free(cache);
 		logger_is_running = FALSE;
 		SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
 		if (strcmp(errstring, ""))
 		{
-			MessageBoxA(NULL, errstring, APPLICATION_NAME " - Logger", MB_OK | MB_ICONERROR);
+			MessageBoxA(nullptr, errstring, APPLICATION_NAME " - Logger", MB_OK | MB_ICONERROR);
 		}
 		break;
 
@@ -921,7 +921,7 @@ INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM
 		CheckDlgButton(hDlg, IDC_CHECK_CHANGED, write_by_change == TRUE ? BST_CHECKED : BST_UNCHECKED);
 		EnableWindow(GetDlgItem(hDlg, IDR_EDIT_CYCLETIME), write_by_change == TRUE ? FALSE : TRUE);
 
-		if (cpu_timemaster == NULL)
+		if (cpu_timemaster == nullptr)
 		{
 			strcpy(tempstring, "no cpu in watchlist !");
 		}
@@ -1029,7 +1029,7 @@ BOOL Logger(void)
 		{
 			for (i = 0; i < 10; ++i)
 			{ // give chance to close file
-				LoggerDataChanged(NULL);
+				LoggerDataChanged(nullptr);
 			}
 		}
 	}
@@ -1045,7 +1045,7 @@ BOOL Logger(void)
 			logger_step = START_LOGGING;
 			if (write_by_change == 0)
 			{ // do not start timer procedure when 'write on change' is selected
-				SetTimer(NULL, 0, cycletime, TimerProc);
+				SetTimer(nullptr, 0, cycletime, TimerProc);
 			}
 			else
 			{

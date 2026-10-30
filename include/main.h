@@ -29,12 +29,12 @@
 char *GetApplicationPath( void );
 HWND MainWindowGetHandle( void );
 int ResourcesGetImageIndex( WORD resource );
-int ResourcesGetPviObjectImage( PVIOBJECT *object );
+int ResourcesGetPviObjectImage( PviObject *object );
 
 extern HWND g_hwndMainWindow;
 extern HINSTANCE g_hInstance;
-extern PVIOBJECT *g_draggedPVIObject;
-extern PVIOBJECT *g_selectedPVIObject;
+extern PviObject *g_draggedPVIObject;
+extern PviObject *g_selectedPVIObject;
 extern char g_PVIVersionString[50];
 
 #endif

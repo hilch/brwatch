@@ -6,6 +6,9 @@
 
 #include <windows.h>
 #include <time.h>
+#include <cstddef>
+#include <memory>
+#include <vector>
 
 #ifdef __cplusplus
 template <typename Callback>
@@ -28,7 +31,7 @@ inline INT PviSetGlobEventMsg(DWORD eventType, Callback callback, DWORD eventMes
 }
 #endif
 
-/* Variablentypen */
+/* Variable types */
 typedef enum PVIPVARTYPE {
 	BR_BOOL = 1,
 	BR_USINT,
@@ -48,28 +51,30 @@ typedef enum PVIPVARTYPE {
 	BR_DATE
 } PVIPVARTYPE;
 
-/* Strukturnamen */
+/* Structure names */
 typedef struct PVISTRUCTNAMES {
 	char						*pname;
 	struct PVISTRUCTNAMES		*next;
 } PVISTRUCTNAMES;
 
 
-/* erweiterte Info Prozessvariable */
+/* Extended process variable information */
+class PviObject;
+
 typedef struct PVIPVAROBJECT{
-	PVIPVARTYPE					type;				// Variablentyp
-	const char				*pdatatype;			// Zeiger auf Datentypnamen
-	int							dimension;			// dimension (bei Arrays)
-	DWORD						length;				// Variablenlänge
-	void						*pvalue;			// Zeiger auf Watchdaten
-	BOOL						value_changed;		// Wert wurde geändert
-	char						scope[2];			// Gültigkeitsbereich (global, lokal, dynamisch)
-	struct PVIOBJECT			*task;				// Zeiger auf das Task-Objekt (oder auf das CPU -Objekt bei globalen Variablen)
-	struct PVIOBJECT			*cpu;				// Zeiger auf das CPU- Objekt
+	PVIPVARTYPE					type;				// Variable type
+	const char				*pdatatype;			// Pointer to the data type name
+	int							dimension;			// Number of array elements
+	DWORD						length;				// Variable length
+	void						*pvalue;			// Pointer to watch data
+	BOOL						value_changed;		// Value has changed
+	char						scope[2];			// Scope (global, local, dynamic)
+	PviObject			*task;				// Pointer to the task object (or CPU object for global variables)
+	PviObject			*cpu;				// Pointer to the CPU object
 } PVIPVAROBJECT;
 
 
-/* erweiterte Info Geräteobjekt */
+/* Extended device object information */
 typedef struct PVIDEVICEOBJECT{
 	unsigned					number;				// number in INI file
 	unsigned long				broadcast;			// Broadcast IP
@@ -92,36 +97,55 @@ struct stEthernetCpuInfo {
 };
 
 
-/* erweiterte Info CPU - objekt */
+/* Extended CPU object information */
 typedef struct PVICPUOBJECT{
-	char						arversion[8+1];		// Version Automation Runtime
-	char						cputype[32+1];		// SPS- Typ
-	char						status[15];			//
+	char						arversion[8+1];		// Automation Runtime version
+	char						cputype[32+1];		// PLC type (CPU type)
+	char						status[15];			// CPU status
     struct stEthernetCpuInfo    ethernetCpuInfo;
-	struct tm					rtc_time;		    // Uhrzeit und Datum
-	BOOL						running;			// im "RUN"
+	struct tm					rtc_time;		    
+	BOOL						running;			// CPU is in 'RUN' state
 } PVICPUOBJECT;
 
-/* erweiterte Info TASK- object */
+/* Extended task object information */
 typedef struct PVITASKOBJECT {
-	struct PVIOBJECT			*cpu;				// Zeiger auf das CPU- Object
+	PviObject			*cpu;				
 	char						status[15];			// Status
 } PVITASKOBJECT;
 
 
-/* allgem. Informationen zum PVI- Objekt */
-typedef struct PVIOBJECT {
+class PviObject {
+public:
+	PviObject();
+
+	PviObject *Add(BOOL create);
+	PviObject *Unlink();
+	PviObject *Remove();
+	PviObject *Watch(BOOL watch);
+	PviObject *FindChild(BOOL first);
+	BOOL IsParentOf(const PviObject *child) const;
+	PviObject *Expand();
+	int AddToWatchFile(char *filename);
+
+	static int Start();
+	static int Stop();
+	static PviObject *AddCpuByIp(const char *ipAddress, unsigned timeoutMs);
+	static PviObject *GetNext(BOOL first);
+	static PviObject *FindByName(const char *name);
+	static PviObject *FindByLinkId(DWORD linkid);
+	static int Count();
+	static int LoadFromWatchFile(T_POBJ_TYPE typefilter, char *filename);
+
 	DWORD 						linkid;
 	T_POBJ_TYPE					type;
-	char						name[256];  // dies sollte reichen :-)
+	char						name[256];
 	char 						descriptor[256];
 	int							error;
-	int							watchsort;  // Sortierung in Watchliste
-	struct PVIOBJECT			*next; // Zeiger auf naechstes Objekt
+	int							watchsort;  // sort order in watch list
 	struct stGUIINFO{
-		unsigned has_childs;		// 1 = Kinder wurden bereits als eigene Objekte angelegt
-		unsigned loaded_from_file;// 1 = Objekt wurde gerade aus Datei geladen
-		unsigned display_as_decimal; // 1 = Decimalanzeige
+		unsigned has_childs;		// 1 = childs have already been created as separate objects
+		unsigned loaded_from_file;// 1 = object was just loaded from file
+		unsigned display_as_decimal; // 1 = display as decimal
 		unsigned display_as_hex;
 		unsigned display_as_binary;
 		unsigned display_as_char;
@@ -133,32 +157,30 @@ typedef struct PVIOBJECT {
 		PVITASKOBJECT			task;
 		PVIPVAROBJECT			pv;
 	} ex;
-} PVIOBJECT;
+private:
+	void ReadDataType();
+	PviObject *ReadCpuList();
+	PviObject *ReadTaskList();
+	PviObject *ReadPvarList();
+	PviObject *ReadStructElements();
+
+	static void ReadSettings();
+	static void WINAPI Callback(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO *);
+	static void WINAPI GlobalEvent(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO *);
+	static void CALLBACK CyclicRequests(HWND, UINT, UINT_PTR, DWORD);
+	static PviObject root;
+	static std::vector<std::unique_ptr<PviObject>> objects;
+	static std::size_t readIndex;
+	static std::size_t childReadIndex;
+};
 
 
 typedef struct {
 	void		(* cbobjects_valid)( void );
-	void		(* cbdata_changed)( PVIOBJECT *object );
-	void		(* cberror_changed)(PVIOBJECT *object, int error );
+	void		(* cbdata_changed)( PviObject *object );
+	void		(* cberror_changed)(PviObject *object, int error );
 } PVIOBJECTNOTIFICATION;
 
 extern PVIOBJECTNOTIFICATION pvi_interface_notify;
-
-/* Prototypen */
-int StartPvi( void );
-int StopPvi( void );
-
-PVIOBJECT *AddPviCpuByIp(const char *ipAddress, unsigned timeoutMs);
-PVIOBJECT *GetNextPviObject(BOOL);
-PVIOBJECT *FindPviObjectByName( char *name );
-PVIOBJECT *FindPviChildObject(PVIOBJECT * object, BOOL first );
-PVIOBJECT *ExpandPviObject( PVIOBJECT * object );
-PVIOBJECT *WatchPviObject( PVIOBJECT * object , BOOL watch );
-
-
-int GetNumberOfPviObjects( void );
-int AddToPviWatchFile( PVIOBJECT *object, char *filename );
-int LoadPviObjectsFromWatchFile(T_POBJ_TYPE typefilter, char *filename);
-
 
 #endif

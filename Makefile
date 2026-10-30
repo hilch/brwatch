@@ -27,9 +27,9 @@ BUILD_DIR = build
 
 # Compiler flags
 CFLAGS   = -m64 -Wall -Wextra -I$(INC_DIR)
-CXXFLAGS = $(CFLAGS) -std=c++11
+CXXFLAGS = $(CFLAGS) -std=c++14
 LDFLAGS  = -m64 -mwindows -static-libgcc -static-libstdc++
-LIBS     = -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 -L$(LIB_DIR) $(LIB_DIR)/PviCom64.lib
+LIBS     = -lws2_32 -liphlpapi -lnetapi32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 -lcomctl32 -lshell32 -L$(LIB_DIR) $(LIB_DIR)/PviCom64.lib
 
 # Resource
 RES      = $(BUILD_DIR)/brwatch_private.o
@@ -78,9 +78,15 @@ ZLIB_OBJS = $(patsubst %.c,$(BUILD_DIR)/zlib/%.o,$(ZLIB_SOURCES))
 OBJS     = $(APP_OBJS) $(ZLIB_OBJS)
 
 # Rules
-.PHONY: all clean help FORCE
+.PHONY: all clean help test FORCE
 
 all: setup $(BIN)
+
+test: setup $(BUILD_DIR)/pvi_object_test.exe
+	$(BUILD_DIR)\pvi_object_test.exe
+
+$(BUILD_DIR)/pvi_object_test.exe: tests/pvi_object_test.cpp $(OBJS) $(RES)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -mconsole -o $@ $< $(OBJS) $(RES) $(LIBS)
 
 help:
 	@echo brwatch Makefile (MSYS2 mingw64)
@@ -90,6 +96,7 @@ help:
 	@echo   make -f Makefile all          - Build only
 	@echo   make -f Makefile clean        - Clean build files
 	@echo   make -f Makefile help         - Show this help
+	@echo   make -f Makefile test         - Run PviObject regression tests
 	@echo.
 
 setup:
@@ -99,7 +106,7 @@ setup:
 clean:
 	@if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)" 2>nul || echo.
 
-$(RES): resources/main.rc
+$(RES): resources/main.rc resources/brwatch.manifest $(INC_DIR)/resource.h
 	$(WINDRES) -i resources/main.rc -o $(RES) --output-format=coff
 
 FORCE:

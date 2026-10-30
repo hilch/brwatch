@@ -34,9 +34,9 @@ void MyListViewDblClick( LPNMLISTVIEW lpnm );
 void MyListViewRClick( LPNMLISTVIEW lpnm );
 void MyListViewActivate( LPNMLISTVIEW lpnm );
 void MyListViewBeginDragging( int iItem );
-void MyListViewUpdateValue( PVIOBJECT *object );
+void MyListViewUpdateValue( PviObject *object );
 LRESULT CALLBACK MyListViewHandleMessages(MYLISTVIEWPARAM* , UINT, WPARAM , LPARAM );
-void MyListViewInsertPVIObjects( PVIOBJECT *object);
+void MyListViewInsertPVIObjects( PviObject *object);
 
 
 

@@ -42,7 +42,7 @@ int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo
 	WSADATA wsa;
 	int entries = 0;
 
-	if (adapter == NULL || ethernetCpuInfo == NULL || maxEntries <= 0)
+	if (adapter == nullptr || ethernetCpuInfo == nullptr || maxEntries <= 0)
 		return 0;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -124,7 +124,7 @@ int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo
 				FD_SET(sockets[index], &failed);
 			}
 			struct timeval timeout = {0, static_cast<long>((300 - elapsed) * 1000)};
-			if (select(0, NULL, &writable, &failed, &timeout) <= 0)
+			if (select(0, nullptr, &writable, &failed, &timeout) <= 0)
 				break;
 
 			for (int index = pending - 1; index >= 0 && entries < maxEntries; --index)
@@ -172,7 +172,7 @@ int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries)
 	bufsize = 20 * sizeof(IP_ADAPTER_INFO);
 	buffer = (IP_ADAPTER_INFO *)malloc(bufsize);
 	next = (IP_ADAPTER_INFO *)buffer;
-	if (buffer == NULL)
+	if (buffer == nullptr)
 		return 0;
 
 	result = GetAdaptersInfo(buffer, &bufsize);
@@ -187,11 +187,11 @@ int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries)
 		//            ++adapterInfo;
 		//        }
 
-		while ((next != NULL) && (entry < maxEntries))
+		while ((next != nullptr) && (entry < maxEntries))
 		{
 			ipaddr = &next->IpAddressList;
 
-			while (next->Type == MIB_IF_TYPE_ETHERNET && ipaddr != NULL)
+			while (next->Type == MIB_IF_TYPE_ETHERNET && ipaddr != nullptr)
 			{
 				if (strcmp(ipaddr->IpAddress.String, "0.0.0.0"))
 				{
@@ -240,14 +240,14 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 		if (result == 0)
 		{
 			char *buffer = (char *)malloc(65536);
-			if (buffer != NULL)
+			if (buffer != nullptr)
 			{
-				result = PviRead(linkIdDevice, POBJ_ACC_LIST_EXTERN, NULL, 0, buffer, 65536);
+				result = PviRead(linkIdDevice, POBJ_ACC_LIST_EXTERN, nullptr, 0, buffer, 65536);
 				if (result == 0)
 				{ /* get list of MAC addresses */
 					char delimiter[] = "\t";
 					char *ptr = strtok(buffer, delimiter);
-					while (ptr != NULL && (entries < maxEntries))
+					while (ptr != nullptr && (entries < maxEntries))
 					{
 						if (strstr(ptr, KWDESC_OBJTYPE "=" KWOBJTYPE_STATION))
 						{
@@ -264,32 +264,32 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 							{
 								DWORD linkIdPvar;
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Ip", POBJ_PVAR, "CD=ipAddress", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->ipAddress, sizeof(ethernetCpuInfo->ipAddress));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->ipAddress, sizeof(ethernetCpuInfo->ipAddress));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/snmpMode", POBJ_PVAR, "CD=snmpMode", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->SNMP_mode, sizeof(ethernetCpuInfo->SNMP_mode));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->SNMP_mode, sizeof(ethernetCpuInfo->SNMP_mode));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaNodeNumber", POBJ_PVAR, "CD=inaNodeNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->INA_nodeNumber, sizeof(ethernetCpuInfo->INA_nodeNumber));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_nodeNumber, sizeof(ethernetCpuInfo->INA_nodeNumber));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaPortNumber", POBJ_PVAR, "CD=inaPortNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->INA_portNumber, sizeof(ethernetCpuInfo->INA_portNumber));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_portNumber, sizeof(ethernetCpuInfo->INA_portNumber));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
 								PviUnlink(linkIdPvar);
 								int arState;
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/arState", POBJ_PVAR, "CD=arState", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&arState, sizeof(arState));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&arState, sizeof(arState));
 								PviUnlink(linkIdPvar);
 								switch (arState)
 								{
@@ -315,17 +315,17 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
 								}
 
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
 								PviUnlink(linkIdPvar);
 								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/arVersion", POBJ_PVAR, "CD=arVersion", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, NULL, 0, (void *)&ethernetCpuInfo->arVersion, sizeof(ethernetCpuInfo->arVersion));
+								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->arVersion, sizeof(ethernetCpuInfo->arVersion));
 								PviUnlink(linkIdPvar);
 								PviUnlink(linkIdStation);
 							}
 							++ethernetCpuInfo;
 							++entries;
 						}
-						ptr = strtok(NULL, delimiter);
+						ptr = strtok(nullptr, delimiter);
 					}
 				}
 				free(buffer);
@@ -358,7 +358,7 @@ int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries
 	/* Also discover CPUs with SNMP disabled via TCP port 11169. */
 	unsigned long buflen = 256 * sizeof(struct stEthernetCpuInfo);
 	struct stEthernetCpuInfo *ethernetScanCpuInfo = (struct stEthernetCpuInfo *)malloc(buflen);
-	if (ethernetScanCpuInfo != NULL)
+	if (ethernetScanCpuInfo != nullptr)
 	{
 		for (int i = 0; i < noOfAdapters; ++i)
 		{
