@@ -32,9 +32,9 @@
             "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
             "args": [
                 "SHELL=cmd",
-                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0",
-                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0",
-                "LDFLAGS=-m64 -mwindows -static-libgcc -static-libstdc++ -g",
+                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "LDFLAGS=-m64 -mconsole -static-libgcc -static-libstdc++ -g",
                 "all"
             ],
             "options": {
@@ -58,9 +58,9 @@
             "args": [
                 "SHELL=cmd",
                 "clean",
-                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0",
-                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0",
-                "LDFLAGS=-m64 -mwindows -static-libgcc -static-libstdc++ -g",
+                "CFLAGS=-m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "CXXFLAGS=-std=c++11 -m64 -Wall -Wextra -Iinclude -g -O0 -D__DEBUG__",
+                "LDFLAGS=-m64 -mconsole -static-libgcc -static-libstdc++ -g",
                 "all"
             ],
             "options": {
