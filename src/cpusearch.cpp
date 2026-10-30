@@ -451,7 +451,7 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, 
 			}
 			if (!complete)
 				break;
-			const char *states[] = {"(undefined)", "BOOT", "DIAG", "SERVICE", "RUN"};
+			static const char states[][sizeof(cpu.arState)] = {"(unknown)", "BOOT", "DIAG", "SERVICE", "RUN"};
 			strcpy(cpu.arState, states[arState >= 1 && arState <= 4 ? arState : 0]);
 			++entries;
 		}

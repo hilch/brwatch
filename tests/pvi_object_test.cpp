@@ -75,6 +75,7 @@ static HANDLE readRelease;
 static HANDLE selectEntered;
 static HANDLE selectRelease;
 static bool snmpPropertyResponses;
+static int snmpArState = 4;
 static std::map<DWORD, std::string> snmpProperties;
 static DWORD testUiThread = GetCurrentThreadId();
 
@@ -384,7 +385,7 @@ extern "C" INT WINAPI PviRead(DWORD link, DWORD access, LPVOID, LONG, LPVOID buf
 		else if (property == "CD=arState")
 		{
 			CHECK(size == sizeof(int));
-			*static_cast<int *>(buffer) = 4;
+			*static_cast<int *>(buffer) = snmpArState;
 		}
 		if (text != nullptr)
 			snprintf(static_cast<char *>(buffer), size, "%s", text);
@@ -1000,6 +1001,13 @@ static void CheckCpuScanCancellation()
 	CHECK(SearchCpuViaSnmp(results, 4, &snmpComplete) == 1);
 	CHECK(strcmp(results[0].ipAddress, "192.168.10.2") == 0 && strcmp(results[0].arState, "RUN") == 0);
 	CHECK(snmpProperties.empty() && snmpComplete.errors.empty());
+	for (int state : {0, 5, -1})
+	{
+		snmpArState = state;
+		CHECK(SearchCpuViaSnmp(results, 4, &snmpComplete) == 1);
+		CHECK(strcmp(results[0].arState, "(unknown)") == 0 && snmpComplete.errors.empty());
+	}
+	snmpArState = 4;
 	snmpPropertyResponses = false;
 	readResponse = "";
 	stAdapterInfo adapter = {"192.168.11.8", "255.255.255.0", "Cancellation Ethernet"};
