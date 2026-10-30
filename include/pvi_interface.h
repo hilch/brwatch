@@ -124,7 +124,8 @@ public:
 	PviObject *Watch(BOOL watch);
 	PviObject *FindChild(BOOL first);
 	BOOL IsParentOf(const PviObject *child) const;
-	PviObject *Expand();
+	PviObject *Expand(unsigned hostsPerAdapter = 256, bool allowBeyondSubnet = false);
+	PviObject *AddEthernetCpus(const stEthernetCpuInfo *cpus, int entries);
 	int AddToWatchFile(char *filename);
 
 	static int Start();
@@ -159,7 +160,7 @@ public:
 	} ex;
 private:
 	void ReadDataType();
-	PviObject *ReadCpuList();
+	PviObject *ReadCpuList(unsigned hostsPerAdapter, bool allowBeyondSubnet);
 	PviObject *ReadTaskList();
 	PviObject *ReadPvarList();
 	PviObject *ReadStructElements();

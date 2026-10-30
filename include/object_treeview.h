@@ -5,17 +5,21 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
+#include <memory>
 
 class PviObject;
 
 class ObjectTreeView {
 public:
-	ObjectTreeView() = default;
+	ObjectTreeView();
+	~ObjectTreeView();
 	ObjectTreeView(const ObjectTreeView &) = delete;
 	ObjectTreeView &operator=(const ObjectTreeView &) = delete;
 
 	HWND Create(HINSTANCE instance, HWND parent);
 	HWND GetHandle() const { return window; }
+	HWND GetCpuScanDialogHandle() const;
+	void StopCpuScan();
 	HTREEITEM AddItem(HTREEITEM parent, LPSTR text, LPARAM id, int iconIndex);
 	void ClearAll();
 	LRESULT HandleMessages(UINT message, WPARAM wParam, LPARAM lParam);
@@ -23,7 +27,14 @@ public:
 	void CpuSettingsCommand(UINT command);
 
 private:
-	void InsertChildObjects(HTREEITEM item, PviObject *parent);
+	struct CpuScanTask;
+	static unsigned __stdcall CpuScanThread(void *data);
+	static INT_PTR CALLBACK CpuScanProgressDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam);
+	void StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet);
+	void FinishCpuScan();
+	void UpdateCpuScanProgress();
+	void InsertExistingChildObjects(HTREEITEM item, PviObject *parent);
+	void InsertChildObjects(HTREEITEM item, PviObject *parent, unsigned hostsPerAdapter, bool allowBeyondSubnet);
 	void ItemSelected(HTREEITEM item, LPARAM data);
 	void BeginDragging(HTREEITEM item, LPARAM data);
 	void DblClick(HTREEITEM item, LPARAM data);
@@ -33,6 +44,7 @@ private:
 
 	HWND window = nullptr;
 	HWND parentWindow = nullptr;
+	std::unique_ptr<CpuScanTask> scanTask;
 };
 
 extern ObjectTreeView objectTreeView;

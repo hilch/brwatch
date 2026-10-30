@@ -1,12 +1,18 @@
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
 #include "main.h"
 #include "watch_listview.h"
 #include "object_treeview.h"
 #include "dlg_about.h"
+#include "dlg_cpuscan.h"
 #include "resource.h"
 #include "settings.h"
 #include <shellapi.h>
 #include <type_traits>
 #include <vector>
+#include <string>
+#include <map>
 
 static_assert(std::is_standard_layout<PviObject>::value, "Keep the Win32-facing data layout");
 static_assert(std::is_trivially_copyable<PviObject>::value, "Object descriptions remain value-copyable");
@@ -22,6 +28,7 @@ static DWORD detachedLinkId;
 static unsigned expectedErrorMessages;
 static unsigned createRequests;
 static const char *expectedMessageCaption = "Error";
+static std::string lastMessage;
 static unsigned browserLaunches;
 static INT_PTR browserResult = 33;
 static unsigned editDialogs;
@@ -29,6 +36,47 @@ static UINT editDialogResource;
 static PviObject *editDialogObject;
 static HMENU lastPopupMenu;
 static HWND lastPopupOwner;
+static std::vector<stAdapterInfo> testAdapters;
+static ULONG adapterEnumerationError;
+static unsigned adapterOverflowRetries;
+static bool secondaryAdapterAddress;
+static bool wirelessAdapter;
+static unsigned scanDialogs;
+static INT_PTR scanDialogResult = IDCANCEL;
+static unsigned scanDialogHosts = CpuScanDefaultHosts;
+static bool scanDialogBeyondSubnet;
+static unsigned startupCalls;
+static unsigned cleanupCalls;
+static unsigned selectCalls;
+static int socketLastError;
+static int socketFailureError = WSAEADDRNOTAVAIL;
+static const char *socketFailure;
+static unsigned connectionsBeforeFailure;
+static int pendingConnectError;
+static std::uint32_t failingBindAddress;
+static std::uint32_t failedTargetFirst;
+static std::uint32_t failedTargetLast;
+static int targetRoutingError;
+static std::map<SOCKET, std::uint32_t> socketTargets;
+static std::vector<SOCKET> openSockets;
+static std::vector<std::uint32_t> scanTargets;
+static std::vector<std::uint32_t> bindAddresses;
+enum class SocketMode { Timeout, Immediate, Pending, Refused, PendingRefused };
+static SocketMode socketMode = SocketMode::Timeout;
+static DWORD mockTicks;
+static unsigned readRequests;
+static unsigned unlinkRequests;
+static CpuScanControl *cancelOnRead;
+static unsigned cancelReadRequest;
+static CpuScanControl *cancelOnConnect;
+static CpuScanControl *cancelOnSelect;
+static HANDLE readEntered;
+static HANDLE readRelease;
+static HANDLE selectEntered;
+static HANDLE selectRelease;
+static bool snmpPropertyResponses;
+static std::map<DWORD, std::string> snmpProperties;
+static DWORD testUiThread = GetCurrentThreadId();
 
 static void Check(bool condition, const char *expression, int line)
 {
@@ -41,10 +89,12 @@ static void Check(bool condition, const char *expression, int line)
 
 #define CHECK(expression) Check((expression), #expression, __LINE__)
 
-static int WINAPI TestMessageBoxA(HWND, LPCSTR, LPCSTR caption, UINT)
+static int WINAPI TestMessageBoxA(HWND, LPCSTR text, LPCSTR caption, UINT)
 {
+	CHECK(GetCurrentThreadId() == testUiThread);
 	CHECK(expectedErrorMessages != 0);
 	CHECK(strcmp(caption, expectedMessageCaption) == 0);
+	lastMessage = text;
 	--expectedErrorMessages;
 	return IDOK;
 }
@@ -61,6 +111,15 @@ static HINSTANCE WINAPI TestShellExecuteW(HWND, LPCWSTR operation, LPCWSTR url, 
 static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGPROC, LPARAM data)
 {
 	CHECK(IS_INTRESOURCE(resource));
+	if (reinterpret_cast<ULONG_PTR>(resource) == DLG_CPU_SCAN)
+	{
+		++scanDialogs;
+		auto scan = reinterpret_cast<CpuScanDialogData *>(data);
+		CHECK(!scan->adapters.empty());
+		scan->hosts = scanDialogHosts;
+		scan->allowBeyondSubnet = scanDialogBeyondSubnet;
+		return scanDialogResult;
+	}
 	++editDialogs;
 	editDialogResource = static_cast<UINT>(reinterpret_cast<ULONG_PTR>(resource));
 	editDialogObject = reinterpret_cast<PviObject *>(data);
@@ -74,12 +133,201 @@ static BOOL WINAPI TestTrackPopupMenu(HMENU menu, UINT, int, int, int, HWND owne
 	return TRUE;
 }
 
+extern "C" ULONG WINAPI GetAdaptersInfo(PIP_ADAPTER_INFO info, PULONG size)
+{
+	if (adapterEnumerationError != 0)
+		return adapterEnumerationError;
+	if (testAdapters.empty())
+		return ERROR_NO_DATA;
+	ULONG required = static_cast<ULONG>(testAdapters.size() * sizeof(IP_ADAPTER_INFO) +
+		(secondaryAdapterAddress ? sizeof(IP_ADDR_STRING) : 0));
+	if (info != nullptr && adapterOverflowRetries != 0)
+	{
+		--adapterOverflowRetries;
+		*size += sizeof(IP_ADAPTER_INFO);
+		return ERROR_BUFFER_OVERFLOW;
+	}
+	if (info == nullptr || *size < required)
+	{
+		*size = required;
+		return ERROR_BUFFER_OVERFLOW;
+	}
+	memset(info, 0, required);
+	for (size_t i = 0; i < testAdapters.size(); ++i)
+	{
+		info[i].Next = i + 1 == testAdapters.size() ? nullptr : &info[i + 1];
+		info[i].Type = wirelessAdapter && i + 1 == testAdapters.size() ? IF_TYPE_IEEE80211 : MIB_IF_TYPE_ETHERNET;
+		strcpy(info[i].Description, testAdapters[i].description);
+		strcpy(info[i].IpAddressList.IpAddress.String, testAdapters[i].ipAddress);
+		strcpy(info[i].IpAddressList.IpMask.String, testAdapters[i].subnetMask);
+	}
+	if (secondaryAdapterAddress)
+	{
+		auto secondary = reinterpret_cast<IP_ADDR_STRING *>(info + testAdapters.size());
+		strcpy(secondary->IpAddress.String, "10.2.3.4");
+		strcpy(secondary->IpMask.String, "255.255.255.0");
+		info[0].IpAddressList.Next = secondary;
+	}
+	return ERROR_SUCCESS;
+}
+
+static bool FailSocketOperation(const char *operation)
+{
+	if (socketFailure != nullptr && strcmp(socketFailure, operation) == 0 &&
+		scanTargets.size() >= connectionsBeforeFailure)
+	{
+		socketLastError = socketFailureError;
+		return true;
+	}
+	return false;
+}
+
+static int WSAAPI TestWSAStartup(WORD version, LPWSADATA)
+{
+	CHECK(version == MAKEWORD(2, 2));
+	++startupCalls;
+	return FailSocketOperation("WSAStartup") ? socketFailureError : 0;
+}
+
+static int WSAAPI TestWSACleanup()
+{
+	CHECK(openSockets.empty());
+	++cleanupCalls;
+	return 0;
+}
+
+static int WSAAPI TestWSAGetLastError()
+{
+	return socketLastError;
+}
+
+static SOCKET WSAAPI TestSocket(int family, int type, int protocol)
+{
+	CHECK(family == AF_INET && type == SOCK_STREAM && protocol == IPPROTO_TCP);
+	if (FailSocketOperation("socket"))
+		return INVALID_SOCKET;
+	static SOCKET nextSocket = 100;
+	SOCKET connection = nextSocket++;
+	openSockets.push_back(connection);
+	CHECK(openSockets.size() <= CpuScanBatchSize);
+	return connection;
+}
+
+static int WSAAPI TestCloseSocket(SOCKET connection)
+{
+	for (auto it = openSockets.begin(); it != openSockets.end(); ++it)
+	{
+		if (*it == connection)
+		{
+			openSockets.erase(it);
+			socketTargets.erase(connection);
+			return 0;
+		}
+	}
+	CHECK(false);
+	return SOCKET_ERROR;
+}
+
+static int WSAAPI TestBind(SOCKET, const sockaddr *address, int size)
+{
+	CHECK(size == sizeof(sockaddr_in));
+	auto local = reinterpret_cast<const sockaddr_in *>(address);
+	CHECK(local->sin_family == AF_INET && local->sin_port == 0);
+	bindAddresses.push_back(ntohl(local->sin_addr.s_addr));
+	return (failingBindAddress == 0 || failingBindAddress == bindAddresses.back()) &&
+		FailSocketOperation("bind") ? SOCKET_ERROR : 0;
+}
+
+static int WSAAPI TestIoctlSocket(SOCKET, long command, u_long *value)
+{
+	CHECK(command == static_cast<long>(FIONBIO) && *value == 1);
+	return FailSocketOperation("ioctlsocket") ? SOCKET_ERROR : 0;
+}
+
+static int WSAAPI TestConnect(SOCKET connection, const sockaddr *address, int size)
+{
+	CHECK(size == sizeof(sockaddr_in));
+	auto target = reinterpret_cast<const sockaddr_in *>(address);
+	CHECK(target->sin_family == AF_INET && ntohs(target->sin_port) == 11169);
+	bool fail = FailSocketOperation("connect");
+	scanTargets.push_back(ntohl(target->sin_addr.s_addr));
+	socketTargets[connection] = scanTargets.back();
+	if (cancelOnConnect != nullptr)
+		cancelOnConnect->cancelRequested.store(true);
+	if (fail)
+		return SOCKET_ERROR;
+	if (targetRoutingError != 0 && scanTargets.back() >= failedTargetFirst &&
+		scanTargets.back() <= failedTargetLast && socketMode != SocketMode::Pending)
+	{
+		socketLastError = targetRoutingError;
+		return SOCKET_ERROR;
+	}
+	if (socketMode == SocketMode::Immediate)
+		return 0;
+	socketLastError = socketMode == SocketMode::Refused ? WSAECONNREFUSED : WSAEWOULDBLOCK;
+	return SOCKET_ERROR;
+}
+
+static int WSAAPI TestSelect(int, fd_set *readable, fd_set *writable, fd_set *failed, const timeval *timeout)
+{
+	CHECK(readable == nullptr);
+	CHECK(writable->fd_count == failed->fd_count && writable->fd_count <= CpuScanBatchSize);
+	CHECK(timeout->tv_sec == 0 && timeout->tv_usec > 0 &&
+		timeout->tv_usec <= static_cast<long>(CpuScanBatchTimeoutMs * 1000));
+	++selectCalls;
+	if (selectEntered != nullptr && selectCalls == 2)
+	{
+		CHECK(SetEvent(selectEntered));
+		CHECK(WaitForSingleObject(selectRelease, 5000) == WAIT_OBJECT_0);
+	}
+	if (cancelOnSelect != nullptr)
+		cancelOnSelect->cancelRequested.store(true);
+	if (FailSocketOperation("select"))
+		return SOCKET_ERROR;
+	failed->fd_count = 0;
+	if (socketMode == SocketMode::Timeout)
+	{
+		mockTicks += CpuScanBatchTimeoutMs;
+		return 0;
+	}
+	return static_cast<int>(writable->fd_count);
+}
+
+static int WSAAPI TestGetSockOpt(SOCKET connection, int level, int option, char *value, int *size)
+{
+	CHECK(level == SOL_SOCKET && option == SO_ERROR && *size == sizeof(int));
+	if (FailSocketOperation("getsockopt"))
+		return SOCKET_ERROR;
+	*reinterpret_cast<int *>(value) = pendingConnectError != 0 ? pendingConnectError :
+		(socketMode == SocketMode::PendingRefused ? WSAECONNREFUSED : 0);
+	if (targetRoutingError != 0 && socketTargets.at(connection) >= failedTargetFirst &&
+		socketTargets.at(connection) <= failedTargetLast)
+		*reinterpret_cast<int *>(value) = targetRoutingError;
+	return 0;
+}
+
+static DWORD WINAPI TestGetTickCount()
+{
+	return mockTicks;
+}
+
 extern "C"
 {
 	decltype(&MessageBoxA) __imp_MessageBoxA = TestMessageBoxA;
 	decltype(&ShellExecuteW) __imp_ShellExecuteW = TestShellExecuteW;
 	decltype(&DialogBoxParamA) __imp_DialogBoxParamA = TestDialogBoxParamA;
 	decltype(&TrackPopupMenu) __imp_TrackPopupMenu = TestTrackPopupMenu;
+	decltype(&WSAStartup) __imp_WSAStartup = TestWSAStartup;
+	decltype(&WSACleanup) __imp_WSACleanup = TestWSACleanup;
+	decltype(&WSAGetLastError) __imp_WSAGetLastError = TestWSAGetLastError;
+	decltype(&socket) __imp_socket = TestSocket;
+	decltype(&closesocket) __imp_closesocket = TestCloseSocket;
+	decltype(&bind) __imp_bind = TestBind;
+	decltype(&ioctlsocket) __imp_ioctlsocket = TestIoctlSocket;
+	decltype(&connect) __imp_connect = TestConnect;
+	decltype(&select) __imp_select = TestSelect;
+	decltype(&getsockopt) __imp_getsockopt = TestGetSockOpt;
+	decltype(&GetTickCount) __imp_GetTickCount = TestGetTickCount;
 }
 
 extern "C" INT WINAPI PviInitialize(LONG, LONG, LPCSTR, LPVOID)
@@ -102,17 +350,46 @@ extern "C" INT WINAPI PviSetGlobEventMsg(DWORD, LPVOID, DWORD, LPARAM)
 	return 0;
 }
 
-extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR, DWORD, LPCSTR,
+extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR name, DWORD, LPCSTR descriptor,
 							   LPVOID eventCallback, DWORD, LPARAM, LPCSTR)
 {
 	++createRequests;
 	*link = nextLinkId++;
+	if (snmpPropertyResponses && strstr(name, "@Pvi/LnSNMP/Device/Station/") == name)
+		snmpProperties[*link] = descriptor;
 	callback = reinterpret_cast<PviTestCallback>(eventCallback);
 	return 0;
 }
 
-extern "C" INT WINAPI PviRead(DWORD, DWORD, LPVOID, LONG, LPVOID buffer, LONG size)
+extern "C" INT WINAPI PviRead(DWORD link, DWORD access, LPVOID, LONG, LPVOID buffer, LONG size)
 {
+	++readRequests;
+	if (readEntered != nullptr)
+	{
+		CHECK(SetEvent(readEntered));
+		CHECK(WaitForSingleObject(readRelease, 5000) == WAIT_OBJECT_0);
+	}
+	if (cancelOnRead != nullptr && readRequests == cancelReadRequest)
+		cancelOnRead->cancelRequested.store(true);
+	if (snmpPropertyResponses && access == POBJ_ACC_DATA)
+	{
+		memset(buffer, 0, size);
+		const auto &property = snmpProperties.at(link);
+		const char *text = nullptr;
+		if (property == "CD=ipAddress") text = "192.168.10.2";
+		else if (property == "CD=subnetMask") text = "255.255.255.0";
+		else if (property == "CD=defaultGateway") text = "192.168.10.1";
+		else if (property == "CD=targetTypeDescription") text = "Test CPU";
+		else if (property == "CD=arVersion") text = "1.0";
+		else if (property == "CD=arState")
+		{
+			CHECK(size == sizeof(int));
+			*static_cast<int *>(buffer) = 4;
+		}
+		if (text != nullptr)
+			snprintf(static_cast<char *>(buffer), size, "%s", text);
+		return 0;
+	}
 	CHECK(readResponse != nullptr);
 	CHECK(strlen(readResponse) < static_cast<size_t>(size));
 	strcpy(static_cast<char *>(buffer), readResponse);
@@ -131,6 +408,8 @@ extern "C" INT WINAPI PviDelete(LPCSTR)
 
 extern "C" INT WINAPI PviUnlink(DWORD linkid)
 {
+	++unlinkRequests;
+	snmpProperties.erase(linkid);
 	if (detachedLinkId != 0 && linkid == detachedLinkId)
 	{
 		CHECK(PviObject::FindByLinkId(linkid) == nullptr);
@@ -670,12 +949,296 @@ static void CheckWatchListView(const char *testDirectory)
 		object->Remove();
 }
 
-static void CheckAboutLink()
+static void ResetSocketTest()
 {
-	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_LINK_CLASS};
-	CHECK(InitCommonControlsEx(&controls) != 0);
+	CHECK(openSockets.empty());
+	CHECK(socketTargets.empty());
+	scanTargets.clear();
+	bindAddresses.clear();
+	startupCalls = cleanupCalls = selectCalls = 0;
+	socketLastError = pendingConnectError = 0;
+	failingBindAddress = 0;
+	targetRoutingError = 0;
+	failedTargetFirst = failedTargetLast = 0;
+	socketFailure = nullptr;
+	connectionsBeforeFailure = 0;
+	socketMode = SocketMode::Timeout;
+	cancelOnRead = cancelOnConnect = cancelOnSelect = nullptr;
+}
+
+static void CheckCpuScanCancellation()
+{
+	ResetSocketTest();
+	CpuScanControl preCancelled;
+	preCancelled.cancelRequested.store(true);
+	stEthernetCpuInfo results[4] = {};
+	unsigned previousCreates = createRequests;
+	CHECK(SearchEthernetCpus(results, 4, 512, true, &preCancelled) == 0);
+	CHECK(createRequests == previousCreates && startupCalls == 0);
+
+	readResponse = "";
+	CpuScanControl snmpCancel;
+	cancelOnRead = &snmpCancel;
+	cancelReadRequest = readRequests + 1;
+	unsigned previousUnlinks = unlinkRequests;
+	CHECK(SearchEthernetCpus(results, 4, 512, true, &snmpCancel) == 0);
+	CHECK(snmpCancel.cancelRequested.load() && startupCalls == 0 && snmpCancel.errors.empty());
+	CHECK(unlinkRequests == previousUnlinks + 2);
+	ResetSocketTest();
+	readResponse = "11:22:33:44:55:66 " KWDESC_OBJTYPE "=" KWOBJTYPE_STATION;
+	snmpPropertyResponses = true;
+	CpuScanControl propertyCancel;
+	cancelOnRead = &propertyCancel;
+	cancelReadRequest = readRequests + 2;
+	previousCreates = createRequests;
+	previousUnlinks = unlinkRequests;
+	CHECK(SearchEthernetCpus(results, 4, 512, true, &propertyCancel) == 0);
+	CHECK(propertyCancel.cancelRequested.load() && startupCalls == 0);
+	CHECK(createRequests == previousCreates + 4 && unlinkRequests == previousUnlinks + 4 && snmpProperties.empty());
+	ResetSocketTest();
+	CpuScanControl snmpComplete;
+	CHECK(SearchCpuViaSnmp(results, 4, &snmpComplete) == 1);
+	CHECK(strcmp(results[0].ipAddress, "192.168.10.2") == 0 && strcmp(results[0].arState, "RUN") == 0);
+	CHECK(snmpProperties.empty() && snmpComplete.errors.empty());
+	snmpPropertyResponses = false;
+	readResponse = "";
+	stAdapterInfo adapter = {"192.168.11.8", "255.255.255.0", "Cancellation Ethernet"};
+	CpuScanControl tcpCancel;
+	cancelOnConnect = &tcpCancel;
+	CHECK(SearchCpuViaPortScan(adapter, results, 4, 512, true, &tcpCancel).error == 0);
+	CHECK(scanTargets.size() == 1 && tcpCancel.completed.load() == 1 && cleanupCalls == 1 && openSockets.empty());
+	ResetSocketTest();
+	CpuScanControl waitCancel;
+	cancelOnSelect = &waitCancel;
+	CHECK(SearchCpuViaPortScan(adapter, results, 4, 512, true, &waitCancel).error == 0);
+	CHECK(scanTargets.size() == 32 && selectCalls == 1 && cleanupCalls == 1 && openSockets.empty());
+	ResetSocketTest();
+	testAdapters = {adapter};
+	CpuScanControl complete;
+	CHECK(SearchEthernetCpus(results, 4, 512, true, &complete) == 0);
+	CHECK(complete.phase.load() == CpuScanPhase::Tcp && complete.completed.load() == 510 && complete.total.load() == 510);
+	CHECK(complete.errors.empty());
+	ResetSocketTest();
+	socketFailure = "socket";
+	CpuScanControl failure;
+	CHECK(SearchEthernetCpus(results, 4, 512, true, &failure) == 0);
+	CHECK(failure.errors.size() == 2 && failure.errors[0].find("socket") != std::string::npos);
+	CHECK(expectedErrorMessages == 0);
+	testAdapters.clear();
+	ResetSocketTest();
+}
+
+static void CheckCpuScanPlansAndSockets()
+{
+	stAdapterInfo adapter = {"10.12.34.56", "255.255.0.0", "Test Ethernet"};
+	stEthernetCpuInfo results[3] = {};
+	memset(&results[2], 0x5a, sizeof(results[2]));
+	stEthernetCpuInfo canary = results[2];
+	CpuPortScanPlan plan;
+	int error;
+	for (unsigned hosts : {256u, 512u, 1024u, 2048u, 16384u})
+	{
+		CHECK(GetCpuPortScanPlan(adapter, hosts, plan, error));
+		CHECK(error == 0 && !plan.limitedBySubnet && !plan.loopback);
+		CHECK(plan.localAddress == 0x0a0c2238u);
+		std::uint32_t blockFirst = plan.localAddress & ~(hosts - 1);
+		bool startsAtSubnetNetwork = blockFirst == 0x0a0c0000u;
+		CHECK(plan.firstAddress == blockFirst + (startsAtSubnetNetwork ? 1 : 0));
+		CHECK(plan.lastAddress == blockFirst + hosts - 1);
+		CHECK(plan.targetCount == hosts - (startsAtSubnetNetwork ? 2 : 1));
+		CHECK(CpuPortScanTimeoutBudgetMs(plan) == ((plan.targetCount + 31) / 32) * 300u);
+		ResetSocketTest();
+		CpuPortScanResult scan = SearchCpuViaPortScan(adapter, results, 2, hosts);
+		CHECK(scan.error == 0 && scan.entries == 0);
+		CHECK(scanTargets.size() == plan.targetCount);
+		CHECK(selectCalls == (plan.targetCount + 31) / 32);
+		CHECK(scanTargets.front() == plan.firstAddress && scanTargets.back() == plan.lastAddress);
+		for (size_t i = 0; i < scanTargets.size(); ++i)
+		{
+			CHECK(scanTargets[i] != plan.localAddress);
+			CHECK(bindAddresses[i] == plan.localAddress);
+			if (i != 0)
+				CHECK(scanTargets[i] > scanTargets[i - 1]);
+		}
+		CHECK(startupCalls == 1 && cleanupCalls == 1 && openSockets.empty());
+	}
+	stAdapterInfo clipped = {"192.168.10.8", "255.255.255.0", "Small subnet"};
+	for (unsigned hosts : {256u, 512u, 1024u, 2048u, 16384u})
+	{
+		CHECK(GetCpuPortScanPlan(clipped, hosts, plan, error));
+		CHECK(plan.firstAddress == 0xc0a80a01u && plan.lastAddress == 0xc0a80afeu);
+		CHECK(plan.targetCount == 253 && plan.limitedBySubnet == (hosts != 256));
+		CHECK(CpuPortScanTimeoutBudgetMs(plan) == 2400);
+		ResetSocketTest();
+		CpuPortScanResult scan = SearchCpuViaPortScan(clipped, results, 2, hosts);
+		CHECK(scan.error == 0 && scanTargets.size() == 253 && selectCalls == 8);
+		CHECK(scanTargets.front() == plan.firstAddress && scanTargets.back() == plan.lastAddress);
+	}
+	stAdapterInfo subnet23 = {"192.168.11.8", "255.255.254.0", "Subnet /23"};
+	CHECK(GetCpuPortScanPlan(subnet23, 512, plan, error));
+	CHECK(plan.firstAddress == 0xc0a80a01u && plan.lastAddress == 0xc0a80bfeu);
+	CHECK(plan.targetCount == 509 && !plan.limitedBySubnet);
+	CHECK(CpuPortScanTimeoutBudgetMs(plan) == 4800);
+	stAdapterInfo unrestricted = {"10.12.98.56", "255.255.0.0", "Unrestricted block"};
+	CHECK(GetCpuPortScanPlan(unrestricted, 16384, plan, error));
+	CHECK(plan.firstAddress == 0x0a0c4000u && plan.lastAddress == 0x0a0c7fffu);
+	CHECK(plan.targetCount == 16383 && CpuPortScanTimeoutBudgetMs(plan) == 153600);
+	stAdapterInfo loopback = {"127.0.0.1", "255.0.0.0", "Loopback"};
+	CHECK(GetCpuPortScanPlan(loopback, 16384, plan, error));
+	CHECK(plan.loopback && plan.targetCount == 1 && plan.firstAddress == INADDR_LOOPBACK &&
+		plan.lastAddress == INADDR_LOOPBACK && CpuPortScanTimeoutBudgetMs(plan) == 300);
+	ResetSocketTest();
+	CHECK(SearchCpuViaPortScan(loopback, results, 2, 16384).error == 0);
+	CHECK(scanTargets.size() == 1 && scanTargets[0] == INADDR_LOOPBACK && selectCalls == 1);
+	for (const char *mask : {"255.255.255.254", "255.255.255.255"})
+	{
+		strcpy(clipped.subnetMask, mask);
+		CHECK(GetCpuPortScanPlan(clipped, 256, plan, error) && plan.targetCount == 0);
+		ResetSocketTest();
+		CHECK(SearchCpuViaPortScan(clipped, results, 2, 256).error == 0);
+		CHECK(scanTargets.empty());
+	}
+	strcpy(clipped.subnetMask, "255.0.255.0");
+	CHECK(!GetCpuPortScanPlan(clipped, 256, plan, error) && error == WSAEINVAL);
+	strcpy(clipped.ipAddress, "not-an-address");
+	CHECK(!GetCpuPortScanPlan(clipped, 256, plan, error));
+	CHECK(!GetCpuPortScanPlan(adapter, 4096, plan, error));
+	ResetSocketTest();
+	CHECK(SearchCpuViaPortScan(adapter, results, 0, 256).error == WSAEINVAL);
+	CHECK(SearchCpuViaPortScan(adapter, nullptr, 2, 256).error == WSAEINVAL);
+	CHECK(startupCalls == 0);
+
+	for (SocketMode mode : {SocketMode::Immediate, SocketMode::Pending, SocketMode::Refused, SocketMode::PendingRefused})
+	{
+		ResetSocketTest();
+		socketMode = mode;
+		CpuPortScanResult scan = SearchCpuViaPortScan(adapter, results, 2, 256);
+		CHECK(scan.error == 0 && openSockets.empty());
+		if (mode == SocketMode::Immediate || mode == SocketMode::Pending)
+		{
+			CHECK(scan.entries == 2);
+			CHECK(scanTargets.size() == (mode == SocketMode::Immediate ? 2 : 32));
+			CHECK(results[0].ipAddress[0] != '\0');
+			CHECK(strcmp(results[0].subnetMask, adapter.subnetMask) == 0);
+		}
+		else
+			CHECK(scan.entries == 0 && scanTargets.size() == 255);
+		CHECK(memcmp(&results[2], &canary, sizeof(canary)) == 0);
+	}
+	for (const char *operation : {"WSAStartup", "socket", "bind", "ioctlsocket", "connect", "select", "getsockopt"})
+	{
+		ResetSocketTest();
+		socketFailure = operation;
+		socketMode = SocketMode::Pending;
+		CpuPortScanResult scan = SearchCpuViaPortScan(adapter, results, 2, 256);
+		CHECK(scan.error == socketFailureError && strcmp(scan.operation, operation) == 0);
+		CHECK(scan.entries == 0 && openSockets.empty());
+		CHECK(startupCalls == 1 && cleanupCalls == (strcmp(operation, "WSAStartup") == 0 ? 0u : 1u));
+		if (strcmp(operation, "bind") == 0)
+			CHECK(scan.address == 0x0a0c2238u);
+	}
+	ResetSocketTest();
+	socketMode = SocketMode::Pending;
+	pendingConnectError = WSAEACCES;
+	CpuPortScanResult denied = SearchCpuViaPortScan(adapter, results, 2, 256);
+	CHECK(denied.error == WSAEACCES && strcmp(denied.operation, "connect") == 0);
+	CHECK(cleanupCalls == 1 && openSockets.empty());
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	socketFailure = "connect";
+	connectionsBeforeFailure = 1;
+	CpuPortScanResult partial = SearchCpuViaPortScan(adapter, results, 2, 256);
+	CHECK(partial.error == socketFailureError && partial.entries == 1 && scanTargets.size() == 2);
+	CHECK(strcmp(results[0].ipAddress, "10.12.34.0") == 0);
+	CHECK(cleanupCalls == 1 && openSockets.empty());
+	ResetSocketTest();
+
+	stAdapterInfo expanded = {"192.168.11.8", "255.255.255.0", "Expanded subnet"};
+	for (unsigned hosts : {256u, 512u, 1024u, 2048u, 16384u})
+	{
+		CHECK(GetCpuPortScanPlan(expanded, hosts, plan, error, true));
+		CHECK(!plan.limitedBySubnet && plan.extendsBeyondSubnet == (hosts != 256));
+		CHECK(plan.firstAddress == (plan.localAddress & ~(hosts - 1)));
+		CHECK(plan.lastAddress == plan.firstAddress + hosts - 1);
+		CHECK(plan.targetCount == hosts - 3);
+		ResetSocketTest();
+		CpuPortScanResult scan = SearchCpuViaPortScan(expanded, results, 2, hosts, true);
+		CHECK(scan.error == 0 && scanTargets.size() == plan.targetCount);
+		CHECK(selectCalls * CpuScanBatchTimeoutMs == CpuPortScanTimeoutBudgetMs(plan));
+		for (auto address : scanTargets)
+			CHECK(address != plan.localAddress && address != plan.subnetNetwork && address != plan.subnetBroadcast);
+	}
+	CHECK(GetCpuPortScanPlan(loopback, 16384, plan, error, true) && plan.targetCount == 1);
+	CHECK(!plan.extendsBeyondSubnet && CpuPortScanTimeoutBudgetMs(plan) == 300);
+	ResetSocketTest();
+	CHECK(SearchCpuViaPortScan(loopback, results, 2, 16384, true).error == 0 && scanTargets.size() == 1);
+	for (const char *mask : {"255.255.255.254", "255.255.255.255"})
+	{
+		strcpy(expanded.subnetMask, mask);
+		CHECK(GetCpuPortScanPlan(expanded, 512, plan, error, true));
+		CHECK(plan.targetCount == (strcmp(mask, "255.255.255.255") == 0 ? 511u : 510u));
+	}
+	strcpy(expanded.subnetMask, "255.255.255.0");
+	for (int routingError : {WSAENETUNREACH, WSAEACCES, WSAEADDRNOTAVAIL})
+	{
+		for (SocketMode mode : {SocketMode::Timeout, SocketMode::Pending})
+		{
+			ResetSocketTest();
+			socketMode = mode;
+			pendingConnectError = WSAECONNREFUSED;
+			targetRoutingError = routingError;
+			failedTargetFirst = 0xc0a80a00u;
+			failedTargetLast = 0xc0a80affu;
+			CpuPortScanResult scan = SearchCpuViaPortScan(expanded, results, 2, 512, true);
+			CHECK(scan.error == routingError && scan.rejectedTargets == 256 && scan.entries == 0);
+			CHECK(scanTargets.size() == 509 && scanTargets.back() == 0xc0a80bfeu);
+			CHECK(scan.address >= failedTargetFirst && scan.address <= failedTargetLast);
+			CHECK(strcmp(scan.operation, "connect") == 0 && cleanupCalls == 1 && openSockets.empty());
+		}
+	}
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	CpuPortScanResult remote = SearchCpuViaPortScan(expanded, results, 2, 512, true);
+	CHECK(remote.error == 0 && remote.entries == 2);
+	CHECK(strcmp(results[0].ipAddress, "192.168.10.0") == 0 && results[0].subnetMask[0] == '\0');
+	CHECK(memcmp(&results[2], &canary, sizeof(canary)) == 0);
+	ResetSocketTest();
+}
+
+static void CheckCpuScanAdapters()
+{
+	std::vector<stAdapterInfo> adapters;
+	CHECK(ListCpuScanAdapters(adapters) == ERROR_SUCCESS && adapters.size() == 1);
+	CHECK(strcmp(adapters[0].ipAddress, "127.0.0.1") == 0);
+	for (unsigned i = 0; i < 24; ++i)
+	{
+		stAdapterInfo adapter = {};
+		snprintf(adapter.ipAddress, sizeof(adapter.ipAddress), "10.0.%u.2", i);
+		strcpy(adapter.subnetMask, "255.255.255.0");
+		strcpy(adapter.description, "Ethernet adapter");
+		testAdapters.push_back(adapter);
+	}
+	strcpy(testAdapters[22].ipAddress, "0.0.0.0");
+	secondaryAdapterAddress = wirelessAdapter = true;
+	adapterOverflowRetries = 2;
+	CHECK(ListCpuScanAdapters(adapters) == ERROR_SUCCESS);
+	CHECK(adapterOverflowRetries == 0 && adapters.size() == 24);
+	CHECK(strcmp(adapters[2].ipAddress, "10.2.3.4") == 0);
+	for (const auto &adapter : adapters)
+		CHECK(strcmp(adapter.ipAddress, "0.0.0.0") != 0 && adapter.description[39] == '\0');
+	adapterOverflowRetries = 3;
+	CHECK(ListCpuScanAdapters(adapters) == ERROR_BUFFER_OVERFLOW);
+	adapterEnumerationError = ERROR_ACCESS_DENIED;
+	CHECK(ListCpuScanAdapters(adapters) == ERROR_ACCESS_DENIED);
+	adapterEnumerationError = 0;
+	secondaryAdapterAddress = wirelessAdapter = false;
+	testAdapters.clear();
+}
+
+static HWND CreateHiddenDialog(UINT resourceId, DLGPROC procedure, LPARAM data)
+{
 	HMODULE module = GetModuleHandleA(nullptr);
-	HRSRC resource = FindResourceA(module, MAKEINTRESOURCEA(DLG_ABOUT), RT_DIALOG);
+	HRSRC resource = FindResource(module, MAKEINTRESOURCE(resourceId), RT_DIALOG);
 	CHECK(resource != nullptr);
 	DWORD size = SizeofResource(module, resource);
 	CHECK(size >= 26);
@@ -692,9 +1255,344 @@ static void CheckAboutLink()
 	style &= ~WS_VISIBLE;
 	memcpy(hiddenTemplate.data() + 6, &style, sizeof(style));
 	HWND dialog = CreateDialogIndirectParamA(module,
-		reinterpret_cast<const DLGTEMPLATE *>(hiddenTemplate.data()), nullptr, AboutDlgProc, 0);
+		reinterpret_cast<const DLGTEMPLATE *>(hiddenTemplate.data()), nullptr, procedure, data);
 	CHECK(dialog != nullptr);
 	CHECK(!IsWindowVisible(dialog));
+	return dialog;
+}
+
+static void CheckCpuScanDialog()
+{
+	CpuScanDialogData data;
+	data.adapters = {
+		{"127.0.0.1", "255.0.0.0", "Loopback"},
+		{"192.168.10.8", "255.255.255.0", "Small subnet"},
+		{"10.12.34.56", "255.255.0.0", "Large subnet"}
+	};
+	HWND dialog = CreateHiddenDialog(DLG_CPU_SCAN, CpuScanDlgProc, reinterpret_cast<LPARAM>(&data));
+	CHECK(SendDlgItemMessageA(dialog, IDC_CPU_SCAN_HOSTS, CB_GETCOUNT, 0, 0) == 5);
+	CHECK(IsDlgButtonChecked(dialog, IDC_CPU_SCAN_BEYOND_SUBNET) == BST_UNCHECKED);
+	unsigned index = 0;
+	for (unsigned hosts : {256u, 512u, 1024u, 2048u, 16384u})
+	{
+		char text[2400], expected[160];
+		SendDlgItemMessageA(dialog, IDC_CPU_SCAN_HOSTS, CB_GETLBTEXT, index, reinterpret_cast<LPARAM>(text));
+		snprintf(expected, sizeof(expected), "%u", hosts);
+		CHECK(strcmp(text, expected) == 0);
+		SendDlgItemMessageA(dialog, IDC_CPU_SCAN_HOSTS, CB_SETCURSEL, index++, 0);
+		SendMessageA(dialog, WM_COMMAND, MAKEWPARAM(IDC_CPU_SCAN_HOSTS, CBN_SELCHANGE), 0);
+		CHECK(data.hosts == hosts);
+		GetDlgItemTextA(dialog, IDC_CPU_SCAN_TIMEOUT, text, sizeof(text));
+		unsigned budget = 300 + 2400 + ((hosts - 1 + 31) / 32) * 300;
+		snprintf(expected, sizeof(expected), "Maximum TCP timeout budget: %.1f seconds", budget / 1000.0);
+		CHECK(strstr(text, expected) != nullptr);
+		GetDlgItemTextA(dialog, IDC_CPU_SCAN_DETAILS, text, sizeof(text));
+		CHECK(strstr(text, "127.0.0.1 - 127.0.0.1: 1 TCP targets") != nullptr);
+		CHECK(strstr(text, "192.168.10.1 - 192.168.10.254: 253 TCP targets") != nullptr);
+		CHECK((strstr(text, "WARNING:") != nullptr) == (hosts != 256));
+		CHECK(IsWindowEnabled(GetDlgItem(dialog, IDOK)));
+	}
+	CheckDlgButton(dialog, IDC_CPU_SCAN_BEYOND_SUBNET, BST_CHECKED);
+	SendMessageA(dialog, WM_COMMAND, MAKEWPARAM(IDC_CPU_SCAN_BEYOND_SUBNET, BN_CLICKED), 0);
+	CHECK(data.allowBeyondSubnet);
+	char expandedText[2400];
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_DETAILS, expandedText, sizeof(expandedText));
+	CHECK(strstr(expandedText, "192.168.0.0 - 192.168.63.255: 16381 TCP targets") != nullptr);
+	CHECK(strstr(expandedText, "route/gateway") != nullptr && strstr(expandedText, "only in-subnet") == nullptr);
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_TIMEOUT, expandedText, sizeof(expandedText));
+	CHECK(strstr(expandedText, "307.5 seconds") != nullptr);
+	CheckDlgButton(dialog, IDC_CPU_SCAN_BEYOND_SUBNET, BST_UNCHECKED);
+	SendMessageA(dialog, WM_COMMAND, MAKEWPARAM(IDC_CPU_SCAN_BEYOND_SUBNET, BN_CLICKED), 0);
+	CHECK(!data.allowBeyondSubnet);
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_TIMEOUT, expandedText, sizeof(expandedText));
+	CHECK(strstr(expandedText, "156.3 seconds") != nullptr);
+	data.adapters = {{"192.168.10.8", "255.0.255.0", "Invalid mask"}};
+	SendMessageA(dialog, WM_COMMAND, MAKEWPARAM(IDC_CPU_SCAN_HOSTS, CBN_SELCHANGE), 0);
+	char details[500];
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_DETAILS, details, sizeof(details));
+	CHECK(strstr(details, "ERROR:") != nullptr && !IsWindowEnabled(GetDlgItem(dialog, IDOK)));
+	strcpy(data.adapters[0].subnetMask, "255.255.255.255");
+	SendMessageA(dialog, WM_COMMAND, MAKEWPARAM(IDC_CPU_SCAN_HOSTS, CBN_SELCHANGE), 0);
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_DETAILS, details, sizeof(details));
+	CHECK(strstr(details, "No other usable addresses") != nullptr && !IsWindowEnabled(GetDlgItem(dialog, IDOK)));
+	CHECK(DestroyWindow(dialog));
+	unsigned hosts = 512;
+	bool allowBeyondSubnet = false;
+	scanDialogHosts = 16384;
+	scanDialogBeyondSubnet = true;
+	scanDialogResult = IDCANCEL;
+	CHECK(!DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && hosts == 512 && !allowBeyondSubnet);
+	scanDialogResult = IDOK;
+	CHECK(DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && hosts == 16384 && allowBeyondSubnet);
+	expectedMessageCaption = "CPU scan";
+	expectedErrorMessages = 1;
+	scanDialogResult = -1;
+	CHECK(!DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && expectedErrorMessages == 0);
+	adapterEnumerationError = ERROR_ACCESS_DENIED;
+	expectedErrorMessages = 1;
+	CHECK(!DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && expectedErrorMessages == 0);
+	adapterEnumerationError = 0;
+	expectedMessageCaption = "Error";
+	scanDialogResult = IDCANCEL;
+	scanDialogBeyondSubnet = false;
+}
+
+static void WaitForCpuScan(ObjectTreeView &tree)
+{
+	ULONGLONG deadline = GetTickCount64() + 5000;
+	while (tree.GetCpuScanDialogHandle() != nullptr)
+	{
+		MSG message;
+		while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
+		{
+			CHECK(message.message != WM_QUIT);
+			HWND dialog = tree.GetCpuScanDialogHandle();
+			if (dialog == nullptr || !IsDialogMessageA(dialog, &message))
+			{
+				TranslateMessage(&message);
+				DispatchMessageA(&message);
+			}
+		}
+		CHECK(GetTickCount64() < deadline);
+		Sleep(1);
+	}
+}
+
+static void CheckCpuScanProgress()
+{
+	auto savedCallback = callback;
+	const char *savedResponse = readResponse;
+	readResponse = "";
+	scanDialogResult = IDOK;
+	scanDialogHosts = 512;
+	ResetSocketTest();
+	HINSTANCE instance = GetModuleHandleA(nullptr);
+	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
+		0, 0, 640, 480, nullptr, nullptr, instance, nullptr);
+	CHECK(parent != nullptr);
+	ObjectTreeView tree;
+	CHECK(tree.Create(instance, parent) != nullptr);
+	PviObject *device = AddObject("@Pvi/ProgressDevice", "/IF=tcpip", POBJ_DEVICE);
+	HTREEITEM root = tree.AddItem(TVI_ROOT, device->descriptor, reinterpret_cast<LPARAM>(device->name), 0);
+	NMTREEVIEWA selection = {};
+	selection.hdr.hwndFrom = tree.GetHandle();
+	selection.hdr.code = TVN_SELCHANGEDA;
+	selection.itemNew.hItem = root;
+	selection.itemNew.lParam = reinterpret_cast<LPARAM>(device->name);
+	for (UINT cancelMessage : {WM_COMMAND, WM_CLOSE})
+	{
+		readEntered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+		readRelease = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+		CHECK(readEntered != nullptr && readRelease != nullptr);
+		CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+		HWND dialog = tree.GetCpuScanDialogHandle();
+		CHECK(dialog != nullptr && IsWindowEnabled(parent));
+		CHECK(GetDlgItem(dialog, IDC_CPU_SCAN_PROGRESS) != nullptr);
+		CHECK((GetWindowLongPtrA(GetDlgItem(dialog, IDC_CPU_SCAN_PROGRESS), GWL_STYLE) & PBS_MARQUEE) != 0);
+		CHECK(WaitForSingleObject(readEntered, 5000) == WAIT_OBJECT_0);
+		SendMessageA(dialog, cancelMessage, IDCANCEL, 0);
+		CHECK(!IsWindowEnabled(GetDlgItem(dialog, IDCANCEL)));
+		char status[180];
+		GetDlgItemTextA(dialog, IDC_CPU_SCAN_STATUS, status, sizeof(status));
+		CHECK(strstr(status, "Cancelling") != nullptr);
+		CHECK(SetEvent(readRelease));
+		WaitForCpuScan(tree);
+		CHECK(!IsWindow(dialog) && TreeView_GetChild(tree.GetHandle(), root) == nullptr && startupCalls == 0);
+		CHECK(CloseHandle(readEntered) && CloseHandle(readRelease));
+		readEntered = readRelease = nullptr;
+	}
+	testAdapters = {{"192.168.10.8", "255.255.255.0", "Progress Ethernet"}};
+	selectEntered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	selectRelease = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	CHECK(selectEntered != nullptr && selectRelease != nullptr);
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(WaitForSingleObject(selectEntered, 5000) == WAIT_OBJECT_0);
+	HWND tcpDialog = tree.GetCpuScanDialogHandle();
+	SendMessageA(tcpDialog, WM_TIMER, 1, 0);
+	HWND progress = GetDlgItem(tcpDialog, IDC_CPU_SCAN_PROGRESS);
+	CHECK((GetWindowLongPtrA(progress, GWL_STYLE) & PBS_MARQUEE) == 0);
+	CHECK(SendMessageA(progress, PBM_GETPOS, 0, 0) > 0);
+	char status[180];
+	GetDlgItemTextA(tcpDialog, IDC_CPU_SCAN_STATUS, status, sizeof(status));
+	CHECK(strstr(status, "1 / 254") != nullptr);
+	SendMessageA(tcpDialog, WM_COMMAND, IDCANCEL, 0);
+	CHECK(SetEvent(selectRelease));
+	WaitForCpuScan(tree);
+	CHECK(scanTargets.size() == 33 && startupCalls == 2 && cleanupCalls == 2 && openSockets.empty());
+	CHECK(TreeView_GetChild(tree.GetHandle(), root) == nullptr);
+	CHECK(CloseHandle(selectEntered) && CloseHandle(selectRelease));
+	selectEntered = selectRelease = nullptr;
+	testAdapters.clear();
+	ResetSocketTest();
+	socketFailure = "socket";
+	expectedMessageCaption = "CPU scan";
+	expectedErrorMessages = 1;
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	WaitForCpuScan(tree);
+	CHECK(expectedErrorMessages == 0 && lastMessage.find("socket") != std::string::npos);
+	expectedMessageCaption = "Error";
+	ResetSocketTest();
+	readEntered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	readRelease = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	CHECK(readEntered != nullptr && readRelease != nullptr);
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(WaitForSingleObject(readEntered, 5000) == WAIT_OBJECT_0);
+	PviObject *manual = AddObject("@Pvi/ProgressDevice/Manual", "/IP=192.168.10.3", POBJ_CPU);
+	HTREEITEM manualItem = tree.AddItem(root, manual->descriptor, reinterpret_cast<LPARAM>(manual->name), 0);
+	CHECK(manualItem != nullptr);
+	CHECK(SetEvent(readRelease));
+	WaitForCpuScan(tree);
+	CHECK(TreeView_GetCount(tree.GetHandle()) == 2);
+	CHECK(CloseHandle(readEntered) && CloseHandle(readRelease));
+	readEntered = readRelease = nullptr;
+	CHECK(TreeView_DeleteItem(tree.GetHandle(), manualItem));
+	manual->Remove();
+	// Clearing the tree must cancel/join the worker before discarding its target.
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	tree.ClearAll();
+	CHECK(tree.GetCpuScanDialogHandle() == nullptr && TreeView_GetCount(tree.GetHandle()) == 0);
+	CHECK(DestroyWindow(parent));
+	device->Remove();
+	ResetSocketTest();
+	scanDialogResult = IDCANCEL;
+	callback = savedCallback;
+	readResponse = savedResponse;
+}
+
+static void CheckCpuScanTree()
+{
+	auto savedCallback = callback;
+	const char *savedResponse = readResponse;
+	readResponse = "";
+	ResetSocketTest();
+	testAdapters = {{"10.12.34.56", "255.255.0.0", "Test Ethernet"}};
+	HINSTANCE instance = GetModuleHandleA(nullptr);
+	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
+		0, 0, 640, 480, nullptr, nullptr, instance, nullptr);
+	CHECK(parent != nullptr);
+	ObjectTreeView tree;
+	CHECK(tree.Create(instance, parent) != nullptr);
+	PviObject *device = AddObject("@Pvi/CpuScanTreeDevice", "/IF=tcpip", POBJ_DEVICE);
+	HTREEITEM root = tree.AddItem(TVI_ROOT, device->descriptor, reinterpret_cast<LPARAM>(device->name), 0);
+	CHECK(root != nullptr);
+	NMTREEVIEWA selection = {};
+	selection.hdr.hwndFrom = tree.GetHandle();
+	selection.hdr.code = TVN_SELCHANGEDA;
+	selection.itemNew.hItem = root;
+	selection.itemNew.lParam = reinterpret_cast<LPARAM>(device->name);
+	unsigned previousDialogs = scanDialogs;
+	unsigned previousCreates = createRequests;
+	scanDialogResult = IDCANCEL;
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(scanDialogs == previousDialogs + 1 && createRequests == previousCreates);
+	CHECK(TreeView_GetChild(tree.GetHandle(), root) == nullptr && startupCalls == 0);
+	scanDialogHosts = 512;
+	scanDialogResult = IDOK;
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	WaitForCpuScan(tree);
+	CHECK(scanDialogs == previousDialogs + 2 && scanTargets.size() == 512);
+	CHECK(startupCalls == 2 && cleanupCalls == 2);
+	CHECK(scanTargets[0] == INADDR_LOOPBACK && scanTargets[1] == 0x0a0c2200u &&
+		scanTargets.back() == 0x0a0c23ffu);
+	ResetSocketTest();
+	testAdapters = {{"192.168.11.8", "255.255.255.0", "Beyond subnet Ethernet"}};
+	scanDialogBeyondSubnet = true;
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	WaitForCpuScan(tree);
+	CHECK(scanTargets.size() == 510 && scanTargets[1] == 0xc0a80a00u && scanTargets.back() == 0xc0a80bfeu);
+	CHECK(scanDialogs == previousDialogs + 3);
+	scanDialogBeyondSubnet = false;
+	testAdapters.clear();
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	WaitForCpuScan(tree);
+	CHECK(TreeView_GetChild(tree.GetHandle(), root) != nullptr);
+	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 1);
+	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 1);
+	tree.ClearAll();
+	CHECK(DestroyWindow(parent));
+	while (PviObject *child = device->FindChild(TRUE))
+		child->Remove();
+	device->Remove();
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	socketFailure = "bind";
+	failingBindAddress = 0x0a0c6238u;
+	testAdapters = {
+		{"10.12.98.56", "255.255.0.0", "Unavailable Ethernet"},
+		{"192.168.10.8", "255.255.255.0", "Working Ethernet"}
+	};
+	expectedMessageCaption = "CPU scan";
+	stEthernetCpuInfo results[3] = {};
+	memset(&results[2], 0x5a, sizeof(results[2]));
+	stEthernetCpuInfo canary = results[2];
+	for (int rejection : {WSAEADDRNOTAVAIL, WSAEACCES, WSAENETUNREACH})
+	{
+		ResetSocketTest();
+		socketMode = SocketMode::Immediate;
+		socketFailure = "bind";
+		failingBindAddress = 0x0a0c6238u;
+		socketFailureError = rejection;
+		CHECK(expectedErrorMessages == 0);
+		CHECK(SearchEthernetCpus(results, 2, 512) == 2);
+		CHECK(strcmp(results[0].ipAddress, "127.0.0.1") == 0);
+		CHECK(strcmp(results[1].ipAddress, "192.168.10.1") == 0);
+		CHECK(startupCalls == 3 && cleanupCalls == 3 && memcmp(&results[2], &canary, sizeof(canary)) == 0);
+	}
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	socketFailure = "bind";
+	failingBindAddress = 0x0a0c6238u;
+	socketFailureError = WSAENETDOWN;
+	expectedErrorMessages = 1;
+	CHECK(SearchEthernetCpus(results, 2, 512) == 2 && expectedErrorMessages == 0);
+	CHECK(lastMessage.find("bind") != std::string::npos && lastMessage.find("10050") != std::string::npos);
+	socketFailureError = WSAEADDRNOTAVAIL;
+	ResetSocketTest();
+	socketMode = SocketMode::Immediate;
+	testAdapters = {
+		{"10.0.0.1", "255.255.255.252", "First Ethernet"},
+		{"10.0.0.1", "255.255.255.252", "Duplicate address"}
+	};
+	CHECK(SearchEthernetCpus(results, 3, 512) == 2);
+	CHECK(strcmp(results[0].ipAddress, "127.0.0.1") == 0 && strcmp(results[1].ipAddress, "10.0.0.2") == 0);
+	CHECK(startupCalls == 3 && cleanupCalls == 3 && scanTargets.size() == 3);
+	ResetSocketTest();
+	expectedErrorMessages = 1;
+	previousCreates = createRequests;
+	CHECK(SearchEthernetCpus(results, 3, 4096) == -1 && expectedErrorMessages == 0);
+	CHECK(startupCalls == 0 && createRequests == previousCreates);
+	testAdapters = {{"192.168.11.8", "255.255.255.0", "No external route"}};
+	for (int rejection : {WSAENETUNREACH, WSAEACCES, WSAEADDRNOTAVAIL})
+	{
+		for (SocketMode mode : {SocketMode::Timeout, SocketMode::Pending})
+		{
+			ResetSocketTest();
+			socketMode = mode;
+			pendingConnectError = WSAECONNREFUSED;
+			targetRoutingError = rejection;
+			failedTargetFirst = 0xc0a80a00u;
+			failedTargetLast = 0xc0a80affu;
+			CHECK(expectedErrorMessages == 0);
+			CHECK(SearchEthernetCpus(results, 3, 512, true) == 0);
+			CHECK(scanTargets.size() == 510 && startupCalls == 2 && cleanupCalls == 2);
+		}
+	}
+	ResetSocketTest();
+	testAdapters.clear();
+	expectedMessageCaption = "Error";
+	scanDialogResult = IDCANCEL;
+	callback = savedCallback;
+	readResponse = savedResponse;
+}
+
+static void CheckAboutLink()
+{
+	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_LINK_CLASS};
+	CHECK(InitCommonControlsEx(&controls) != 0);
+	HWND dialog = CreateHiddenDialog(DLG_ABOUT, AboutDlgProc, 0);
 	HWND link = GetDlgItem(dialog, IDC_LINK_PROJECT);
 	CHECK(link != nullptr);
 	CHECK((GetWindowLongPtrA(link, GWL_STYLE) & WS_TABSTOP) != 0);
@@ -722,6 +1620,10 @@ static void CheckAboutLink()
 
 int main()
 {
+	CheckCpuScanPlansAndSockets();
+	CheckCpuScanCancellation();
+	CheckCpuScanAdapters();
+	CheckCpuScanDialog();
 	char temporaryPath[MAX_PATH];
 	char testDirectory[MAX_PATH];
 	CHECK(GetTempPathA(sizeof(temporaryPath), temporaryPath) != 0);
@@ -836,6 +1738,8 @@ int main()
 	CheckObjectTreeView(cpu, task, testDirectory);
 	CheckWatchListView(testDirectory);
 	CheckAboutLink();
+	CheckCpuScanTree();
+	CheckCpuScanProgress();
 	CHECK(variable->Watch(FALSE) == variable);
 	CHECK(variable->ex.pv.pvalue == nullptr && variable->linkid == 0);
 	CHECK(variable->watchsort == -1);
@@ -866,6 +1770,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watch insertion, ObjectTreeView, WatchListView, About hyperlink, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
 	return 0;
 }

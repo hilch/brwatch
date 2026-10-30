@@ -1004,7 +1004,7 @@ void PviObject::ReadDataType()
 }
 
 /* creates the children of the object as seperate objects */
-PviObject *PviObject::Expand()
+PviObject *PviObject::Expand(unsigned hostsPerAdapter, bool allowBeyondSubnet)
 {
 	int i;
 	PviObject tempobject;
@@ -1049,7 +1049,7 @@ PviObject *PviObject::Expand()
 		break;
 
 	case POBJ_DEVICE:
-		ReadCpuList();
+		ReadCpuList(hostsPerAdapter, allowBeyondSubnet);
 		gui_info.has_childs = 0;
 		break;
 
@@ -1104,12 +1104,9 @@ PviObject *PviObject::AddCpuByIp(const char *ipAddress, unsigned timeoutMs)
 
 */
 
-PviObject *PviObject::ReadCpuList()
+PviObject *PviObject::ReadCpuList(unsigned hostsPerAdapter, bool allowBeyondSubnet)
 {
-	PviObject cpuObject;
 	char *s;
-	char descriptor[256];
-	int result;
 	char *pbuffer;
 
 
@@ -1175,33 +1172,9 @@ PviObject *PviObject::ReadCpuList()
 			if (ethernetCpuInfo != nullptr)
 			{
 
-				int i;
-				int noOfCpu = SearchEthernetCpus(ethernetCpuInfo, 256);
-				for (i = 0; i < noOfCpu; ++i, ++ethernetCpuInfo)
-				{
-					cpuObject = PviObject();
-					memcpy(&cpuObject.ex.cpu.ethernetCpuInfo, (void *)ethernetCpuInfo, sizeof(struct stEthernetCpuInfo));
-					sprintf(cpuObject.descriptor, "/IP=%s", ethernetCpuInfo->ipAddress);
-					strcpy(cpuObject.ex.cpu.arversion, ethernetCpuInfo->arVersion);
-					strcpy(cpuObject.ex.cpu.cputype, ethernetCpuInfo->targetTypeDescription);
-					if (strlen(cpuObject.ex.cpu.ethernetCpuInfo.macAddress))
-					{
-						// the MAC is the better unique name
-						snprintf(cpuObject.name, sizeof(cpuObject.name), "%s/CPU%s", this->name, cpuObject.ex.cpu.ethernetCpuInfo.macAddress);
-					}
-					else
-					{
-						CreateUniqueObjectName(tempstring, cpuObject.descriptor);
-						snprintf(cpuObject.name, sizeof(cpuObject.name), "%s/CPU%s", this->name, tempstring);
-					}
-					cpuObject.type = POBJ_CPU;
-					snprintf(descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject.descriptor);
-					result = PviCreate(&cpuObject.linkid, cpuObject.name, cpuObject.type, descriptor, PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=s");
-					if (result == 0)
-					{
-						cpuObject.Add(1);
-					}
-				}
+				int noOfCpu = SearchEthernetCpus(ethernetCpuInfo, 256, hostsPerAdapter, allowBeyondSubnet);
+				if (noOfCpu >= 0)
+					AddEthernetCpus(ethernetCpuInfo, noOfCpu);
 				free(buffer);
 			}
 			break;
@@ -1211,6 +1184,42 @@ PviObject *PviObject::ReadCpuList()
 	}
 
 	free(pbuffer);
+	return this;
+}
+
+PviObject *PviObject::AddEthernetCpus(const stEthernetCpuInfo *cpus, int entries)
+{
+	if (type != POBJ_DEVICE || entries < 0 || (entries != 0 && cpus == nullptr))
+	{
+		AddRowToLog("PviObject::AddEthernetCpus:invalid input", -1);
+		return nullptr;
+	}
+	for (int i = 0; i < entries; ++i)
+	{
+		PviObject cpuObject;
+		cpuObject.ex.cpu.ethernetCpuInfo = cpus[i];
+		snprintf(cpuObject.descriptor, sizeof(cpuObject.descriptor), "/IP=%s", cpus[i].ipAddress);
+		strcpy(cpuObject.ex.cpu.arversion, cpus[i].arVersion);
+		strcpy(cpuObject.ex.cpu.cputype, cpus[i].targetTypeDescription);
+		if (cpus[i].macAddress[0] != '\0')
+			snprintf(cpuObject.name, sizeof(cpuObject.name), "%s/CPU%s", name, cpus[i].macAddress);
+		else
+		{
+			char uniqueName[256];
+			CreateUniqueObjectName(uniqueName, cpuObject.descriptor);
+			snprintf(cpuObject.name, sizeof(cpuObject.name), "%s/CPU%s", name, uniqueName);
+		}
+		cpuObject.type = POBJ_CPU;
+		char descriptor[256];
+		snprintf(descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject.descriptor);
+		int result = PviCreate(&cpuObject.linkid, cpuObject.name, cpuObject.type, descriptor,
+			PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=s");
+		if (result == 0)
+			cpuObject.Add(1);
+		else
+			AddRowToLog("PviObject::AddEthernetCpus:PviCreate", result);
+	}
+	gui_info.has_childs = 0;
 	return this;
 }
 

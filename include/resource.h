@@ -22,6 +22,8 @@
 #define DLG_EDIT_CPU                    106
 #define DLG_EDIT_TASK                   107
 #define DLG_ADD_CPU                     108
+#define DLG_CPU_SCAN                    109
+#define DLG_CPU_SCAN_PROGRESS           110
 #define IDR_DEFAULT_INI1                115
 
 #define IDC_STATIC_PVIVERSION           1002
@@ -59,6 +61,12 @@
 #define IDC_BUTTON_SETTINGS_DEFAULTS    1047
 #define IDC_STATIC_BUILD_INFO           1048
 #define IDC_LINK_PROJECT                1049
+#define IDC_CPU_SCAN_HOSTS              1050
+#define IDC_CPU_SCAN_DETAILS            1051
+#define IDC_CPU_SCAN_TIMEOUT            1052
+#define IDC_CPU_SCAN_BEYOND_SUBNET      1053
+#define IDC_CPU_SCAN_PROGRESS          1054
+#define IDC_CPU_SCAN_STATUS            1055
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001

@@ -39,6 +39,7 @@ CPP_SOURCES = \
 	cpusearch.cpp \
 	dlg_about.cpp \
 	dlg_busy.cpp \
+	dlg_cpuscan.cpp \
 	dlg_editcpu.cpp \
 	dlg_edittask.cpp \
 	dlg_settings.cpp \

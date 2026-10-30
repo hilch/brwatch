@@ -3,6 +3,214 @@
 #include "watch_listview.h"
 #include "main.h"
 #include "settings.h"
+#include "dlg_cpuscan.h"
+#include <process.h>
+#include <cerrno>
+#include <algorithm>
+
+struct ObjectTreeView::CpuScanTask {
+	CpuScanControl control;
+	std::vector<stEthernetCpuInfo> cpus = std::vector<stEthernetCpuInfo>(256);
+	std::string parentName;
+	DWORD parentLink = 0;
+	HTREEITEM item = nullptr;
+	HWND dialog = nullptr;
+	HANDLE thread = nullptr;
+	unsigned hosts = CpuScanDefaultHosts;
+	bool allowBeyondSubnet = false;
+	std::atomic<bool> done{false};
+	int entries = 0;
+	DWORD failure = ERROR_SUCCESS;
+};
+
+ObjectTreeView::ObjectTreeView() = default;
+
+ObjectTreeView::~ObjectTreeView()
+{
+	StopCpuScan();
+}
+
+HWND ObjectTreeView::GetCpuScanDialogHandle() const
+{
+	return scanTask != nullptr ? scanTask->dialog : nullptr;
+}
+
+void ObjectTreeView::StopCpuScan()
+{
+	if (scanTask == nullptr)
+		return;
+	scanTask->control.cancelRequested.store(true);
+	if (scanTask->thread != nullptr)
+	{
+		WaitForSingleObject(scanTask->thread, INFINITE);
+		CloseHandle(scanTask->thread);
+	}
+	if (IsWindow(scanTask->dialog))
+		DestroyWindow(scanTask->dialog);
+	scanTask.reset();
+}
+
+unsigned __stdcall ObjectTreeView::CpuScanThread(void *data)
+{
+	auto task = static_cast<CpuScanTask *>(data);
+	try
+	{
+		task->entries = SearchEthernetCpus(task->cpus.data(), static_cast<int>(task->cpus.size()),
+			task->hosts, task->allowBeyondSubnet, &task->control);
+	}
+	catch (const std::bad_alloc &)
+	{
+		task->failure = ERROR_NOT_ENOUGH_MEMORY;
+	}
+	task->done.store(true);
+	return 0;
+}
+
+void ObjectTreeView::StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet)
+{
+	try
+	{
+		scanTask = std::make_unique<CpuScanTask>();
+		scanTask->parentName = parent->name;
+	}
+	catch (const std::bad_alloc &)
+	{
+		scanTask.reset();
+		MessageBoxA(parentWindow, "Not enough memory to start the CPU scan.", "CPU scan", MB_OK | MB_ICONERROR);
+		return;
+	}
+	scanTask->parentLink = parent->linkid;
+	scanTask->item = item;
+	scanTask->hosts = hosts;
+	scanTask->allowBeyondSubnet = allowBeyondSubnet;
+	scanTask->dialog = CreateDialogParamA(GetModuleHandleA(nullptr), MAKEINTRESOURCEA(DLG_CPU_SCAN_PROGRESS),
+		parentWindow, CpuScanProgressDlgProc, reinterpret_cast<LPARAM>(this));
+	if (scanTask->dialog == nullptr)
+	{
+		DWORD error = GetLastError();
+		scanTask.reset();
+		char message[160];
+		snprintf(message, sizeof(message), "Could not create CPU scan progress dialog (error %lu).", error);
+		MessageBoxA(parentWindow, message, "CPU scan", MB_OK | MB_ICONERROR);
+		return;
+	}
+	if (SetTimer(scanTask->dialog, 1, 50, nullptr) == 0)
+	{
+		StopCpuScan();
+		MessageBoxA(parentWindow, "Could not start the CPU scan progress timer.", "CPU scan", MB_OK | MB_ICONERROR);
+		return;
+	}
+	scanTask->thread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, CpuScanThread, scanTask.get(), 0, nullptr));
+	if (scanTask->thread == nullptr)
+	{
+		int error = errno;
+		StopCpuScan();
+		char message[160];
+		snprintf(message, sizeof(message), "Could not start CPU scan worker (error %d).", error);
+		MessageBoxA(parentWindow, message, "CPU scan", MB_OK | MB_ICONERROR);
+		return;
+	}
+	ShowWindow(scanTask->dialog, IsWindowVisible(parentWindow) ? SW_SHOW : SW_HIDE);
+	UpdateCpuScanProgress();
+}
+
+void ObjectTreeView::UpdateCpuScanProgress()
+{
+	if (scanTask == nullptr)
+		return;
+	HWND dialog = scanTask->dialog;
+	if (scanTask->control.cancelRequested.load())
+	{
+		SetDlgItemTextA(dialog, IDC_CPU_SCAN_STATUS, "Cancelling... waiting for the current PVI/socket operation to finish.");
+		EnableWindow(GetDlgItem(dialog, IDCANCEL), FALSE);
+		return;
+	}
+	if (scanTask->control.phase.load() == CpuScanPhase::Snmp)
+	{
+		SendDlgItemMessageA(dialog, IDC_CPU_SCAN_PROGRESS, PBM_SETMARQUEE, TRUE, 30);
+		SetDlgItemTextA(dialog, IDC_CPU_SCAN_STATUS, "Discovering CPUs via SNMP/PVI...");
+	}
+	else
+	{
+		HWND progress = GetDlgItem(dialog, IDC_CPU_SCAN_PROGRESS);
+		LONG_PTR style = GetWindowLongPtrA(progress, GWL_STYLE);
+		if ((style & PBS_MARQUEE) != 0)
+		{
+			SendMessageA(progress, PBM_SETMARQUEE, FALSE, 0);
+			SetWindowLongPtrA(progress, GWL_STYLE, style & ~PBS_MARQUEE);
+			SendMessageA(progress, PBM_SETRANGE32, 0, 1000);
+		}
+		unsigned total = scanTask->control.total.load();
+		unsigned completed = (std::min)(scanTask->control.completed.load(), total);
+		unsigned position = total == 0 ? 0 : static_cast<unsigned>(std::uint64_t(completed) * 1000 / total);
+		SendMessageA(progress, PBM_SETPOS, position, 0);
+		char message[160];
+		snprintf(message, sizeof(message), "TCP scan: %u / %u addresses processed or skipped (%u%%).",
+			completed, total, position / 10);
+		SetDlgItemTextA(dialog, IDC_CPU_SCAN_STATUS, message);
+	}
+}
+
+void ObjectTreeView::FinishCpuScan()
+{
+	auto task = std::move(scanTask);
+	WaitForSingleObject(task->thread, INFINITE);
+	CloseHandle(task->thread);
+	if (IsWindow(task->dialog))
+		DestroyWindow(task->dialog);
+	if (task->control.cancelRequested.load())
+		return;
+	if (task->failure != ERROR_SUCCESS)
+	{
+		MessageBoxA(parentWindow, "Not enough memory to complete the CPU scan.", "CPU scan", MB_OK | MB_ICONERROR);
+		return;
+	}
+	for (const auto &error : task->control.errors)
+		MessageBoxA(parentWindow, error.c_str(), "CPU scan", MB_OK | MB_ICONERROR);
+	PviObject *parent = PviObject::FindByName(task->parentName.c_str());
+	if (parent == nullptr || parent->type != POBJ_DEVICE || parent->linkid != task->parentLink || task->entries < 0)
+		return;
+	TVITEMA item = {};
+	item.hItem = task->item;
+	item.mask = TVIF_PARAM;
+	if (!IsWindow(window) || !TreeView_GetItem(window, &item) || item.lParam != reinterpret_cast<LPARAM>(parent->name))
+		return;
+	parent->AddEthernetCpus(task->cpus.data(), task->entries);
+	InsertExistingChildObjects(task->item, parent);
+}
+
+INT_PTR CALLBACK ObjectTreeView::CpuScanProgressDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	auto view = reinterpret_cast<ObjectTreeView *>(GetWindowLongPtrA(dialog, DWLP_USER));
+	if (message == WM_INITDIALOG)
+	{
+		SetWindowLongPtrA(dialog, DWLP_USER, lParam);
+		return TRUE;
+	}
+	if (view == nullptr || view->scanTask == nullptr)
+		return FALSE;
+	if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(wParam) == IDCANCEL))
+	{
+		view->scanTask->control.cancelRequested.store(true);
+		view->UpdateCpuScanProgress();
+		return TRUE;
+	}
+	if (message == WM_TIMER)
+	{
+		if (view->scanTask->done.load())
+			view->FinishCpuScan();
+		else
+			view->UpdateCpuScanProgress();
+		return TRUE;
+	}
+	if (message == WM_DESTROY)
+	{
+		view->scanTask->control.cancelRequested.store(true);
+		view->scanTask->dialog = nullptr;
+		KillTimer(dialog, 1);
+	}
+	return FALSE;
+}
 
 /*
 The parent window owns the native control; GetHandle() returns a borrowed HWND.
@@ -14,7 +222,7 @@ to this instance's event handlers.
 
 void ObjectTreeView::ClearAll()
 {
-
+	StopCpuScan();
 	TreeView_DeleteAllItems(window);
 }
 
@@ -142,7 +350,16 @@ LRESULT ObjectTreeView::HandleMessages(UINT wMsg, WPARAM, LPARAM lParam)
 
 /* get all child of object and enters them in tree view */
 
-void ObjectTreeView::InsertChildObjects(HTREEITEM hti, PviObject *parent)
+void ObjectTreeView::InsertChildObjects(HTREEITEM hti, PviObject *parent, unsigned hostsPerAdapter, bool allowBeyondSubnet)
+{
+	if (parent != nullptr)
+	{
+		parent->Expand(hostsPerAdapter, allowBeyondSubnet);
+		InsertExistingChildObjects(hti, parent);
+	}
+}
+
+void ObjectTreeView::InsertExistingChildObjects(HTREEITEM hti, PviObject *parent)
 {
 	PviObject *child;
 	int imageindex;
@@ -150,8 +367,6 @@ void ObjectTreeView::InsertChildObjects(HTREEITEM hti, PviObject *parent)
 
 	if (parent != nullptr)
 	{
-
-		parent->Expand();
 
 		// there are more information after expanding
 		if (parent->type == POBJ_CPU)
@@ -226,7 +441,21 @@ void ObjectTreeView::InsertChildObjects(HTREEITEM hti, PviObject *parent)
 
 			imageindex = ResourcesGetPviObjectImage(child);
 
-			AddItem(hti, tempstring, (LPARAM)child->name, imageindex);
+			bool exists = false;
+			for (HTREEITEM existing = TreeView_GetChild(window, hti); existing != nullptr;
+				existing = TreeView_GetNextSibling(window, existing))
+			{
+				TVITEMA item = {};
+				item.hItem = existing;
+				item.mask = TVIF_PARAM;
+				if (TreeView_GetItem(window, &item) && item.lParam == reinterpret_cast<LPARAM>(child->name))
+				{
+					exists = true;
+					break;
+				}
+			}
+			if (!exists)
+				AddItem(hti, tempstring, reinterpret_cast<LPARAM>(child->name), imageindex);
 			child = parent->FindChild(FALSE);
 		} /* End while()*/
 	}
@@ -246,8 +475,27 @@ void ObjectTreeView::ItemSelected(HTREEITEM hti, LPARAM lParam)
 		{
 			if (parent->error == 0)
 			{
+				if (parent->type == POBJ_DEVICE && scanTask != nullptr)
+				{
+					SetForegroundWindow(scanTask->dialog);
+					return;
+				}
+				unsigned hosts = CpuScanDefaultHosts;
+				bool allowBeyondSubnet = false;
+				if (parent->type == POBJ_DEVICE && !DlgCpuScanShowDialog(parentWindow, hosts, allowBeyondSubnet))
+					return;
+				if (parent->type == POBJ_DEVICE)
+				{
+					char descriptor[sizeof(parent->descriptor)];
+					strcpy(descriptor, parent->descriptor);
+					if (strstr(_strupr(descriptor), "/IF=TCPIP") != nullptr)
+					{
+						StartCpuScan(hti, parent, hosts, allowBeyondSubnet);
+						return;
+					}
+				}
 				oldcursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
-				InsertChildObjects(hti, parent);
+				InsertChildObjects(hti, parent, hosts, allowBeyondSubnet);
 				SetCursor(oldcursor);
 			}
 		}

@@ -39,6 +39,25 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 
 ([for brwatch V1.x see brief manual](http://hilch.github.io/brwatch/doc/manual-v1x.md))
 
+Selecting a device without populated children opens the CPU scan dialog. Choose
+an aligned block of 256, 512, 1024, 2048, or 16384 IPv4 addresses per Ethernet
+adapter. Blocks are limited to each adapter's subnet by default, with a warning
+when clipped. Enable **Allow scanning beyond adapter subnet** to probe the full
+selected block using that adapter's source IP; a suitable route/gateway and
+firewall permissions are required. The adapter's subnet network/broadcast and
+own IP are still skipped. Adapter address, routing and permission rejections
+are ignored without a message box; rejected out-of-subnet targets do not
+prevent scanning the remaining targets. Other unexpected scan errors are
+still reported.
+Localhost is probed only at `127.0.0.1`. The dialog updates the maximum TCP
+timeout budget when either option changes. SNMP/PVI discovery and operating-system
+overhead are additional; Cancel leaves the device unexpanded.
+
+Discovery runs in the background with a modeless progress dialog, so the main
+window remains usable. SNMP/PVI discovery shows an activity bar; TCP scanning
+shows the number of addresses processed or skipped. **Cancel** (or closing the
+progress dialog) cancels both stages and discards the unfinished scan's results.
+
 ## Development
 
 The application is written in C++14 and uses the Win32 API. Bundled zlib sources remain C.

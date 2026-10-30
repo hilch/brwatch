@@ -2,21 +2,25 @@
 //
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include "main.h"
 #include "cpusearch.h"
 #include <time.h>
+#include <algorithm>
 
-struct stAdapterInfo
+static bool ScanCancelled(const CpuScanControl *control)
 {
-	char ipAddress[20];
-	char subnetMask[20];
-	char description[40];
-};
+	return control != nullptr && control->cancelRequested.load();
+}
 
-int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
-int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries);
-int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries);
+static void ReportDiscoveryError(const char *message, CpuScanControl *control)
+{
+	if (control != nullptr)
+		control->errors.emplace_back(message);
+	else
+		MessageBoxA(MainWindowGetHandle(), message, "CPU scan", MB_OK | MB_ICONERROR);
+}
 
 #ifdef __DEBUG__
 static void PrintEthernetAdapters(const struct stAdapterInfo *adapters, int count)
@@ -37,82 +41,192 @@ static void PrintEthernetAdapters(const struct stAdapterInfo *adapters, int coun
 	start searching CPUs via TCP port 11169
 	----------------------------------------------------------------------------------------
 */
-int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
+static bool IsCpuScanTarget(const CpuPortScanPlan &plan, std::uint32_t address)
 {
-	WSADATA wsa;
-	int entries = 0;
+	return plan.loopback || (address != 0 && address != plan.localAddress &&
+		address != plan.subnetNetwork && address != plan.subnetBroadcast);
+}
 
-	if (adapter == nullptr || ethernetCpuInfo == nullptr || maxEntries <= 0)
-		return 0;
-
-	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-		return -1;
-
-	unsigned long localIp = ntohl(inet_addr(adapter->ipAddress));
-	unsigned long subnetMask = ntohl(inet_addr(adapter->subnetMask));
-	unsigned long network = localIp & subnetMask;
-	unsigned long broadcast = network | ~subnetMask;
-	unsigned long scanNetwork = localIp & 0xFFFFFF00UL;
-	bool loopback = localIp == INADDR_LOOPBACK;
-	unsigned hostLimit = loopback ? 2 : 255;
-
-	for (unsigned host = 1; host < hostLimit && entries < maxEntries;)
+bool GetCpuPortScanPlan(const stAdapterInfo &adapter, unsigned hosts, CpuPortScanPlan &plan, int &error,
+	bool allowBeyondSubnet)
+{
+	plan = {};
+	error = WSAEINVAL;
+	if (hosts != 256 && hosts != 512 && hosts != 1024 && hosts != 2048 && hosts != 16384)
+		return false;
+	IN_ADDR ip = {}, mask = {};
+	if (InetPtonA(AF_INET, adapter.ipAddress, &ip) != 1 ||
+		InetPtonA(AF_INET, adapter.subnetMask, &mask) != 1)
+		return false;
+	std::uint32_t localIp = ntohl(ip.s_addr);
+	std::uint32_t subnetMask = ntohl(mask.s_addr);
+	std::uint32_t inverseMask = ~subnetMask;
+	if ((inverseMask & (inverseMask + 1)) != 0 || localIp == 0 || localIp >= 0xe0000000u)
+		return false;
+	plan.localAddress = localIp;
+	plan.subnetNetwork = localIp & subnetMask;
+	plan.subnetBroadcast = plan.subnetNetwork | inverseMask;
+	if (localIp == INADDR_LOOPBACK)
 	{
-		SOCKET sockets[32];
-		IN_ADDR addresses[32];
-		int pending = 0;
-
-		while (host < hostLimit && pending < 32 && entries < maxEntries)
+		plan.firstAddress = plan.lastAddress = localIp;
+		plan.targetCount = 1;
+		plan.loopback = true;
+	}
+	else
+	{
+		std::uint32_t blockFirst = localIp & ~(hosts - 1u);
+		std::uint32_t blockLast = blockFirst + hosts - 1;
+		bool exceedsSubnet = blockFirst < plan.subnetNetwork || blockLast > plan.subnetBroadcast;
+		plan.limitedBySubnet = !allowBeyondSubnet && exceedsSubnet;
+		plan.extendsBeyondSubnet = allowBeyondSubnet && exceedsSubnet;
+		plan.firstAddress = allowBeyondSubnet ? blockFirst : (std::max)(blockFirst, plan.subnetNetwork + 1);
+		plan.lastAddress = allowBeyondSubnet ? blockLast : (std::min)(blockLast, plan.subnetBroadcast - 1);
+		for (std::uint32_t address = plan.firstAddress; address <= plan.lastAddress; ++address)
 		{
-			unsigned long targetIp = scanNetwork | host++;
-			if (!loopback && (targetIp == localIp || targetIp <= network || targetIp >= broadcast ||
-				(targetIp & subnetMask) != network))
-				continue;
+			if (IsCpuScanTarget(plan, address))
+				++plan.targetCount;
+		}
+	}
+	error = 0;
+	return true;
+}
 
+std::uint64_t CpuPortScanTimeoutBudgetMs(const CpuPortScanPlan &plan)
+{
+	return ((plan.targetCount + CpuScanBatchSize - 1) / CpuScanBatchSize) *
+		static_cast<std::uint64_t>(CpuScanBatchTimeoutMs);
+}
+
+static bool IsOfflineCpuError(int error)
+{
+	return error == WSAECONNREFUSED || error == WSAETIMEDOUT ||
+		error == WSAEHOSTUNREACH || error == WSAECONNRESET;
+}
+
+static bool IsCpuScanRejection(int error)
+{
+	return error == WSAENETUNREACH || error == WSAEACCES || error == WSAEADDRNOTAVAIL;
+}
+
+CpuPortScanResult SearchCpuViaPortScan(const stAdapterInfo &adapter,
+	stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsigned hosts, bool allowBeyondSubnet, CpuScanControl *control)
+{
+	CpuPortScanResult scan;
+	if (ScanCancelled(control))
+		return scan;
+	CpuPortScanPlan plan;
+	if (!GetCpuPortScanPlan(adapter, hosts, plan, scan.error, allowBeyondSubnet) || ethernetCpuInfo == nullptr || maxEntries <= 0)
+	{
+		scan.error = WSAEINVAL;
+		scan.operation = "address range or output buffer";
+		return scan;
+	}
+	WSADATA wsa;
+	scan.error = WSAStartup(MAKEWORD(2, 2), &wsa);
+	if (scan.error != 0)
+	{
+		scan.operation = "WSAStartup";
+		return scan;
+	}
+	bool abortAdapter = false;
+	auto recordError = [&](const char *operation, int error, std::uint32_t address, bool stopAdapter = true) {
+		scan.operation = operation;
+		scan.error = error;
+		scan.address = address;
+		abortAdapter = stopAdapter;
+	};
+	auto recordConnectionError = [&](int error, std::uint32_t address) {
+		bool outsideSubnet = address < plan.subnetNetwork || address > plan.subnetBroadcast;
+		if (allowBeyondSubnet && outsideSubnet && IsCpuScanRejection(error))
+		{
+			++scan.rejectedTargets;
+			if (scan.error == 0)
+				recordError("connect", error, address, false);
+		}
+		else
+			recordError("connect", error, address);
+	};
+	auto addCpu = [&](IN_ADDR address) {
+		auto &cpu = ethernetCpuInfo[scan.entries++];
+		memset(&cpu, 0, sizeof(cpu));
+		strcpy(cpu.ipAddress, inet_ntoa(address));
+		if (address.s_addr == htonl(plan.localAddress) ||
+			(ntohl(address.s_addr) > plan.subnetNetwork && ntohl(address.s_addr) < plan.subnetBroadcast))
+			strcpy(cpu.subnetMask, adapter.subnetMask);
+	};
+
+	std::uint32_t target = plan.firstAddress;
+	while (plan.targetCount != 0 && target <= plan.lastAddress && scan.entries < maxEntries && !abortAdapter && !ScanCancelled(control))
+	{
+		SOCKET sockets[CpuScanBatchSize];
+		IN_ADDR addresses[CpuScanBatchSize];
+		int pending = 0;
+		unsigned attempted = 0;
+		while (target <= plan.lastAddress && attempted < CpuScanBatchSize && scan.entries < maxEntries && !ScanCancelled(control))
+		{
+			std::uint32_t targetIp = target++;
+			if (!IsCpuScanTarget(plan, targetIp))
+				continue;
+			++attempted;
 			SOCKET connection = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			if (connection == INVALID_SOCKET)
-				continue;
-
-			u_long nonblocking = 1;
+			{
+				recordError("socket", WSAGetLastError(), targetIp);
+				break;
+			}
 			SOCKADDR_IN localAddress = {};
 			localAddress.sin_family = AF_INET;
-			localAddress.sin_addr.s_addr = htonl(localIp);
-			if (bind(connection, (SOCKADDR *)&localAddress, sizeof(localAddress)) == SOCKET_ERROR ||
-				ioctlsocket(connection, FIONBIO, &nonblocking) == SOCKET_ERROR)
+			localAddress.sin_addr.s_addr = htonl(plan.localAddress);
+			if (bind(connection, reinterpret_cast<SOCKADDR *>(&localAddress), sizeof(localAddress)) == SOCKET_ERROR)
 			{
+				recordError("bind", WSAGetLastError(), plan.localAddress);
 				closesocket(connection);
-				continue;
+				break;
+			}
+			u_long nonblocking = 1;
+			if (ioctlsocket(connection, FIONBIO, &nonblocking) == SOCKET_ERROR)
+			{
+				recordError("ioctlsocket", WSAGetLastError(), targetIp);
+				closesocket(connection);
+				break;
 			}
 
 			SOCKADDR_IN targetAddress = {};
 			targetAddress.sin_family = AF_INET;
 			targetAddress.sin_port = htons(11169);
 			targetAddress.sin_addr.s_addr = htonl(targetIp);
-			int result = connect(connection, (SOCKADDR *)&targetAddress, sizeof(targetAddress));
+			int result = connect(connection, reinterpret_cast<SOCKADDR *>(&targetAddress), sizeof(targetAddress));
 			if (result == 0)
 			{
-				memset(&ethernetCpuInfo[entries], 0, sizeof(ethernetCpuInfo[entries]));
-				strcpy(ethernetCpuInfo[entries].ipAddress, inet_ntoa(targetAddress.sin_addr));
-				strcpy(ethernetCpuInfo[entries].subnetMask, adapter->subnetMask);
-				++entries;
+				addCpu(targetAddress.sin_addr);
 				closesocket(connection);
-			}
-			else if (WSAGetLastError() == WSAEWOULDBLOCK)
-			{
-				sockets[pending] = connection;
-				addresses[pending++] = targetAddress.sin_addr;
 			}
 			else
 			{
-				closesocket(connection);
+				int error = WSAGetLastError();
+				if (error == WSAEWOULDBLOCK)
+				{
+					sockets[pending] = connection;
+					addresses[pending++] = targetAddress.sin_addr;
+				}
+				else
+				{
+					closesocket(connection);
+					if (!IsOfflineCpuError(error))
+					{
+						recordConnectionError(error, targetIp);
+						if (abortAdapter)
+							break;
+					}
+				}
 			}
 		}
 
 		DWORD started = GetTickCount();
-		while (pending > 0 && entries < maxEntries)
+		while (pending > 0 && scan.entries < maxEntries && !abortAdapter && !ScanCancelled(control))
 		{
 			DWORD elapsed = GetTickCount() - started;
-			if (elapsed >= 300)
+			if (elapsed >= CpuScanBatchTimeoutMs)
 				break;
 
 			fd_set writable, failed;
@@ -123,91 +237,101 @@ int SearchCpuViaPortScan(struct stAdapterInfo *adapter, struct stEthernetCpuInfo
 				FD_SET(sockets[index], &writable);
 				FD_SET(sockets[index], &failed);
 			}
-			struct timeval timeout = {0, static_cast<long>((300 - elapsed) * 1000)};
-			if (select(0, nullptr, &writable, &failed, &timeout) <= 0)
+			DWORD waitMs = CpuScanBatchTimeoutMs - elapsed;
+			if (control != nullptr)
+				waitMs = (std::min)(waitMs, DWORD(50));
+			struct timeval timeout = {0, static_cast<long>(waitMs * 1000)};
+			int ready = select(0, nullptr, &writable, &failed, &timeout);
+			if (ready == SOCKET_ERROR)
+			{
+				recordError("select", WSAGetLastError(), 0);
 				break;
+			}
+			if (ready == 0)
+			{
+				if (control != nullptr)
+					continue;
+				break;
+			}
 
-			for (int index = pending - 1; index >= 0 && entries < maxEntries; --index)
+			for (int index = pending - 1; index >= 0 && scan.entries < maxEntries; --index)
 			{
 				if (!FD_ISSET(sockets[index], &writable) && !FD_ISSET(sockets[index], &failed))
 					continue;
 				int error = 0;
 				int errorSize = sizeof(error);
-				if (getsockopt(sockets[index], SOL_SOCKET, SO_ERROR, (char *)&error, &errorSize) == 0 &&
-					error == 0 && FD_ISSET(sockets[index], &writable))
+				if (getsockopt(sockets[index], SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&error), &errorSize) == SOCKET_ERROR)
 				{
-					memset(&ethernetCpuInfo[entries], 0, sizeof(ethernetCpuInfo[entries]));
-					strcpy(ethernetCpuInfo[entries].ipAddress, inet_ntoa(addresses[index]));
-					strcpy(ethernetCpuInfo[entries].subnetMask, adapter->subnetMask);
-					++entries;
+					recordError("getsockopt", WSAGetLastError(), ntohl(addresses[index].s_addr));
+				}
+				else if (error == 0 && FD_ISSET(sockets[index], &writable))
+				{
+					addCpu(addresses[index]);
+				}
+				else if (error != 0 && !IsOfflineCpuError(error))
+				{
+					recordConnectionError(error, ntohl(addresses[index].s_addr));
 				}
 				closesocket(sockets[index]);
 				--pending;
 				sockets[index] = sockets[pending];
 				addresses[index] = addresses[pending];
+				if (abortAdapter)
+					break;
 			}
 		}
 		for (int index = 0; index < pending; ++index)
 			closesocket(sockets[index]);
+		if (control != nullptr)
+			control->completed.fetch_add(attempted);
 	}
 
 	WSACleanup();
-	return entries;
+	return scan;
 }
 
 /* -----------------------------------------------------------------------------------------
 	get a list of available ethernet adapters
 	----------------------------------------------------------------------------------------
 */
-int ListNetworkAdapters(struct stAdapterInfo *adapterInfo, int maxEntries)
+unsigned long ListCpuScanAdapters(std::vector<stAdapterInfo> &adapters)
 {
-	DWORD result;
-	IP_ADAPTER_INFO *buffer;
-	DWORD bufsize;
-	IP_ADAPTER_INFO *next;
-	IP_ADDR_STRING *ipaddr;
-
-	int entry = 0;
-
-	bufsize = 20 * sizeof(IP_ADAPTER_INFO);
-	buffer = (IP_ADAPTER_INFO *)malloc(bufsize);
-	next = (IP_ADAPTER_INFO *)buffer;
-	if (buffer == nullptr)
-		return 0;
-
-	result = GetAdaptersInfo(buffer, &bufsize);
-	if (result == ERROR_SUCCESS)
+	adapters = {{"127.0.0.1", "255.0.0.0", "Loopback (localhost)"}};
+	DWORD size = 0;
+	DWORD result = GetAdaptersInfo(nullptr, &size);
+	if (result == ERROR_NO_DATA)
+		return ERROR_SUCCESS;
+	if (result != ERROR_BUFFER_OVERFLOW)
+		return result;
+	std::vector<unsigned char> buffer;
+	for (unsigned attempt = 0; attempt < 3; ++attempt)
 	{
-		//        if( maxEntries )
-		//        {
-		//            strcpy( adapterInfo->ipAddress, "127.0.0.1" );
-		//            strcpy( adapterInfo->subnetMask, "255.255.255.0" );
-		//            strcpy( adapterInfo->description, "Loopback-Adapter" );
-		//            ++entry;
-		//            ++adapterInfo;
-		//        }
-
-		while ((next != nullptr) && (entry < maxEntries))
+		buffer.resize(size);
+		result = GetAdaptersInfo(reinterpret_cast<IP_ADAPTER_INFO *>(buffer.data()), &size);
+		if (result != ERROR_BUFFER_OVERFLOW)
+			break;
+	}
+	if (result == ERROR_NO_DATA)
+		return ERROR_SUCCESS;
+	if (result != ERROR_SUCCESS)
+		return result;
+	for (auto next = reinterpret_cast<IP_ADAPTER_INFO *>(buffer.data()); next != nullptr; next = next->Next)
+	{
+		if (next->Type != MIB_IF_TYPE_ETHERNET)
+			continue;
+		for (auto ipaddr = &next->IpAddressList; ipaddr != nullptr; ipaddr = ipaddr->Next)
 		{
-			ipaddr = &next->IpAddressList;
-
-			while (next->Type == MIB_IF_TYPE_ETHERNET && ipaddr != nullptr)
+			if (strcmp(ipaddr->IpAddress.String, "0.0.0.0") != 0)
 			{
-				if (strcmp(ipaddr->IpAddress.String, "0.0.0.0"))
-				{
-					strncpy(adapterInfo->ipAddress, ipaddr->IpAddress.String, sizeof(adapterInfo[0].ipAddress));
-					strncpy(adapterInfo->subnetMask, ipaddr->IpMask.String, sizeof(adapterInfo[0].subnetMask));
-					strncpy(adapterInfo->description, next->Description, sizeof(adapterInfo[0].description));
-					++entry;
-					++adapterInfo;
-				}
-				ipaddr = ipaddr->Next;
+				stAdapterInfo adapter = {};
+				snprintf(adapter.ipAddress, sizeof(adapter.ipAddress), "%s", ipaddr->IpAddress.String);
+				snprintf(adapter.subnetMask, sizeof(adapter.subnetMask), "%s", ipaddr->IpMask.String);
+				snprintf(adapter.description, sizeof(adapter.description), "%s", next->Description);
+				adapters.push_back(adapter);
 			}
-			next = next->Next;
 		}
 	}
-	free(buffer);
-	return entry;
+	return ERROR_SUCCESS;
 }
 
 /* -----------------------------------------------------------------------------------------
@@ -222,177 +346,231 @@ static void WINAPI PviSnmpProc(WPARAM /* wParam */, LPARAM /* lParam */, LPVOID 
 	start searching CPUs via SNMP protocol
 	----------------------------------------------------------------------------------------
 */
-int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
-{
-
-	int entries = 0;
-	DWORD result;
-	DWORD linkIdSnmpLine;
-	DWORD linkIdDevice;
-	LPVOID pviSnmpCallback = reinterpret_cast<LPVOID>(PviSnmpProc);
-
-	memset(ethernetCpuInfo, 0, sizeof(struct stEthernetCpuInfo) * maxEntries);
-
-	result = PviCreate(&linkIdSnmpLine, "@Pvi/LnSNMP", POBJ_LINE, "CD=\"LNSNMP\"", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-	if (result == 0)
+struct SnmpLink {
+	DWORD id = 0;
+	~SnmpLink()
 	{
-		result = PviCreate(&linkIdDevice, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\"", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-		if (result == 0)
-		{
-			char *buffer = (char *)malloc(65536);
-			if (buffer != nullptr)
-			{
-				result = PviRead(linkIdDevice, POBJ_ACC_LIST_EXTERN, nullptr, 0, buffer, 65536);
-				if (result == 0)
-				{ /* get list of MAC addresses */
-					char delimiter[] = "\t";
-					char *ptr = strtok(buffer, delimiter);
-					while (ptr != nullptr && (entries < maxEntries))
-					{
-						if (strstr(ptr, KWDESC_OBJTYPE "=" KWOBJTYPE_STATION))
-						{
-							DWORD linkIdStation;
-							char description[50];
-
-							strncpy(ethernetCpuInfo->macAddress, ptr, 17); /* MAC address */
-							strcpy(description, "CD=\"/CN=");
-							strcat(description, ethernetCpuInfo->macAddress);
-							strcat(description, "\"");
-
-							result = PviCreate(&linkIdStation, "@Pvi/LnSNMP/Device/Station", POBJ_STATION, description, pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-							if (result == 0)
-							{
-								DWORD linkIdPvar;
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Ip", POBJ_PVAR, "CD=ipAddress", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->ipAddress, sizeof(ethernetCpuInfo->ipAddress));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Subnet", POBJ_PVAR, "CD=subnetMask", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->subnetMask, sizeof(ethernetCpuInfo->subnetMask));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/Gateway", POBJ_PVAR, "CD=defaultGateway", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, ethernetCpuInfo->gateway, sizeof(ethernetCpuInfo->gateway));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/snmpMode", POBJ_PVAR, "CD=snmpMode", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->SNMP_mode, sizeof(ethernetCpuInfo->SNMP_mode));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaActivated", POBJ_PVAR, "CD=inaActivated", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_activated, sizeof(ethernetCpuInfo->INA_activated));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaNodeNumber", POBJ_PVAR, "CD=inaNodeNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_nodeNumber, sizeof(ethernetCpuInfo->INA_nodeNumber));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/inaPortNumber", POBJ_PVAR, "CD=inaPortNumber", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->INA_portNumber, sizeof(ethernetCpuInfo->INA_portNumber));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/ipMethod", POBJ_PVAR, "CD=ipMethod", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->ipMethod, sizeof(ethernetCpuInfo->ipMethod));
-								PviUnlink(linkIdPvar);
-								int arState;
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/arState", POBJ_PVAR, "CD=arState", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&arState, sizeof(arState));
-								PviUnlink(linkIdPvar);
-								switch (arState)
-								{
-								case 1:
-									strcpy(ethernetCpuInfo->arState, "BOOT");
-									break;
-
-								case 2:
-									strcpy(ethernetCpuInfo->arState, "DIAG");
-									break;
-
-								case 3:
-									strcpy(ethernetCpuInfo->arState, "SERVICE");
-									break;
-
-								case 4:
-									strcpy(ethernetCpuInfo->arState, "RUN");
-									break;
-
-								default:
-									strcpy(ethernetCpuInfo->arState, "(undefined)");
-									break;
-								}
-
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/targetTypeDescription", POBJ_PVAR, "CD=targetTypeDescription", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->targetTypeDescription, sizeof(ethernetCpuInfo->targetTypeDescription));
-								PviUnlink(linkIdPvar);
-								result = PviCreate(&linkIdPvar, "@Pvi/LnSNMP/Device/Station/arVersion", POBJ_PVAR, "CD=arVersion", pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
-								PviRead(linkIdPvar, POBJ_ACC_DATA, nullptr, 0, (void *)&ethernetCpuInfo->arVersion, sizeof(ethernetCpuInfo->arVersion));
-								PviUnlink(linkIdPvar);
-								PviUnlink(linkIdStation);
-							}
-							++ethernetCpuInfo;
-							++entries;
-						}
-						ptr = strtok(nullptr, delimiter);
-					}
-				}
-				free(buffer);
-			}
-			PviUnlink(linkIdDevice);
-		}
-
-		result = PviUnlink(linkIdSnmpLine);
+		if (id != 0)
+			PviUnlink(id);
 	}
+};
 
-	return (entries);
+int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, CpuScanControl *control)
+{
+	if (ScanCancelled(control))
+		return 0;
+	if (ethernetCpuInfo == nullptr || maxEntries <= 0)
+	{
+		ReportDiscoveryError("Invalid SNMP scan output buffer.", control);
+		return -1;
+	}
+	int entries = 0;
+	LPVOID pviSnmpCallback = reinterpret_cast<LPVOID>(PviSnmpProc);
+	memset(ethernetCpuInfo, 0, sizeof(struct stEthernetCpuInfo) * maxEntries);
+	auto failed = [&](const char *operation, int error) {
+		if (!ScanCancelled(control))
+		{
+			char message[180];
+			snprintf(message, sizeof(message), "SNMP/PVI discovery failed during %s (error %d).", operation, error);
+			ReportDiscoveryError(message, control);
+		}
+	};
+	auto create = [&](SnmpLink &link, const char *name, DWORD type, const char *description) {
+		if (ScanCancelled(control))
+			return false;
+		int result = PviCreate(&link.id, name, type, description, pviSnmpCallback, SET_PVICALLBACK_DATA, 0, "Ev=eds");
+		if (result != 0)
+		{
+			link.id = 0;
+			failed(name, result);
+			return false;
+		}
+		return !ScanCancelled(control);
+	};
+	auto read = [&](DWORD link, DWORD access, void *buffer, LONG size) {
+		if (ScanCancelled(control))
+			return false;
+		int result = PviRead(link, access, nullptr, 0, buffer, size);
+		if (result != 0)
+		{
+			failed("PviRead", result);
+			return false;
+		}
+		return !ScanCancelled(control);
+	};
+	SnmpLink line, device;
+	if (!create(line, "@Pvi/LnSNMP", POBJ_LINE, "CD=\"LNSNMP\"") ||
+		!create(device, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\""))
+		return entries;
+	std::vector<char> buffer(65536);
+	if (!read(device.id, POBJ_ACC_LIST_EXTERN, buffer.data(), static_cast<LONG>(buffer.size())))
+		return entries;
+	buffer.back() = '\0';
+	for (char *entry = buffer.data(); entry != nullptr && *entry != '\0' &&
+		entries < maxEntries && !ScanCancelled(control);)
+	{
+		char *next = strchr(entry, '\t');
+		if (next != nullptr)
+			*next++ = '\0';
+		if (strstr(entry, KWDESC_OBJTYPE "=" KWOBJTYPE_STATION) != nullptr)
+		{
+			auto &cpu = ethernetCpuInfo[entries];
+			snprintf(cpu.macAddress, sizeof(cpu.macAddress), "%.17s", entry);
+			char description[64];
+			snprintf(description, sizeof(description), "CD=\"/CN=%s\"", cpu.macAddress);
+			SnmpLink station;
+			if (!create(station, "@Pvi/LnSNMP/Device/Station", POBJ_STATION, description))
+				break;
+			int arState = 0;
+			struct Property { const char *name; const char *value; void *buffer; LONG size; };
+			Property properties[] = {
+				{"Ip", "ipAddress", cpu.ipAddress, sizeof(cpu.ipAddress)},
+				{"Subnet", "subnetMask", cpu.subnetMask, sizeof(cpu.subnetMask)},
+				{"Gateway", "defaultGateway", cpu.gateway, sizeof(cpu.gateway)},
+				{"snmpMode", "snmpMode", &cpu.SNMP_mode, sizeof(cpu.SNMP_mode)},
+				{"inaActivated", "inaActivated", &cpu.INA_activated, sizeof(cpu.INA_activated)},
+				{"inaNodeNumber", "inaNodeNumber", &cpu.INA_nodeNumber, sizeof(cpu.INA_nodeNumber)},
+				{"inaPortNumber", "inaPortNumber", &cpu.INA_portNumber, sizeof(cpu.INA_portNumber)},
+				{"ipMethod", "ipMethod", &cpu.ipMethod, sizeof(cpu.ipMethod)},
+				{"arState", "arState", &arState, sizeof(arState)},
+				{"targetTypeDescription", "targetTypeDescription", cpu.targetTypeDescription, sizeof(cpu.targetTypeDescription)},
+				{"arVersion", "arVersion", cpu.arVersion, sizeof(cpu.arVersion)}
+			};
+			bool complete = true;
+			for (const auto &property : properties)
+			{
+				std::string name = std::string("@Pvi/LnSNMP/Device/Station/") + property.name;
+				std::string descriptor = std::string("CD=") + property.value;
+				SnmpLink variable;
+				if (!create(variable, name.c_str(), POBJ_PVAR, descriptor.c_str()) ||
+					!read(variable.id, POBJ_ACC_DATA, property.buffer, property.size))
+				{
+					complete = false;
+					break;
+				}
+			}
+			if (!complete)
+				break;
+			const char *states[] = {"(undefined)", "BOOT", "DIAG", "SERVICE", "RUN"};
+			strcpy(cpu.arState, states[arState >= 1 && arState <= 4 ? arState : 0]);
+			++entries;
+		}
+		entry = next;
+	}
+	return entries;
 }
 
 /* -----------------------------------------------------------------------------------------
 	start searching CPUs connected by Ethernet
 	----------------------------------------------------------------------------------------
 */
-int SearchEthernetCpus(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries)
+static void ReportCpuScanError(const stAdapterInfo &adapter, const CpuPortScanResult &scan, CpuScanControl *control)
 {
-	struct stAdapterInfo adapters[21] = {
-		{"127.0.0.1", "255.0.0.0", "Loopback (localhost)"}};
-	int noOfAdapters = 1 + ListNetworkAdapters(adapters + 1, 20);
-
-#ifdef __DEBUG__
-	PrintEthernetAdapters(adapters, noOfAdapters);
-#endif
-
-	int noOfCPUs = SearchCpuViaSnmp(ethernetCpuInfo, maxEntries);
-
-	/* Also discover CPUs with SNMP disabled via TCP port 11169. */
-	unsigned long buflen = 256 * sizeof(struct stEthernetCpuInfo);
-	struct stEthernetCpuInfo *ethernetScanCpuInfo = (struct stEthernetCpuInfo *)malloc(buflen);
-	if (ethernetScanCpuInfo != nullptr)
+	char systemMessage[256] = {};
+	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr,
+		static_cast<DWORD>(scan.error), 0, systemMessage, sizeof(systemMessage), nullptr);
+	char message[720];
+	char address[20];
+	snprintf(address, sizeof(address), "%u.%u.%u.%u", (scan.address >> 24) & 255,
+		(scan.address >> 16) & 255, (scan.address >> 8) & 255, scan.address & 255);
+	snprintf(message, sizeof(message),
+		"Could not complete the TCP scan on %s (%s).\nOperation: %s\nAddress: %s\nError %d: %s\n"
+		"Rejected out-of-subnet targets: %u.\n"
+		"Check the adapter address, subnet, routing, and firewall permissions. Other adapters will still be scanned.",
+		adapter.description, adapter.ipAddress, scan.operation,
+		scan.address == 0 ? adapter.ipAddress : address, scan.error, systemMessage, scan.rejectedTargets);
+	if (IsCpuScanRejection(scan.error) &&
+		(strcmp(scan.operation, "bind") == 0 || strcmp(scan.operation, "connect") == 0))
 	{
-		for (int i = 0; i < noOfAdapters; ++i)
-		{
-			memset(ethernetScanCpuInfo, 0, buflen);
-			int result = SearchCpuViaPortScan(&adapters[i], ethernetScanCpuInfo, 256);
-			if (result > 0)
-			{
-				for (int i = 0; i < result; ++i)
-				{
-#ifdef __DEBUG__
-					printf("%s / %s \n", ethernetScanCpuInfo[i].ipAddress, ethernetScanCpuInfo[i].subnetMask);
-#endif
-					int found = 0;
-					for (int n = 0; n < noOfCPUs; ++n)
-					{ /* discard dublicates */
-						if (strcmp(ethernetScanCpuInfo[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0)
-						{
-							found = 1;
-							break;
-						}
-					}
-					if (!found && (noOfCPUs < maxEntries))
-					{
-#ifdef __DEBUG__
-						puts("SNMP disabled CPU found\n");
-#endif
-						memcpy(&ethernetCpuInfo[noOfCPUs], &ethernetScanCpuInfo[i], sizeof(struct stEthernetCpuInfo));
-						++noOfCPUs;
-					}
-				}
-			}
-		}
-		free(ethernetScanCpuInfo);
+		OutputDebugStringA(message);
+		return;
+	}
+	ReportDiscoveryError(message, control);
+}
+
+int SearchEthernetCpus(stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsigned hosts, bool allowBeyondSubnet,
+	CpuScanControl *control)
+{
+	if (ScanCancelled(control))
+		return 0;
+	if (ethernetCpuInfo == nullptr || maxEntries <= 0)
+	{
+		ReportDiscoveryError("Invalid CPU scan output buffer.", control);
+		return -1;
+	}
+	std::vector<stAdapterInfo> adapters;
+	unsigned long error = ListCpuScanAdapters(adapters);
+	if (error != ERROR_SUCCESS)
+	{
+		char message[160];
+		snprintf(message, sizeof(message), "Could not enumerate Ethernet adapters (error %lu).", error);
+		ReportDiscoveryError(message, control);
+		return -1;
+	}
+	CpuPortScanPlan validationPlan;
+	int validationError;
+	if (!GetCpuPortScanPlan(adapters.front(), hosts, validationPlan, validationError, allowBeyondSubnet))
+	{
+		ReportDiscoveryError("Invalid CPU scan address-block size.", control);
+		return -1;
 	}
 
-	return (noOfCPUs);
+#ifdef __DEBUG__
+	PrintEthernetAdapters(adapters.data(), static_cast<int>(adapters.size()));
+#endif
+	if (control != nullptr)
+	{
+		unsigned total = 0;
+		for (const auto &adapter : adapters)
+		{
+			CpuPortScanPlan plan;
+			int error;
+			if (GetCpuPortScanPlan(adapter, hosts, plan, error, allowBeyondSubnet))
+				total += plan.targetCount;
+		}
+		control->total.store(total);
+		control->phase.store(CpuScanPhase::Snmp);
+	}
+	int noOfCPUs = SearchCpuViaSnmp(ethernetCpuInfo, maxEntries, control);
+	if (ScanCancelled(control) || noOfCPUs < 0)
+		return noOfCPUs;
+	if (control != nullptr)
+		control->phase.store(CpuScanPhase::Tcp);
+	std::vector<stEthernetCpuInfo> candidates(maxEntries);
+	for (const auto &adapter : adapters)
+	{
+		if (noOfCPUs >= maxEntries || ScanCancelled(control))
+			break;
+		unsigned started = control != nullptr ? control->completed.load() : 0;
+		CpuPortScanResult scan = SearchCpuViaPortScan(adapter, candidates.data(), maxEntries, hosts, allowBeyondSubnet, control);
+		if (ScanCancelled(control))
+			break;
+		if (scan.error != 0)
+			ReportCpuScanError(adapter, scan, control);
+		if (control != nullptr)
+		{
+			CpuPortScanPlan plan;
+			int error;
+			if (GetCpuPortScanPlan(adapter, hosts, plan, error, allowBeyondSubnet))
+				control->completed.store(started + plan.targetCount);
+		}
+		for (int i = 0; i < scan.entries; ++i)
+		{
+#ifdef __DEBUG__
+			printf("%s / %s\n", candidates[i].ipAddress, candidates[i].subnetMask);
+#endif
+			bool found = false;
+			for (int n = 0; n < noOfCPUs; ++n)
+			{
+				if (strcmp(candidates[i].ipAddress, ethernetCpuInfo[n].ipAddress) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found && noOfCPUs < maxEntries)
+				ethernetCpuInfo[noOfCPUs++] = candidates[i];
+		}
+	}
+	return noOfCPUs;
 }

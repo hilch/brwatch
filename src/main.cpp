@@ -165,6 +165,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 
 	while (GetMessageA(&msg, nullptr, 0, 0))
 	{
+		HWND scanDialog = objectTreeView.GetCpuScanDialogHandle();
+		if (scanDialog != nullptr && IsDialogMessageA(scanDialog, &msg))
+			continue;
 		TranslateMessage(&msg);
 		DispatchMessageA(&msg);
 	}
@@ -789,6 +792,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		return (0);
 
 	case WM_DESTROY:
+		objectTreeView.StopCpuScan();
 		if (hfont_watchlist != nullptr)
 		{
 			DeleteObject(hfont_watchlist);
