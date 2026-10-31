@@ -23,6 +23,7 @@
 #include "main.h"
 #include "stringtools.h"
 #include "settings.h"
+#include "logger.h"
 #include "dlg_writepar.h"
 #include "dlg_editcpu.h"
 #include "dlg_edittask.h"
@@ -137,6 +138,110 @@ LRESULT WatchListView::HandleMessages(UINT wMsg, WPARAM /*wParam*/, LPARAM lPara
 	}
 
 	return 1;
+}
+
+PviObject *WatchListView::GetItemObject(int index) const
+{
+	if (index < 0)
+		return nullptr;
+	LVITEMA item = {};
+	item.mask = LVIF_PARAM;
+	item.iItem = index;
+	if (!ListView_GetItem(window, &item) || item.lParam == 0)
+		return nullptr;
+	return PviObject::FindByName(reinterpret_cast<const char *>(item.lParam));
+}
+
+bool WatchListView::CanModify() const
+{
+	return window != nullptr && IsWindowEnabled(window) && !Logger::IsRunning();
+}
+
+bool WatchListView::CanEdit(const PviObject *object) const
+{
+	return CanModify() && object != nullptr &&
+		(object->type == POBJ_PVAR || object->type == POBJ_CPU || object->type == POBJ_TASK) &&
+		GetPrivateProfileIntA("General", "WriteAllowed", 0, ProgramSettings::GetFileName()) != 0;
+}
+
+void WatchListView::UpdateMenu(HMENU menu) const
+{
+	int index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
+	EnableMenuItem(menu, IDM_WATCH_EDIT, MF_BYCOMMAND |
+		(CanEdit(GetItemObject(index)) ? MF_ENABLED : MF_GRAYED));
+	EnableMenuItem(menu, IDM_WATCH_REMOVE, MF_BYCOMMAND |
+		(CanModify() && index >= 0 ? MF_ENABLED : MF_GRAYED));
+}
+
+void WatchListView::EditItem(int index)
+{
+	PviObject *object = GetItemObject(index);
+	if (!CanEdit(object))
+		return;
+	switch (object->type)
+	{
+	case POBJ_PVAR:
+		DlgWritePvarShowDialog(object);
+		break;
+	case POBJ_CPU:
+		DlgEditCpuShowDialog(object);
+		break;
+	case POBJ_TASK:
+		DlgEditTaskShowDialog(object);
+		break;
+	default:
+		break;
+	}
+}
+
+void WatchListView::EditSelected()
+{
+	EditItem(ListView_GetNextItem(window, -1, LVNI_SELECTED));
+}
+
+bool WatchListView::RemoveItem(int index)
+{
+	if (!CanModify() || index < 0 || index >= ListView_GetItemCount(window))
+		return false;
+	PviObject *object = GetItemObject(index);
+	if (object != nullptr)
+	{
+		if (object->Watch(FALSE) == nullptr)
+			return false;
+		object->watchsort = -1;
+	}
+	if (!ListView_DeleteItem(window, index))
+	{
+		MessageBoxA(parentWindow, "Could not remove the object from the watch list.", "Watch", MB_OK | MB_ICONERROR);
+		return false;
+	}
+	return true;
+}
+
+void WatchListView::RemoveSelected()
+{
+	if (!CanModify())
+		return;
+	int index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
+	while (index >= 0)
+	{
+		bool removed = RemoveItem(index);
+		index = ListView_GetNextItem(window, removed ? index - 1 : index, LVNI_SELECTED);
+	}
+}
+
+void WatchListView::RemoveObject(PviObject *object)
+{
+	if (object == nullptr || !CanModify())
+		return;
+	for (int index = 0; index < ListView_GetItemCount(window); ++index)
+	{
+		if (GetItemObject(index) == object)
+		{
+			RemoveItem(index);
+			return;
+		}
+	}
 }
 
 /* insert object to list view */
@@ -648,45 +753,14 @@ void WatchListView::UpdateValue(PviObject *object)
 
 void WatchListView::Keydown(WORD vkey)
 {
-	int index;
-	LVITEM lvitem;
-	PviObject *object;
-
 	switch (vkey)
 	{
 	case VK_DELETE:
-		index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
-		while (index != -1)
-		{
-			memset(&lvitem, 0, sizeof(lvitem));
-			lvitem.iItem = index;
-			lvitem.mask = LVIF_PARAM;
-			ListView_GetItem(window, &lvitem);
-			object = PviObject::FindByName((char *)lvitem.lParam);
-			if (object != nullptr)
-				object->Watch(FALSE);
-			ListView_DeleteItem(window, index); // remove from list view
-			index = ListView_GetNextItem(window, index, LVNI_SELECTED);
-		}
+		RemoveSelected();
 		break;
 
 	case VK_RETURN:
-		index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
-		if (index != -1)
-		{
-			memset(&lvitem, 0, sizeof(lvitem));
-			lvitem.iItem = index;
-			lvitem.mask = LVIF_PARAM;
-			ListView_GetItem(window, &lvitem);
-
-			if (lvitem.lParam != 0)
-			{
-				object = PviObject::FindByName((char *)lvitem.lParam);
-				DlgWritePvarShowDialog(object);
-				DlgEditCpuShowDialog(object);
-				DlgEditTaskShowDialog(object);
-			}
-		}
+		EditSelected();
 		break;
 	}
 }
@@ -695,28 +769,7 @@ void WatchListView::Keydown(WORD vkey)
 
 void WatchListView::DblClick(LPNMLISTVIEW lpnm)
 {
-	LVITEM lvitem;
-	PviObject *object;
-	BOOL write_allowed;
-
-	// Read write permissions from the INI file.
-	write_allowed = GetPrivateProfileIntA("General", "WriteAllowed", 0, ProgramSettings::GetFileName());
-
-	if (!write_allowed)
-		return;
-
-	memset(&lvitem, 0, sizeof(lvitem));
-	lvitem.mask = LVIF_PARAM;
-	lvitem.iItem = lpnm->iItem;
-	ListView_GetItem(window, &lvitem);
-
-	if (lvitem.lParam != 0)
-	{
-		object = PviObject::FindByName((char *)lvitem.lParam);
-		DlgWritePvarShowDialog(object);
-		DlgEditCpuShowDialog(object);
-		DlgEditTaskShowDialog(object);
-	}
+	EditItem(lpnm->iItem);
 }
 
 void WatchListView::RClick(LPNMLISTVIEW lpnm)

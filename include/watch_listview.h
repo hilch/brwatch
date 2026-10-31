@@ -38,8 +38,17 @@ public:
 	LRESULT HandleMessages(UINT message, WPARAM wParam, LPARAM lParam);
 	void InsertPVIObjects(PviObject *object);
 	void UpdateValue(PviObject *object);
+	void UpdateMenu(HMENU menu) const;
+	void EditSelected();
+	void RemoveSelected();
+	void RemoveObject(PviObject *object);
 
 private:
+	PviObject *GetItemObject(int index) const;
+	bool CanModify() const;
+	bool CanEdit(const PviObject *object) const;
+	void EditItem(int index);
+	bool RemoveItem(int index);
 	void SetItemText(int index, int subItem, char *text);
 	void Keydown(WORD key);
 	void DblClick(LPNMLISTVIEW notification);

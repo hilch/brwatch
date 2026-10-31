@@ -299,6 +299,11 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Remove all PVI-Objects",     IDM_MNU_REFRESH
     END
+    POPUP "&Watch"
+    BEGIN
+        MENUITEM "&Edit",                       IDM_WATCH_EDIT, GRAYED
+        MENUITEM "&Remove",                     IDM_WATCH_REMOVE, GRAYED
+    END
     POPUP "&Logger"
     BEGIN
         MENUITEM "Logger &Configuration",       IDM_LOGGER_CONFIG

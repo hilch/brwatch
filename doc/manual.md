@@ -39,6 +39,9 @@ To watch a selected variable just drag it to the list view control at the right.
 The entries can be freely arranged by drag and drop operations.
 If you drag an entry outside BRWATCH, it will removed from the list view.
 
+Select entries in the watch list and choose **Watch > Remove** (or press Delete)
+to remove them from the watch list without deleting their PVI objects.
+
 Set `object_refresh_time` in the `[General]` section of `brwatch.ini` to configure
 the PVI process-variable refresh time in milliseconds. The default is `50` when
 the setting is absent. Restart BRWATCH after changing this value.
@@ -53,7 +56,9 @@ TODO screenshot
 
 ## Edit values
 
-To change a value double click the entry in the list view.
+To change a value, double-click the entry in the list view, select it and choose
+**Watch > Edit**, or press Enter. Editing requires `[General] WriteAllowed=1`
+in `brwatch.ini`. Watch editing and removal are disabled while logging is running.
 The following dialog window enables to enter a new value.
 
 ### Numbers

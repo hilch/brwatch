@@ -369,11 +369,20 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 
 	case WM_INITMENUPOPUP:
 		objectTreeView.UpdateCpuSettingsMenu(reinterpret_cast<HMENU>(wParam));
+		watchListView.UpdateMenu(reinterpret_cast<HMENU>(wParam));
 		break;
 
 	case WM_COMMAND:
 		switch (wParam)
 		{
+		case IDM_WATCH_EDIT:
+			watchListView.EditSelected();
+			break;
+
+		case IDM_WATCH_REMOVE:
+			watchListView.RemoveSelected();
+			break;
+
 		case IDM_STORE_CPU_SETTINGS:
 		case IDM_REMOVE_CPU_SETTINGS:
 			objectTreeView.CpuSettingsCommand(static_cast<UINT>(wParam));
@@ -571,31 +580,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			break;
 
 		case IDM_DELETE_OBJECT_FROM_LIST:
-		{
-			LVITEM lvitem;
-			int i;
-			// char *temp;
-
-			i = ListView_GetNextItem(watchListView.GetHandle(), -1, LVNI_ALL);
-			while (i != -1)
-			{
-				memset(&lvitem, 0, sizeof(lvitem));
-				lvitem.mask = LVIF_PARAM;
-				lvitem.iItem = i;
-				ListView_GetItem(watchListView.GetHandle(), &lvitem);
-				if (lvitem.lParam != 0)
-				{
-					// temp = (char*) lvitem.lParam;
-					if (strcmp(g_selectedPVIObject->name, (char *)lvitem.lParam) == 0)
-					{
-						g_selectedPVIObject->Watch(FALSE);		// remove from watch
-						ListView_DeleteItem(watchListView.GetHandle(), i); // remove from list view
-						break;
-					}
-				}
-				i = ListView_GetNextItem(watchListView.GetHandle(), i, LVNI_ALL);
-			}
-		}
+			watchListView.RemoveObject(g_selectedPVIObject);
 		break;
 
 		case IDM_VIEW_SETDEFAULTFONT:
