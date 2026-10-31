@@ -14,5 +14,6 @@
     "files.associations": {
         "*.h": "c",
         "settings.h": "cpp"
-    }
+    },
+    "makefile.configureOnOpen": true
 }
