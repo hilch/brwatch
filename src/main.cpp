@@ -210,7 +210,7 @@ static void PviObjectsValid(void)
 	}
 
 	// if logger was active when program ended it will be started again.
-	if (GetPrivateProfileIntA("General", "LoggerActive", 0, ProgramSettings::GetFileName()))
+	if (GetPrivateProfileIntA("Logger", "LoggerActive", 0, ProgramSettings::GetFileName()))
 	{ // was logger active ?
 		strcpy(logger_watch_file, GetApplicationPath());
 		strcat(logger_watch_file, "\\_logger.wtc");
@@ -762,7 +762,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Stop");
 			EnableWindow(watchListView.GetHandle(), FALSE);
 			EnableWindow(objectTreeView.GetHandle(), FALSE);
-			WritePrivateProfileStringA("General", "LoggerActive", "1", ProgramSettings::GetFileName());
+			WritePrivateProfileStringA("Logger", "LoggerActive", "1", ProgramSettings::GetFileName());
 			strcpy(logger_watch_file, GetApplicationPath());
 			strcat(logger_watch_file, "\\_logger.wtc");
 			SaveWatchFile(logger_watch_file);
@@ -773,7 +773,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			ModifyMenuA(GetMenu(hWnd), IDM_LOGGER_START, MF_BYCOMMAND | MF_STRING, IDM_LOGGER_START, "Logger &Start");
 			EnableWindow(watchListView.GetHandle(), TRUE);
 			EnableWindow(objectTreeView.GetHandle(), TRUE);
-			WritePrivateProfileStringA("General", "LoggerActive", "0", ProgramSettings::GetFileName());
+			WritePrivateProfileStringA("Logger", "LoggerActive", "0", ProgramSettings::GetFileName());
 		}
 		break;
 

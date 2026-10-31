@@ -1793,6 +1793,11 @@ static void CheckProgramSettings(const char *testDirectory)
 	SendMessageA(dialog, WM_COMMAND, IDC_BUTTON_SETTINGS_DEFAULTS, 0);
 	CHECK(GetDlgItemTextA(dialog, IDC_EDIT1, text, sizeof(text)) != 0);
 	CHECK(std::string(text).find("[Logger]") != std::string::npos);
+	std::string defaultText = text;
+	size_t loggerSection = defaultText.find("[Logger]");
+	size_t loggerActive = defaultText.find("LoggerActive=0");
+	CHECK(loggerActive != std::string::npos && loggerActive > loggerSection);
+	CHECK(defaultText.substr(0, loggerSection).find("LoggerActive") == std::string::npos);
 	CHECK(std::string(text).find("Third CPU") == std::string::npos);
 	CHECK(ProgramSettings::FindCpuSection("Third CPU") == 3);
 	CHECK(DestroyWindow(dialog) != 0);
