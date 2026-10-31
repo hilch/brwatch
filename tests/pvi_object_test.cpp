@@ -24,6 +24,8 @@
 #include "object_treeview.h"
 #include "dlg_about.h"
 #include "dlg_cpuscan.h"
+#include "dlg_editcpu.h"
+#include "dlg_writepar.h"
 #include "resource.h"
 #include "settings.h"
 #include "logger.h"
@@ -35,6 +37,7 @@
 #include <map>
 #include <fstream>
 #include <iterator>
+#include <cctype>
 
 static_assert(std::is_standard_layout<PviObject>::value, "Keep the Win32-facing data layout");
 static_assert(std::is_trivially_copyable<PviObject>::value, "Object descriptions remain value-copyable");
@@ -60,6 +63,8 @@ static INT_PTR browserResult = 33;
 static unsigned editDialogs;
 static UINT editDialogResource;
 static PviObject *editDialogObject;
+static DLGPROC editDialogProcedure;
+static UINT keyboardCommand;
 static HMENU lastPopupMenu;
 static HWND lastPopupOwner;
 static std::vector<stAdapterInfo> testAdapters;
@@ -173,7 +178,7 @@ static HINSTANCE WINAPI TestShellExecuteW(HWND, LPCWSTR operation, LPCWSTR url, 
 	return reinterpret_cast<HINSTANCE>(browserResult);
 }
 
-static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGPROC, LPARAM data)
+static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGPROC procedure, LPARAM data)
 {
 	CHECK(IS_INTRESOURCE(resource));
 	if (reinterpret_cast<ULONG_PTR>(resource) == DLG_CPU_SCAN)
@@ -188,6 +193,7 @@ static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGP
 	++editDialogs;
 	editDialogResource = static_cast<UINT>(reinterpret_cast<ULONG_PTR>(resource));
 	editDialogObject = reinterpret_cast<PviObject *>(data);
+	editDialogProcedure = procedure;
 	return IDCANCEL;
 }
 
@@ -1850,6 +1856,185 @@ static void CheckCpuScanTree()
 	readResponse = savedResponse;
 }
 
+static INT_PTR CALLBACK KeyboardDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (message == WM_COMMAND)
+	{
+		keyboardCommand = LOWORD(wParam);
+		return TRUE;
+	}
+	return editDialogProcedure(dialog, message, wParam, lParam);
+}
+
+static BOOL SendDialogKey(HWND dialog, UINT messageType, WPARAM key, LPARAM keyData = 0)
+{
+	MSG message = {};
+	message.hwnd = GetFocus();
+	CHECK(message.hwnd != nullptr && IsChild(dialog, message.hwnd));
+	message.message = messageType;
+	message.wParam = key;
+	message.lParam = keyData;
+	keyboardCommand = 0;
+	BOOL handled = IsDialogMessageA(dialog, &message);
+	while (PeekMessageA(&message, dialog, 0, 0, PM_REMOVE))
+	{
+		if (!IsDialogMessageA(dialog, &message))
+		{
+			TranslateMessage(&message);
+			DispatchMessageA(&message);
+		}
+	}
+	return handled;
+}
+
+static void SendDialogMnemonic(HWND dialog, char key)
+{
+	SendDialogKey(dialog, WM_SYSCHAR, key, 1L << 29);
+}
+
+static void CheckDialogTabOrder(HWND dialog, const std::vector<int> &controls)
+{
+	BYTE savedKeys[256];
+	BYTE keys[256];
+	CHECK(GetKeyboardState(savedKeys));
+	memcpy(keys, savedKeys, sizeof(keys));
+	keys[VK_SHIFT] &= ~0x80;
+	CHECK(SetKeyboardState(keys));
+	SetFocus(GetDlgItem(dialog, controls.front()));
+	for (size_t index = 1; index <= controls.size(); ++index)
+	{
+		CHECK(SendDialogKey(dialog, WM_KEYDOWN, VK_TAB));
+		CHECK(GetFocus() == GetDlgItem(dialog, controls[index % controls.size()]));
+	}
+	keys[VK_SHIFT] |= 0x80;
+	CHECK(SetKeyboardState(keys));
+	for (size_t index = controls.size(); index != 0; --index)
+	{
+		CHECK(SendDialogKey(dialog, WM_KEYDOWN, VK_TAB));
+		CHECK(GetFocus() == GetDlgItem(dialog, controls[index - 1]));
+	}
+	CHECK(SetKeyboardState(savedKeys));
+}
+
+static void CheckButtonMnemonic(HWND dialog, char key, UINT command)
+{
+	HWND button = GetDlgItem(dialog, command);
+	CHECK(button != nullptr && IsWindowEnabled(button));
+	CHECK((SendMessageA(button, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) == 0);
+	CHECK((GetWindowLongPtrA(button, GWL_STYLE) & WS_TABSTOP) != 0);
+	char text[80];
+	CHECK(GetWindowTextA(button, text, sizeof(text)) != 0);
+	std::string mnemonic = std::string("&") + static_cast<char>(std::toupper(static_cast<unsigned char>(key)));
+	std::string caption = text;
+	for (char &letter : caption)
+		letter = static_cast<char>(std::toupper(static_cast<unsigned char>(letter)));
+	CHECK(caption.find(mnemonic) != std::string::npos);
+	SendDialogMnemonic(dialog, key);
+	if (keyboardCommand != command)
+		fprintf(stderr, "Mnemonic Alt+%c: expected command %u, received %u, visible %d\n",
+			key, command, keyboardCommand, IsWindowVisible(button));
+	CHECK(keyboardCommand == command);
+}
+
+static void CheckButtonCaption(HWND dialog, UINT command, const char *caption)
+{
+	HWND button = GetDlgItem(dialog, command);
+	CHECK(button != nullptr && IsWindowEnabled(button));
+	char text[80];
+	CHECK(GetWindowTextA(button, text, sizeof(text)) != 0);
+	CHECK(strcmp(text, caption) == 0);
+	HDC dc = GetDC(button);
+	CHECK(dc != nullptr);
+	HGDIOBJ font = SelectObject(dc, reinterpret_cast<HFONT>(SendMessageA(button, WM_GETFONT, 0, 0)));
+	SIZE size = {};
+	CHECK(GetTextExtentPoint32A(dc, text, static_cast<int>(strlen(text)), &size));
+	SelectObject(dc, font);
+	CHECK(ReleaseDC(button, dc));
+	RECT bounds = {};
+	CHECK(GetClientRect(button, &bounds));
+	CHECK(size.cx + 8 <= bounds.right - bounds.left);
+}
+
+static void CheckEditDialogHotkeys()
+{
+	PviObject *variable = AddObject("@Pvi/KeyboardValue", "KeyboardValue", POBJ_PVAR);
+	variable->ex.pv.dimension = 1;
+	variable->ex.pv.length = 32;
+	for (PVIPVARTYPE type : {BR_DINT, BR_STRING, BR_TOD})
+	{
+		variable->ex.pv.type = type;
+		CHECK(variable->Watch(TRUE) == variable);
+		DlgWritePvarShowDialog(variable);
+		CHECK(editDialogProcedure != nullptr);
+		HWND dialog = CreateHiddenDialog(editDialogResource, KeyboardDialogProc, reinterpret_cast<LPARAM>(variable));
+		ShowWindow(dialog, SW_SHOWNOACTIVATE);
+		SetFocus(GetNextDlgTabItem(dialog, nullptr, FALSE));
+		CHECK((SendMessageA(dialog, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) == 0);
+		if (type == BR_TOD)
+			CheckDialogTabOrder(dialog, {IDC_EDIT_HOUR, IDC_EDIT_MINUTE, IDC_EDIT_MILLISECONDS, IDOK, ID_APPLY, IDCANCEL});
+		else
+			CheckDialogTabOrder(dialog, {IDR_EDIT_VALUE, IDOK, ID_APPLY, IDCANCEL});
+		CheckButtonCaption(dialog, IDOK, "OK <Enter>");
+		CheckButtonMnemonic(dialog, 'a', ID_APPLY);
+		CheckButtonCaption(dialog, IDCANCEL, "Cancel <Esc>");
+		int field = type == BR_TOD ? IDC_EDIT_HOUR : IDR_EDIT_VALUE;
+		SetFocus(GetDlgItem(dialog, field));
+		CHECK(SendDialogKey(dialog, WM_KEYDOWN, VK_RETURN));
+		if (keyboardCommand != IDOK)
+			fprintf(stderr, "Enter in type %u: expected OK, received command %u\n", type, keyboardCommand);
+		CHECK(keyboardCommand == IDOK);
+		CHECK(SendDialogKey(dialog, WM_KEYDOWN, VK_ESCAPE));
+		CHECK(keyboardCommand == IDCANCEL);
+		if (type == BR_TOD)
+		{
+			const char keys[] = {'y', 'm', 'd', 'h', 'n', 'i'};
+			const int fields[] = {IDC_EDIT_YEAR, IDC_EDIT_MONTH, IDC_EDIT_DAY,
+				IDC_EDIT_HOUR, IDC_EDIT_MINUTE, IDC_EDIT_MILLISECONDS};
+			for (unsigned index = 0; index < 6; ++index)
+			{
+				EnableWindow(GetDlgItem(dialog, fields[index]), TRUE);
+				SendDialogMnemonic(dialog, keys[index]);
+				CHECK(GetFocus() == GetDlgItem(dialog, fields[index]));
+			}
+		}
+		CHECK(DestroyWindow(dialog));
+		CHECK(variable->Watch(FALSE) == variable);
+	}
+	variable->Remove();
+
+	PviObject *cpu = AddObject("@Pvi/KeyboardCPU", "KeyboardCPU", POBJ_CPU);
+	strcpy(cpu->ex.cpu.ethernetCpuInfo.macAddress, "01-02-03-04-05-06");
+	DlgEditCpuShowDialog(cpu);
+	HWND dialog = CreateHiddenDialog(DLG_EDIT_CPU, KeyboardDialogProc, reinterpret_cast<LPARAM>(cpu));
+	ShowWindow(dialog, SW_SHOWNOACTIVATE);
+	SetFocus(GetNextDlgTabItem(dialog, nullptr, FALSE));
+	CHECK((SendMessageA(dialog, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) == 0);
+	CheckDialogTabOrder(dialog, {IDR_EDIT_IPADDRESS, IDR_EDIT_SUBNETMASK, IDR_EDIT_GATEWAY,
+		IDR_BUTTON_CHANGEIP, IDR_CHECK_DHCP_CLIENT, IDR_BUTTON_STOP, IDR_BUTTON_WARMSTART,
+		IDR_BUTTON_COLDSTART, IDR_BUTTON_DIAGNOSIS, IDCANCEL});
+	CheckButtonMnemonic(dialog, 'c', IDR_BUTTON_CHANGEIP);
+	CheckButtonMnemonic(dialog, 's', IDR_BUTTON_STOP);
+	CheckButtonMnemonic(dialog, 'w', IDR_BUTTON_WARMSTART);
+	CheckButtonMnemonic(dialog, 'o', IDR_BUTTON_COLDSTART);
+	CheckButtonMnemonic(dialog, 'g', IDR_BUTTON_DIAGNOSIS);
+	CheckButtonCaption(dialog, IDCANCEL, "Hide <Esc>");
+	CheckButtonMnemonic(dialog, 'd', IDR_CHECK_DHCP_CLIENT);
+	const char keys[] = {'i', 'b', 't'};
+	const int fields[] = {IDR_EDIT_IPADDRESS, IDR_EDIT_SUBNETMASK, IDR_EDIT_GATEWAY};
+	for (unsigned index = 0; index < 3; ++index)
+	{
+		SendDialogMnemonic(dialog, keys[index]);
+		CHECK(GetFocus() == GetDlgItem(dialog, fields[index]));
+	}
+	EnableWindow(GetDlgItem(dialog, IDR_BUTTON_WARMSTART), FALSE);
+	SendDialogMnemonic(dialog, 'w');
+	CHECK(keyboardCommand == 0);
+	CHECK(SendDialogKey(dialog, WM_KEYDOWN, VK_ESCAPE));
+	CHECK(keyboardCommand == IDCANCEL);
+	CHECK(DestroyWindow(dialog));
+	cpu->Remove();
+}
+
 static void CheckAboutLink()
 {
 	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_LINK_CLASS};
@@ -2132,6 +2317,7 @@ int main()
 	CheckObjectRefreshTime(testDirectory);
 	CheckLoggerBuffers(testDirectory);
 	CheckWatchBufferOwnership();
+	CheckEditDialogHotkeys();
 
 	PviObject *device = AddObject("@Pvi/Device", "/IF=tcpip", POBJ_DEVICE);
 	PviObject duplicate = *device;

@@ -100,9 +100,15 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	switch (uMsg)
 	{
+	case WM_UPDATEUISTATE:
+		// Keep shortcut underlines visible when Windows reinitializes dialog UI state.
+		DefWindowProc(hDlg, uMsg, MAKEWPARAM(LOWORD(wParam), HIWORD(wParam) & ~UISF_HIDEACCEL), lParam);
+		DefWindowProc(hDlg, uMsg, MAKEWPARAM(UIS_CLEAR, UISF_HIDEACCEL), 0);
+		return TRUE;
 	case WM_INITDIALOG:
 		if (lParam != 0)
 		{
+			SendMessage(hDlg, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR, UISF_HIDEACCEL), 0);
 			char tempstring[512];
 			object = (PviObject *)lParam;
 			sprintf(tempstring, "%s %s %s", object->ex.cpu.cputype, object->ex.cpu.arversion, object->descriptor);

@@ -61,6 +61,12 @@ To change a value, double-click the entry in the list view, select it and choose
 in `brwatch.ini`. Watch editing and removal are disabled while logging is running.
 The following dialog window enables to enter a new value.
 
+In **Edit Value**, use **Enter** (OK), **Alt+A** (Apply), and **Esc** (Cancel).
+The buttons show `OK <Enter>` and `Cancel <Esc>`. Tab and Shift+Tab move
+between fields and buttons. Underlined letters show the Alt-key shortcuts.
+For date/time values, **Alt+Y**, **Alt+M**, **Alt+D**, **Alt+H**, **Alt+N**, and
+**Alt+I** focus the enabled year, month, day, hour, minute, and millisecond fields.
+
 ### Numbers
 
 ![EditNumbers](/doc/EditNumber.PNG)
@@ -83,6 +89,11 @@ You can execute some commands to a CPU:
 - Stop
 - Diagnose
 - Change the IP settings (since V1.2)
+
+In **Edit CPU**, the button shortcuts are **Alt+C** (CHANGE), **Alt+S** (SERV),
+**Alt+W** (Warmstart), **Alt+O** (Coldstart), **Alt+G** (DIAG), and **Esc** (Hide).
+Use **Alt+D** for the DHCP checkbox; **Alt+I**, **Alt+B**, and **Alt+T** focus the
+IP address, subnet, and gateway fields when enabled. The close button shows `Hide <Esc>`.
 
 ![IpSettings](/doc/change_ip_settings.gif)
 

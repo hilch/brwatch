@@ -36,7 +36,13 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	switch (uMsg)
 	{
+	case WM_UPDATEUISTATE:
+		// Keep shortcut underlines visible when Windows reinitializes dialog UI state.
+		DefWindowProc(hDlg, uMsg, MAKEWPARAM(LOWORD(wParam), HIWORD(wParam) & ~UISF_HIDEACCEL), lParam);
+		DefWindowProc(hDlg, uMsg, MAKEWPARAM(UIS_CLEAR, UISF_HIDEACCEL), 0);
+		return TRUE;
 	case WM_INITDIALOG:
+		SendMessage(hDlg, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR, UISF_HIDEACCEL), 0);
 		// disable controls for editing time
 		EnableWindow(GetDlgItem(hDlg, IDC_EDIT_YEAR), FALSE);
 		EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DAY), FALSE);
