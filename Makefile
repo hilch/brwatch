@@ -107,7 +107,7 @@ setup:
 clean:
 	@if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)" 2>nul || echo.
 
-$(RES): resources/main.rc resources/brwatch.manifest $(INC_DIR)/resource.h $(BUILD_DIR)/git_info.h
+$(RES): resources/main.rc resources/brwatch.manifest resources/default_brwatch.ini $(INC_DIR)/resource.h $(BUILD_DIR)/git_info.h
 	$(WINDRES) -I$(BUILD_DIR) -i resources/main.rc -o $(RES) --output-format=coff
 
 FORCE:

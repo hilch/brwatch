@@ -85,6 +85,7 @@ static int GetPviLicenceInfo(void);
 static char tempstring[256]; // save stack space
 static UINT_PTR timerid_cyclic_requests;
 static BOOL PLCDataChangeEvents; // PLC- event mode
+static unsigned object_refresh_time = 50;
 
 /* registry for PVI objects */
 PviObject PviObject::root;
@@ -118,6 +119,7 @@ void PviObject::ReadSettings(void)
 	strcpy(buffer, "");
 	GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), ProgramSettings::GetFileName());
 	PLCDataChangeEvents = atoi(buffer);
+	object_refresh_time = GetPrivateProfileIntA("General", "object_refresh_time", 50, ProgramSettings::GetFileName());
 
 	// create DEVICE object
 	strcpy(deviceObject.descriptor, "/IF=tcpip");
@@ -181,7 +183,7 @@ PviObject *PviObject::Add(BOOL create)
 {
 
 	PviObject *newobject = FindByName(name);
-	char descriptor[256];
+	std::string descriptor;
 	int result = 0;
 	const char *event_mask;
 
@@ -206,24 +208,23 @@ PviObject *PviObject::Add(BOOL create)
 	// create variable in PVI manager if necessary
 	if (create)
 	{
-		strcpy(descriptor, "CD=\"");
-		strcat(descriptor, newobject->descriptor);
-		strcat(descriptor, "\"");
+		descriptor = std::string("CD=\"") + newobject->descriptor + "\"";
 		event_mask = "Ev=e";
 		if (newobject->type == POBJ_PVAR)
 		{
+			descriptor += " RF=" + std::to_string(object_refresh_time);
 			if (PLCDataChangeEvents && newobject->ex.pv.dimension <= 1 && newobject->ex.pv.type != BR_STRUCT && newobject->ex.pv.type != BR_STRING && newobject->ex.pv.type != BR_WSTRING)
 			{
-				strcat(descriptor, " RF=50 AT=rwe");
+				descriptor += " AT=rwe";
 			}
 			else
 			{
-				strcat(descriptor, " RF=50 ");
+				descriptor += " ";
 			}
 			event_mask = "Ev=ed";
 		}
 
-		result = PviCreate(&newobject->linkid, newobject->name, newobject->type, descriptor, PviObject::Callback, SET_PVICALLBACK_DATA, 0, event_mask);
+		result = PviCreate(&newobject->linkid, newobject->name, newobject->type, descriptor.c_str(), PviObject::Callback, SET_PVICALLBACK_DATA, 0, event_mask);
 
 		if (result)
 		{

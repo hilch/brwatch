@@ -39,6 +39,10 @@ To watch a selected variable just drag it to the list view control at the right.
 The entries can be freely arranged by drag and drop operations.
 If you drag an entry outside BRWATCH, it will removed from the list view.
 
+Set `object_refresh_time` in the `[General]` section of `brwatch.ini` to configure
+the PVI process-variable refresh time in milliseconds. The default is `50` when
+the setting is absent. Restart BRWATCH after changing this value.
+
 ![BrowseForVariables](/doc/browse_for_variables.gif)
 
 ## Change number representation

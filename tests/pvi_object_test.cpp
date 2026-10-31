@@ -41,6 +41,8 @@ typedef void(WINAPI *PviTestCallback)(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_
 
 static DWORD nextLinkId = 1;
 static PviTestCallback callback;
+static PviTestCallback globalEventCallback;
+static std::string lastPvarDescriptor;
 static const char *readResponse;
 static unsigned dataNotifications;
 static unsigned errorNotifications;
@@ -368,8 +370,10 @@ extern "C" VOID WINAPI PviGetVersion(LPSTR buffer, DWORD size)
 	snprintf(buffer, size, "PVI test");
 }
 
-extern "C" INT WINAPI PviSetGlobEventMsg(DWORD, LPVOID, DWORD, LPARAM)
+extern "C" INT WINAPI PviSetGlobEventMsg(DWORD event, LPVOID eventCallback, DWORD, LPARAM)
 {
+	if (event == POBJ_EVENT_PVI_ARRANGE)
+		globalEventCallback = reinterpret_cast<PviTestCallback>(eventCallback);
 	return 0;
 }
 
@@ -377,6 +381,8 @@ extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR name, DWORD type, LPCSTR de
 							   LPVOID eventCallback, DWORD, LPARAM, LPCSTR)
 {
 	++createRequests;
+	if (type == POBJ_PVAR)
+		lastPvarDescriptor = descriptor;
 	if (type == POBJ_CPU && registrationDialog != nullptr)
 	{
 		CHECK(GetCurrentThreadId() == testUiThread);
@@ -1691,6 +1697,62 @@ static void CheckAboutLink()
 	CHECK(DestroyWindow(dialog) != 0);
 }
 
+static void CheckObjectRefreshTime(const char *testDirectory)
+{
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, ProgramSettings::GetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\refresh-settings.ini", testDirectory);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
+	CHECK(globalEventCallback != nullptr);
+	T_RESPONSE_INFO info = {};
+	info.nType = POBJ_EVENT_PVI_ARRANGE;
+	const char *refreshTimes[] = {nullptr, "125"};
+	for (bool eventMode : {false, true})
+	{
+		CHECK(WritePrivateProfileStringA("General", "PLCDataChangeEvents", eventMode ? "1" : "0", settingsFile));
+		for (const char *refreshTime : refreshTimes)
+		{
+			CHECK(WritePrivateProfileStringA("General", "object_refresh_time", refreshTime, settingsFile));
+			globalEventCallback(0, 0, nullptr, 0, &info);
+			std::string refresh = refreshTime != nullptr ? refreshTime : "50";
+			PviObject description;
+			strcpy(description.name, "@Pvi/RefreshValue");
+			strcpy(description.descriptor, "RefreshValue");
+			description.type = POBJ_PVAR;
+			description.ex.pv.type = BR_DINT;
+			description.ex.pv.dimension = 1;
+			PviObject *variable = description.Add(TRUE);
+			CHECK(variable != nullptr);
+			CHECK(lastPvarDescriptor == "CD=\"RefreshValue\" RF=" + refresh + (eventMode ? " AT=rwe" : " "));
+
+			variable->ex.pv.dimension = 2;
+			CHECK(variable->Add(TRUE) == variable);
+			CHECK(lastPvarDescriptor == "CD=\"RefreshValue\" RF=" + refresh + " ");
+			variable->ex.pv.dimension = 1;
+			variable->ex.pv.type = BR_STRING;
+			CHECK(variable->Add(TRUE) == variable);
+			CHECK(lastPvarDescriptor == "CD=\"RefreshValue\" RF=" + refresh + " ");
+
+			variable->ex.pv.type = BR_DINT;
+			std::string longDescriptor(sizeof(variable->descriptor) - 1, 'V');
+			strcpy(variable->descriptor, longDescriptor.c_str());
+			CHECK(variable->Add(TRUE) == variable);
+			CHECK(lastPvarDescriptor == "CD=\"" + longDescriptor + "\" RF=" + refresh + (eventMode ? " AT=rwe" : " "));
+			variable->Remove();
+		}
+	}
+	CHECK(WritePrivateProfileStringA("General", "PLCDataChangeEvents", "0", settingsFile));
+	CHECK(WritePrivateProfileStringA("General", "object_refresh_time", nullptr, settingsFile));
+	globalEventCallback(0, 0, nullptr, 0, &info);
+	PviObject::GetNext(TRUE);
+	while (PviObject *object = PviObject::GetNext(FALSE))
+		object->Remove();
+	CHECK(PviObject::Count() == 0);
+	CHECK(DeleteFileA(settingsFile));
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
+}
+
 static void CheckProgramSettings(const char *testDirectory)
 {
 	char originalSettings[MAX_PATH];
@@ -1810,6 +1872,7 @@ int main()
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
 	CheckProgramSettings(testDirectory);
 	CheckLogger(testDirectory);
+	CheckObjectRefreshTime(testDirectory);
 
 	PviObject *device = AddObject("@Pvi/Device", "/IF=tcpip", POBJ_DEVICE);
 	PviObject duplicate = *device;
@@ -1940,6 +2003,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, ProgramSettings CPU sections/editor, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, configurable PVI refresh time, scalar-only watches, tree/list views, ProgramSettings CPU sections/editor, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
 	return 0;
 }
