@@ -16,6 +16,17 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+
+ 
+/*
+ * Logger, declared in logger.h, manages application-wide CSV logging of watched
+ * process variables. Its static members share configuration and logging state:
+ * Toggle() starts or stops logging, IsRunning() reports its status, DataChanged()
+ * handles write-on-change events, and ConfigDlgProc() handles the settings dialog.
+ * Cyclic logging uses a Win32 timer. Both modes timestamp values using a watched
+ * CPU, rotate files at the configured size limit, and optionally compress them.
+ */
+
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 #include <windows.h>
 #include <windowsx.h>
