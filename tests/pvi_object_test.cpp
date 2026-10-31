@@ -26,7 +26,9 @@
 #include "dlg_cpuscan.h"
 #include "resource.h"
 #include "settings.h"
+#include "logger.h"
 #include <shellapi.h>
+#include <shlobj.h>
 #include <type_traits>
 #include <vector>
 #include <string>
@@ -1689,6 +1691,54 @@ static void CheckAboutLink()
 	CHECK(DestroyWindow(dialog) != 0);
 }
 
+static void CheckLogger(const char *testDirectory)
+{
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, SettingsGetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\logger-settings.ini", testDirectory);
+	strcpy(SettingsGetFileName(), settingsFile);
+	CHECK(WritePrivateProfileStringA("Logger", "maxfilesize", "10", settingsFile) != 0);
+	CHECK(WritePrivateProfileStringA("Logger", "cycletime", "500", settingsFile) != 0);
+	CHECK(!Logger::IsRunning());
+	Logger::DataChanged(nullptr);
+	CHECK(!Logger::IsRunning());
+
+	expectedMessageCaption = "Logger Error - No Timestamp- CPU";
+	expectedErrorMessages = 1;
+	CHECK(!Logger::Toggle());
+	CHECK(expectedErrorMessages == 0 && !Logger::IsRunning());
+	expectedMessageCaption = "Error";
+
+	HWND dialog = CreateHiddenDialog(DLG_LOGGER_CONFIG, Logger::ConfigDlgProc, 0);
+	char homepath[MAX_PATH];
+	CHECK(SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PROFILE, nullptr, SHGFP_TYPE_CURRENT, homepath)));
+	std::string defaultFilename = std::string(homepath) + "\\logger.csv";
+	char filename[MAX_PATH];
+	CHECK(GetDlgItemTextA(dialog, IDR_EDIT_FILENAME, filename, sizeof(filename)) != 0);
+	CHECK(defaultFilename == filename);
+	CHECK(GetDlgItemInt(dialog, IDR_EDIT_MAXSIZE, nullptr, FALSE) == 10);
+	CHECK(GetDlgItemInt(dialog, IDR_EDIT_CYCLETIME, nullptr, FALSE) == 500);
+	CHECK(GetDlgItemInt(dialog, IDR_EDIT_OBJECT_COUNT, nullptr, FALSE) == 0);
+	CHECK(IsWindowEnabled(GetDlgItem(dialog, IDR_EDIT_CYCLETIME)));
+	CheckDlgButton(dialog, IDC_CHECK_CHANGED, BST_CHECKED);
+	SendMessageA(dialog, WM_COMMAND, IDC_CHECK_CHANGED, 0);
+	CHECK(!IsWindowEnabled(GetDlgItem(dialog, IDR_EDIT_CYCLETIME)));
+	CheckDlgButton(dialog, IDC_CHECK_CHANGED, BST_UNCHECKED);
+	SendMessageA(dialog, WM_COMMAND, IDC_CHECK_CHANGED, 0);
+	CHECK(IsWindowEnabled(GetDlgItem(dialog, IDR_EDIT_CYCLETIME)));
+	CHECK(DestroyWindow(dialog) != 0);
+	CHECK(!Logger::IsRunning());
+	std::string configuredFilename = std::string(testDirectory) + "\\custom.csv";
+	CHECK(WritePrivateProfileStringA("Logger", "Filename", configuredFilename.c_str(), settingsFile) != 0);
+	dialog = CreateHiddenDialog(DLG_LOGGER_CONFIG, Logger::ConfigDlgProc, 0);
+	CHECK(GetDlgItemTextA(dialog, IDR_EDIT_FILENAME, filename, sizeof(filename)) != 0);
+	CHECK(configuredFilename == filename);
+	CHECK(DestroyWindow(dialog) != 0);
+	CHECK(DeleteFileA(settingsFile) != 0);
+	strcpy(SettingsGetFileName(), originalSettings);
+}
+
 int main()
 {
 	CheckCpuScanPlansAndSockets();
@@ -1711,6 +1761,7 @@ int main()
 	CHECK(PviObject::Start() == 0);
 	CHECK(PviObject::Count() == 0);
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
+	CheckLogger(testDirectory);
 
 	PviObject *device = AddObject("@Pvi/Device", "/IF=tcpip", POBJ_DEVICE);
 	PviObject duplicate = *device;
@@ -1841,6 +1892,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
 	return 0;
 }

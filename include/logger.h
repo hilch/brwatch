@@ -19,14 +19,42 @@
 #ifndef __LOGGER_H
 #define __LOGGER_H
 
-INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL Logger( void );
-BOOL IsLoggerRunning( void );
-void LoggerDataChanged( PviObject *object );
+#include <windows.h>
+
+class PviObject;
+
+class Logger
+{
+public:
+	static INT_PTR CALLBACK ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static BOOL Toggle();
+	static BOOL IsRunning();
+	static void DataChanged(PviObject *object);
+
+private:
+	Logger() = delete;
+	static int CountLoggedObjects();
+	static BOOL ReadSettings();
+	static BOOL ValidateSettings();
+	static BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename);
+	static VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
+
+	static BOOL zip_the_files;
+	static BOOL write_by_change;
+	static char loggerfile[MAX_PATH];
+	static int filesize;
+	static int cycletime;
+	static BOOL logger_is_running;
+	static BOOL start_write_by_change;
+	static PviObject *cpu_timemaster;
+	static PviObject **logged_object;
+	static int no_of_logged_objects;
+	static int estimated_row_size;
+	static volatile int logger_step;
+};
 
 #define UTF8BOM	"\xef\xbb\xbf" 					
 #define LOGFILE_HEADER				UTF8BOM "cycle@rtc(yyyy/mm/dd-hh:mm:ss);ticks(ms)"
 #define LOGFILE_HEADER_BY_CHANGE	UTF8BOM "event@rtc(yyyy/mm/dd-hh:mm:ss);ticks(ms);name;value"
 
 #endif
-

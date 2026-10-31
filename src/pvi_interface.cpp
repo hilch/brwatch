@@ -552,7 +552,7 @@ void WINAPI PviObject::Callback(WPARAM /*wParam*/, LPARAM /*lParam*/, LPVOID pDa
 				if (object->ex.pv.pvalue != nullptr)
 				{
 					object->ex.pv.value_changed = 1; /* value was changed */
-					LoggerDataChanged(object);
+					Logger::DataChanged(object);
 				}
 			}
 		}

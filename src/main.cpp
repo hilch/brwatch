@@ -215,7 +215,7 @@ static void PviObjectsValid(void)
 		strcpy(logger_watch_file, GetApplicationPath());
 		strcat(logger_watch_file, "\\_logger.wtc");
 		LoadWatchFile(logger_watch_file);
-		Logger();
+		Logger::Toggle();
 		SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
 		Shell_NotifyIconA(NIM_ADD, &notifyicondata);
 		ShowWindow(g_hwndMainWindow, SW_HIDE);
@@ -489,12 +489,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 		case IDM_LOGGER_CONFIG:
-			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_LOGGER_CONFIG), hWnd, LoggerConfigDlgProc);
+			DialogBoxA(g_hInstance, MAKEINTRESOURCEA(DLG_LOGGER_CONFIG), hWnd, Logger::ConfigDlgProc);
 			break;
 			break;
 
 		case IDM_LOGGER_START:
-			Logger();
+			Logger::Toggle();
 			SendMessageA(hWnd, NOTIFY_LOGGER_STATUS, 0, 0);
 			break;
 
@@ -754,7 +754,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case NOTIFY_LOGGER_STATUS:
-		if (IsLoggerRunning())
+		if (Logger::IsRunning())
 		{
 			char logger_watch_file[MAX_PATH];
 

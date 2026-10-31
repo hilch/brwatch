@@ -21,6 +21,7 @@
 #include <windowsx.h>
 #include <commdlg.h>
 #include <commctrl.h>
+#include <shlobj.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <process.h>
@@ -34,20 +35,14 @@
 
 #define CACHESIZE (16 * 1024)
 
-// prototypes
-static int CountLoggedObjects(void);
-BOOL IsLoggerRunning(void);
-static void ReadSettings(void);
-extern int minigzip(int argc, char *argv[]);
-
-static BOOL zip_the_files;
-static BOOL write_by_change;
-static char loggerfile[MAX_PATH];
-static int filesize;
-static int cycletime;
-static BOOL logger_is_running = 0;
-static BOOL start_write_by_change = 0;
-static PviObject *cpu_timemaster = nullptr;
+BOOL Logger::zip_the_files;
+BOOL Logger::write_by_change;
+char Logger::loggerfile[MAX_PATH];
+int Logger::filesize;
+int Logger::cycletime;
+BOOL Logger::logger_is_running = 0;
+BOOL Logger::start_write_by_change = 0;
+PviObject *Logger::cpu_timemaster = nullptr;
 
 #define START_LOGGING 10
 #define RENAME_OLD_FILE 20
@@ -57,19 +52,19 @@ static PviObject *cpu_timemaster = nullptr;
 #define COMPRESS_FILE 60
 #define STOP_LOGGING 70
 
-static PviObject **logged_object = nullptr; // point to list with objects to be logged
-static int no_of_logged_objects = 0;	 // number of logged objects
-static int estimated_row_size;			 // estimated row size
-static volatile int logger_step;
+PviObject **Logger::logged_object = nullptr; // point to list with objects to be logged
+int Logger::no_of_logged_objects = 0;		 // number of logged objects
+int Logger::estimated_row_size;				 // estimated row size
+volatile int Logger::logger_step;
 
-BOOL IsLoggerRunning(void)
+BOOL Logger::IsRunning()
 {
 	return logger_is_running;
 }
 
 /* creates a list with logged objects */
 
-static int CountLoggedObjects(void)
+int Logger::CountLoggedObjects()
 {
 	PviObject *object;
 	PviObject **p;
@@ -116,12 +111,27 @@ static int CountLoggedObjects(void)
 
 /* gets INI parameters */
 
-static void ReadSettings(void)
+BOOL Logger::ReadSettings()
 {
 	PviObject *object;
 	int last_watchsort;
 
-	GetPrivateProfileStringA("Logger", "Filename", "C:\\temp\\logger.csv", loggerfile, sizeof(loggerfile), SettingsGetFileName());
+	GetPrivateProfileStringA("Logger", "Filename", "", loggerfile, sizeof(loggerfile), SettingsGetFileName());
+	if (loggerfile[0] == '\0')
+	{
+		char homepath[MAX_PATH];
+		if (FAILED(SHGetFolderPathA(nullptr, CSIDL_PROFILE, nullptr, SHGFP_TYPE_CURRENT, homepath)))
+		{
+			MessageBoxA(MainWindowGetHandle(), "Can't find the user's home folder !", "Logger Error - Filename", MB_OK | MB_ICONERROR);
+			return FALSE;
+		}
+		int length = snprintf(loggerfile, sizeof(loggerfile), "%s\\logger.csv", homepath);
+		if (length < 0 || static_cast<size_t>(length) >= sizeof(loggerfile))
+		{
+			MessageBoxA(MainWindowGetHandle(), "Default logger filename is too long !", "Logger Error - Filename", MB_OK | MB_ICONERROR);
+			return FALSE;
+		}
+	}
 	filesize = GetPrivateProfileIntA("Logger", "maxfilesize", 10, SettingsGetFileName());
 	cycletime = GetPrivateProfileIntA("Logger", "cycletime", 500, SettingsGetFileName());
 	zip_the_files = GetPrivateProfileIntA("Logger", "zip", 0, SettingsGetFileName());
@@ -161,11 +171,12 @@ static void ReadSettings(void)
 			}
 		}
 	}
+	return TRUE;
 }
 
 /* validate logger settings */
 
-static BOOL ValidateSettings(void)
+BOOL Logger::ValidateSettings()
 {
 
 	if (filesize < 1)
@@ -195,7 +206,7 @@ static BOOL ValidateSettings(void)
 	return TRUE;
 }
 
-BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
+BOOL Logger::CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 {
 	FILETIME ftWrite;
 	SYSTEMTIME stUTC, stLocal;
@@ -239,7 +250,7 @@ BOOL CreateBackupFilename(LPCSTR oldfilename, LPSTR renamedfilename)
 
 /* is called by PVI callback when process variables have been changed */
 
-void LoggerDataChanged(PviObject *object)
+void Logger::DataChanged(PviObject *object)
 {
 	static FILE *f;
 	//    char *p_step_str;
@@ -575,7 +586,7 @@ void LoggerDataChanged(PviObject *object)
 
 /* this function is called by timer interval */
 
-static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, DWORD dwTime)
+VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, DWORD dwTime)
 {
 	static FILE *f;
 	static DWORD dwLastTime;
@@ -923,14 +934,18 @@ static VOID CALLBACK TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, D
 
 /* logger configuration dialog */
 
-INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */)
+INT_PTR CALLBACK Logger::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */)
 {
 	char tempstring[512];
 
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
-		ReadSettings();
+		if (!ReadSettings())
+		{
+			EndDialog(hDlg, FALSE);
+			return TRUE;
+		}
 		CheckDlgButton(hDlg, IDC_CHECK_ZIP, zip_the_files == TRUE ? BST_CHECKED : BST_UNCHECKED);
 		SetDlgItemTextA(hDlg, IDR_EDIT_FILENAME, loggerfile);
 		SetDlgItemInt(hDlg, IDR_EDIT_MAXSIZE, filesize, 0);
@@ -1035,7 +1050,7 @@ INT_PTR CALLBACK LoggerConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM
 
 /* switches on/off the logger */
 
-BOOL Logger(void)
+BOOL Logger::Toggle()
 {
 	int i;
 
@@ -1046,13 +1061,14 @@ BOOL Logger(void)
 		{
 			for (i = 0; i < 10; ++i)
 			{ // give chance to close file
-				LoggerDataChanged(nullptr);
+				DataChanged(nullptr);
 			}
 		}
 	}
 	else
 	{ // Logger wird gestartet;
-		ReadSettings();
+		if (!ReadSettings())
+			return FALSE;
 		CountLoggedObjects();
 		if (ValidateSettings() == FALSE)
 			logger_is_running = FALSE; // could not be started
@@ -1069,7 +1085,7 @@ BOOL Logger(void)
 				start_write_by_change = TRUE; // 'write on change'
 				for (i = 0; i < no_of_logged_objects; ++i)
 				{
-					LoggerDataChanged(logged_object[i]);
+					DataChanged(logged_object[i]);
 				}
 			}
 		}

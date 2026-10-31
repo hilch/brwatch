@@ -87,6 +87,9 @@ If the list view contains one or more PV you can write the values into a CSV- Fi
 
 ![LoggerConfiguration](/doc/LoggerConfiguration.PNG)
 
+The default filename is `logger.csv` in your Windows home folder (usually
+`C:\Users\<username>`). A filename saved in the logger settings overrides this default.
+
 The CSV- file size can be limited. If the entries exceeds this size, the earlier file is renamed (extended with date and time settings) and a new file will be written.
 
 If option **write only when value change** is checked, a row is written if at least one variable in the list view has changed its content (minimize size).
