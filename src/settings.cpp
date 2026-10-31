@@ -16,6 +16,13 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * Application-wide INI settings are encapsulated by ProgramSettings, declared
+ * in settings.h. Its static members Initialize() and GetFileName() manage the
+ * settings file; FindCpuSection(), StoreCpu() and RemoveCpu() manage saved CPUs.
+ * DlgProc() is the Win32 settings editor callback.
+ */
+
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
 #include "main.h"
 #include "settings.h"
@@ -26,16 +33,19 @@
 
 #define INIFILE "brwatch.ini"
 
-static char inifile[MAX_PATH];
+// Shared settings path; zero-initialized until Initialize() selects the file.
+char ProgramSettings::inifile[MAX_PATH];
 
-char *SettingsGetFileName(void)
+// Returns the shared filename buffer without transferring ownership.
+char *ProgramSettings::GetFileName()
 {
 	return inifile;
 }
 
-unsigned SettingsFindCpuSection(const char *descriptor)
+// Returns the first matching CPU section number, or 0 when the descriptor is not stored.
+unsigned ProgramSettings::FindCpuSection(const char *descriptor)
 {
-	for (unsigned cpu = 1; cpu <= 256; ++cpu)
+	for (unsigned cpu = 1; cpu <= MAX_CPU_SECTIONS; ++cpu)
 	{
 		char section[20];
 		char storedDescriptor[256];
@@ -47,7 +57,8 @@ unsigned SettingsFindCpuSection(const char *descriptor)
 	return 0;
 }
 
-static BOOL SettingsWriteText(const std::string &text)
+// Writes a temporary file beside the settings file, then replaces the original only after a successful write and close.
+BOOL ProgramSettings::WriteText(const std::string &text)
 {
 	std::string directory = inifile;
 	directory.erase(directory.find_last_of("\\/") + 1);
@@ -70,7 +81,8 @@ static BOOL SettingsWriteText(const std::string &text)
 	return success;
 }
 
-static BOOL SettingsSortCpuSections(void)
+// Collects CPU1..CPU256 sections and reinserts them in numeric order after the marker, preserving non-CPU text.
+BOOL ProgramSettings::SortCpuSections()
 {
 	WritePrivateProfileStringA(nullptr, nullptr, nullptr, inifile);
 	std::ifstream input(inifile, std::ios::binary);
@@ -108,7 +120,7 @@ static BOOL SettingsSortCpuSections(void)
 					name.find_first_not_of("0123456789", 3) == std::string::npos)
 				{
 					unsigned long cpu = strtoul(name.c_str() + 3, nullptr, 10);
-					if (cpu >= 1 && cpu <= 256)
+					if (cpu >= 1 && cpu <= MAX_CPU_SECTIONS)
 						currentCpu = &cpuSections[static_cast<unsigned>(cpu)];
 				}
 			}
@@ -148,29 +160,31 @@ static BOOL SettingsSortCpuSections(void)
 			sorted += newline;
 	}
 	remaining.insert(position, sorted);
-	return SettingsWriteText(remaining);
+	return WriteText(remaining);
 }
 
-BOOL SettingsStoreCpu(const char *descriptor)
+// Reuses an existing descriptor or fills the first free CPU slot, then sorts the sections.
+BOOL ProgramSettings::StoreCpu(const char *descriptor)
 {
-	if (SettingsFindCpuSection(descriptor) != 0)
-		return SettingsSortCpuSections();
-	for (unsigned cpu = 1; cpu <= 256; ++cpu)
+	if (FindCpuSection(descriptor) != 0)
+		return SortCpuSections();
+	for (unsigned cpu = 1; cpu <= MAX_CPU_SECTIONS; ++cpu)
 	{
 		char section[20];
 		char storedDescriptor[256];
 		snprintf(section, sizeof(section), "CPU%u", cpu);
 		GetPrivateProfileStringA(section, "descriptor", "", storedDescriptor, sizeof(storedDescriptor), inifile);
 		if (storedDescriptor[0] == 0)
-			return WritePrivateProfileStringA(section, "descriptor", descriptor, inifile) && SettingsSortCpuSections();
+			return WritePrivateProfileStringA(section, "descriptor", descriptor, inifile) && SortCpuSections();
 	}
 	return FALSE;
 }
 
-BOOL SettingsRemoveCpu(const char *descriptor)
+// Removes all matching CPU sections, including duplicate descriptors.
+BOOL ProgramSettings::RemoveCpu(const char *descriptor)
 {
 	unsigned cpu;
-	while ((cpu = SettingsFindCpuSection(descriptor)) != 0)
+	while ((cpu = FindCpuSection(descriptor)) != 0)
 	{
 		char section[20];
 		snprintf(section, sizeof(section), "CPU%u", cpu);
@@ -180,7 +194,8 @@ BOOL SettingsRemoveCpu(const char *descriptor)
 	return TRUE;
 }
 
-void SettingsInitialize(void)
+// Uses APPDATA\brwatch when available, otherwise the application folder; creates a missing INI from the embedded defaults.
+void ProgramSettings::Initialize()
 {
 	FILE *file;
 	HRSRC hrsrc;
@@ -255,7 +270,8 @@ void SettingsInitialize(void)
 	}
 }
 
-static void SettingsSetEditorText(HWND hDlg, const std::string &text)
+// Converts lone LF line endings to CRLF for the Win32 edit control without duplicating existing CR characters.
+void ProgramSettings::SetEditorText(HWND hDlg, const std::string &text)
 {
 	std::string editorText;
 	for (size_t index = 0; index < text.size(); ++index)
@@ -267,13 +283,14 @@ static void SettingsSetEditorText(HWND hDlg, const std::string &text)
 	SetDlgItemTextA(hDlg, IDC_EDIT1, editorText.c_str());
 }
 
-INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+// Handles settings editor loading and resizing; defaults remain a preview until OK saves the text.
+INT_PTR CALLBACK ProgramSettings::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
 	{
-		std::string title = std::string("Settings - ") + SettingsGetFileName();
+		std::string title = std::string("Settings - ") + GetFileName();
 		SetWindowTextA(hDlg, title.c_str());
 		SendDlgItemMessageA(hDlg, IDC_EDIT1, EM_SETLIMITTEXT, 0, 0);
 		HFONT hfont = static_cast<HFONT>(GetStockObject(SYSTEM_FIXED_FONT));
@@ -293,7 +310,7 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			EndDialog(hDlg, IDCANCEL);
 			return TRUE;
 		}
-		SettingsSetEditorText(hDlg, text);
+		SetEditorText(hDlg, text);
 		SendMessage(hDlg, WM_SIZE, SIZE_RESTORED, 0);
 	}
 
@@ -347,7 +364,7 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				MessageBoxA(hDlg, "Could not load the default settings.", "Settings", MB_OK | MB_ICONERROR);
 				return TRUE;
 			}
-			SettingsSetEditorText(hDlg, std::string(data, SizeofResource(nullptr, resource)));
+			SetEditorText(hDlg, std::string(data, SizeofResource(nullptr, resource)));
 			return TRUE;
 		}
 		case IDOK:
@@ -357,7 +374,7 @@ INT_PTR CALLBACK SettingsDlg(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			int copied = GetDlgItemTextA(hDlg, IDC_EDIT1, &text[0], length + 1);
 			text.resize(static_cast<size_t>(copied));
 			WritePrivateProfileStringA(nullptr, nullptr, nullptr, inifile);
-			if (copied == length && SettingsWriteText(text))
+			if (copied == length && WriteText(text))
 			{
 				EndDialog(hDlg, IDOK);
 				return TRUE;

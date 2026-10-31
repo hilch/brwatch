@@ -116,7 +116,7 @@ BOOL Logger::ReadSettings()
 	PviObject *object;
 	int last_watchsort;
 
-	GetPrivateProfileStringA("Logger", "Filename", "", loggerfile, sizeof(loggerfile), SettingsGetFileName());
+	GetPrivateProfileStringA("Logger", "Filename", "", loggerfile, sizeof(loggerfile), ProgramSettings::GetFileName());
 	if (loggerfile[0] == '\0')
 	{
 		char homepath[MAX_PATH];
@@ -132,10 +132,10 @@ BOOL Logger::ReadSettings()
 			return FALSE;
 		}
 	}
-	filesize = GetPrivateProfileIntA("Logger", "maxfilesize", 10, SettingsGetFileName());
-	cycletime = GetPrivateProfileIntA("Logger", "cycletime", 500, SettingsGetFileName());
-	zip_the_files = GetPrivateProfileIntA("Logger", "zip", 0, SettingsGetFileName());
-	write_by_change = GetPrivateProfileIntA("Logger", "write_by_change", 0, SettingsGetFileName());
+	filesize = GetPrivateProfileIntA("Logger", "maxfilesize", 10, ProgramSettings::GetFileName());
+	cycletime = GetPrivateProfileIntA("Logger", "cycletime", 500, ProgramSettings::GetFileName());
+	zip_the_files = GetPrivateProfileIntA("Logger", "zip", 0, ProgramSettings::GetFileName());
+	write_by_change = GetPrivateProfileIntA("Logger", "write_by_change", 0, ProgramSettings::GetFileName());
 
 	// the first CPU is time master
 	cpu_timemaster = nullptr;
@@ -988,15 +988,15 @@ INT_PTR CALLBACK Logger::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
 
 			if (ValidateSettings())
 			{
-				WritePrivateProfileStringA("Logger", "Filename", loggerfile, SettingsGetFileName());
+				WritePrivateProfileStringA("Logger", "Filename", loggerfile, ProgramSettings::GetFileName());
 				sprintf(tempstring, "%u", filesize);
-				WritePrivateProfileStringA("Logger", "maxfilesize", tempstring, SettingsGetFileName());
+				WritePrivateProfileStringA("Logger", "maxfilesize", tempstring, ProgramSettings::GetFileName());
 				sprintf(tempstring, "%u", cycletime);
-				WritePrivateProfileStringA("Logger", "cycletime", tempstring, SettingsGetFileName());
+				WritePrivateProfileStringA("Logger", "cycletime", tempstring, ProgramSettings::GetFileName());
 				zip_the_files = IsDlgButtonChecked(hDlg, IDC_CHECK_ZIP) == BST_CHECKED ? TRUE : FALSE;
-				WritePrivateProfileStringA("Logger", "zip", zip_the_files == TRUE ? "1" : "0", SettingsGetFileName());
+				WritePrivateProfileStringA("Logger", "zip", zip_the_files == TRUE ? "1" : "0", ProgramSettings::GetFileName());
 				write_by_change = IsDlgButtonChecked(hDlg, IDC_CHECK_CHANGED) == BST_CHECKED ? TRUE : FALSE;
-				WritePrivateProfileStringA("Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", SettingsGetFileName());
+				WritePrivateProfileStringA("Logger", "write_by_change", write_by_change == TRUE ? "1" : "0", ProgramSettings::GetFileName());
 
 				EndDialog(hDlg, TRUE);
 				return TRUE;

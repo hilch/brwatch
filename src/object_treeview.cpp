@@ -617,9 +617,9 @@ void ObjectTreeView::UpdateCpuSettings(PviObject *object, UINT command)
 		return;
 	BOOL success = TRUE;
 	if (command == IDM_STORE_CPU_SETTINGS)
-		success = SettingsStoreCpu(object->descriptor);
+		success = ProgramSettings::StoreCpu(object->descriptor);
 	else if (command == IDM_REMOVE_CPU_SETTINGS)
-		success = SettingsRemoveCpu(object->descriptor);
+		success = ProgramSettings::RemoveCpu(object->descriptor);
 	if (!success)
 		MessageBoxA(parentWindow, "Could not update the CPU settings. Check that brwatch.ini is writable and has a free CPU slot.",
 			"CPU settings", MB_OK | MB_ICONERROR);
@@ -628,7 +628,7 @@ void ObjectTreeView::UpdateCpuSettings(PviObject *object, UINT command)
 void ObjectTreeView::UpdateCpuSettingsMenu(HMENU menu)
 {
 	PviObject *object = GetSelectedCpu();
-	BOOL stored = object != nullptr && SettingsFindCpuSection(object->descriptor) != 0;
+	BOOL stored = object != nullptr && ProgramSettings::FindCpuSection(object->descriptor) != 0;
 	EnableMenuItem(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND |
 		(object != nullptr && !stored ? MF_ENABLED : MF_GRAYED));
 	EnableMenuItem(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND |
@@ -663,7 +663,7 @@ void ObjectTreeView::RClick(HTREEITEM hti, LPARAM lParam)
 					HMENU menu = CreatePopupMenu();
 					if (menu == nullptr)
 						break;
-					BOOL stored = SettingsFindCpuSection(object->descriptor) != 0;
+					BOOL stored = ProgramSettings::FindCpuSection(object->descriptor) != 0;
 					AppendMenuA(menu, MF_STRING | (stored ? MF_GRAYED : MF_ENABLED),
 						IDM_STORE_CPU_SETTINGS, "Store to settings");
 					AppendMenuA(menu, MF_STRING | (stored ? MF_ENABLED : MF_GRAYED),

@@ -779,10 +779,10 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	g_draggedPVIObject = nullptr;
 
 	char originalSettings[MAX_PATH];
-	strcpy(originalSettings, SettingsGetFileName());
+	strcpy(originalSettings, ProgramSettings::GetFileName());
 	char settingsFile[MAX_PATH];
 	snprintf(settingsFile, sizeof(settingsFile), "%s\\tree-settings.ini", testDirectory);
-	strcpy(SettingsGetFileName(), settingsFile);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
 	HMENU menu = CreatePopupMenu();
 	CHECK(menu != nullptr);
 	CHECK(AppendMenuA(menu, MF_STRING, IDM_STORE_CPU_SETTINGS, "Store") != 0);
@@ -797,17 +797,17 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	CHECK((GetMenuState(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) == 0);
 	CHECK((GetMenuState(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	second.CpuSettingsCommand(IDM_STORE_CPU_SETTINGS);
-	CHECK(SettingsFindCpuSection(cpu->descriptor) != 0);
+	CHECK(ProgramSettings::FindCpuSection(cpu->descriptor) != 0);
 	second.UpdateCpuSettingsMenu(menu);
 	CHECK((GetMenuState(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	CHECK((GetMenuState(menu, IDM_REMOVE_CPU_SETTINGS, MF_BYCOMMAND) & MF_GRAYED) == 0);
 	second.CpuSettingsCommand(IDM_REMOVE_CPU_SETTINGS);
-	CHECK(SettingsFindCpuSection(cpu->descriptor) == 0);
+	CHECK(ProgramSettings::FindCpuSection(cpu->descriptor) == 0);
 	first.CpuSettingsCommand(IDM_STORE_CPU_SETTINGS);
-	CHECK(SettingsFindCpuSection(cpu->descriptor) == 0);
+	CHECK(ProgramSettings::FindCpuSection(cpu->descriptor) == 0);
 	CHECK(DestroyMenu(menu) != 0);
 	CHECK(DeleteFileA(settingsFile) != 0);
-	strcpy(SettingsGetFileName(), originalSettings);
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
 
 	second.ClearAll();
 	CHECK(TreeView_GetCount(second.GetHandle()) == 0);
@@ -914,10 +914,10 @@ static void CheckWatchListView(const char *testDirectory)
 	CHECK(strcmp(text, "RUN") == 0);
 
 	char originalSettings[MAX_PATH];
-	strcpy(originalSettings, SettingsGetFileName());
+	strcpy(originalSettings, ProgramSettings::GetFileName());
 	char settingsFile[MAX_PATH];
 	snprintf(settingsFile, sizeof(settingsFile), "%s\\watch-settings.ini", testDirectory);
-	strcpy(SettingsGetFileName(), settingsFile);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
 	CHECK(WritePrivateProfileStringA("General", "WriteAllowed", "0", settingsFile) != 0);
 	NMLISTVIEW notification = {};
 	notification.hdr.hwndFrom = first.GetHandle();
@@ -979,7 +979,7 @@ static void CheckWatchListView(const char *testDirectory)
 	CHECK(ListView_GetItemCount(first.GetHandle()) == 1);
 	CHECK(ListView_GetItemCount(second.GetHandle()) == 3);
 	CHECK(DeleteFileA(settingsFile) != 0);
-	strcpy(SettingsGetFileName(), originalSettings);
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
 	CHECK(DestroyWindow(parent) != 0);
 	g_selectedPVIObject = nullptr;
 	for (PviObject *object : {number, wide, real, task, cpu})
@@ -1691,13 +1691,60 @@ static void CheckAboutLink()
 	CHECK(DestroyWindow(dialog) != 0);
 }
 
+static void CheckProgramSettings(const char *testDirectory)
+{
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, ProgramSettings::GetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\program-settings.ini", testDirectory);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
+	CHECK(WritePrivateProfileStringA("CPU3", "descriptor", "Third CPU", settingsFile) != 0);
+	CHECK(WritePrivateProfileStringA("CPU1", "descriptor", "First CPU", settingsFile) != 0);
+	CHECK(WritePrivateProfileStringA("General", "WriteAllowed", "1", settingsFile) != 0);
+	CHECK(ProgramSettings::FindCpuSection("Missing CPU") == 0);
+	CHECK(ProgramSettings::FindCpuSection("Third CPU") == 3);
+	CHECK(ProgramSettings::StoreCpu("Second CPU"));
+	CHECK(ProgramSettings::FindCpuSection("Second CPU") == 2);
+	CHECK(ProgramSettings::StoreCpu("Second CPU"));
+	CHECK(ProgramSettings::FindCpuSection("Second CPU") == 2);
+	CHECK(WritePrivateProfileStringA("CPU4", "descriptor", "Second CPU", settingsFile) != 0);
+	CHECK(ProgramSettings::RemoveCpu("Second CPU"));
+	CHECK(ProgramSettings::FindCpuSection("Second CPU") == 0);
+	CHECK(ProgramSettings::RemoveCpu("Missing CPU"));
+	CHECK(ProgramSettings::StoreCpu("Second CPU"));
+
+	HWND dialog = CreateHiddenDialog(DLG_SETTINGS, ProgramSettings::DlgProc, 0);
+	char title[MAX_PATH + 20];
+	CHECK(GetWindowTextA(dialog, title, sizeof(title)) != 0);
+	CHECK(std::string(title) == std::string("Settings - ") + settingsFile);
+	char text[2048];
+	CHECK(GetDlgItemTextA(dialog, IDC_EDIT1, text, sizeof(text)) != 0);
+	std::string editorText = text;
+	size_t marker = editorText.find("; enter next CPU here...");
+	size_t first = editorText.find("[CPU1]");
+	size_t second = editorText.find("[CPU2]");
+	size_t third = editorText.find("[CPU3]");
+	CHECK(marker != std::string::npos && first != std::string::npos);
+	CHECK(second != std::string::npos && third != std::string::npos);
+	CHECK(marker < first && first < second && second < third);
+	CHECK(editorText.find("WriteAllowed=1") != std::string::npos);
+	SendMessageA(dialog, WM_COMMAND, IDC_BUTTON_SETTINGS_DEFAULTS, 0);
+	CHECK(GetDlgItemTextA(dialog, IDC_EDIT1, text, sizeof(text)) != 0);
+	CHECK(std::string(text).find("[Logger]") != std::string::npos);
+	CHECK(std::string(text).find("Third CPU") == std::string::npos);
+	CHECK(ProgramSettings::FindCpuSection("Third CPU") == 3);
+	CHECK(DestroyWindow(dialog) != 0);
+	CHECK(DeleteFileA(settingsFile) != 0);
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
+}
+
 static void CheckLogger(const char *testDirectory)
 {
 	char originalSettings[MAX_PATH];
-	strcpy(originalSettings, SettingsGetFileName());
+	strcpy(originalSettings, ProgramSettings::GetFileName());
 	char settingsFile[MAX_PATH];
 	snprintf(settingsFile, sizeof(settingsFile), "%s\\logger-settings.ini", testDirectory);
-	strcpy(SettingsGetFileName(), settingsFile);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
 	CHECK(WritePrivateProfileStringA("Logger", "maxfilesize", "10", settingsFile) != 0);
 	CHECK(WritePrivateProfileStringA("Logger", "cycletime", "500", settingsFile) != 0);
 	CHECK(!Logger::IsRunning());
@@ -1736,7 +1783,7 @@ static void CheckLogger(const char *testDirectory)
 	CHECK(configuredFilename == filename);
 	CHECK(DestroyWindow(dialog) != 0);
 	CHECK(DeleteFileA(settingsFile) != 0);
-	strcpy(SettingsGetFileName(), originalSettings);
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
 }
 
 int main()
@@ -1761,6 +1808,7 @@ int main()
 	CHECK(PviObject::Start() == 0);
 	CHECK(PviObject::Count() == 0);
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
+	CheckProgramSettings(testDirectory);
 	CheckLogger(testDirectory);
 
 	PviObject *device = AddObject("@Pvi/Device", "/IF=tcpip", POBJ_DEVICE);
@@ -1892,6 +1940,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
+	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, scalar-only watches, tree/list views, ProgramSettings CPU sections/editor, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
 	return 0;
 }

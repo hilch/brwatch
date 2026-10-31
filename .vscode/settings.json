@@ -12,6 +12,7 @@
         "Path": "C:\\msys64\\mingw64\\bin;${env:Path}"
     },
     "files.associations": {
-        "*.h": "c"
+        "*.h": "c",
+        "settings.h": "cpp"
     }
 }

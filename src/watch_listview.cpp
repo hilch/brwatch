@@ -700,7 +700,7 @@ void WatchListView::DblClick(LPNMLISTVIEW lpnm)
 	BOOL write_allowed;
 
 	// Read write permissions from the INI file.
-	write_allowed = GetPrivateProfileIntA("General", "WriteAllowed", 0, SettingsGetFileName());
+	write_allowed = GetPrivateProfileIntA("General", "WriteAllowed", 0, ProgramSettings::GetFileName());
 
 	if (!write_allowed)
 		return;

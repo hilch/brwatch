@@ -116,7 +116,7 @@ void PviObject::ReadSettings(void)
 	sprintf(section, "General");
 	sprintf(key, "PLCDataChangeEvents");
 	strcpy(buffer, "");
-	GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+	GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), ProgramSettings::GetFileName());
 	PLCDataChangeEvents = atoi(buffer);
 
 	// create DEVICE object
@@ -134,7 +134,7 @@ void PviObject::ReadSettings(void)
 		sprintf(section, "CPU%u", cpu);
 		strcpy(key, "descriptor");
 		strcpy(buffer, "");
-		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), ProgramSettings::GetFileName());
 		strcpy(cpuObject.descriptor, buffer);
 
 		if (strlen(buffer) != 0)
@@ -748,7 +748,7 @@ int PviObject::Start(void)
 		char buffer[80];
 
 		memset(buffer, 0, sizeof(buffer));
-		GetPrivateProfileStringA("REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), SettingsGetFileName());
+		GetPrivateProfileStringA("REMOTE", "parameter", "COMT=10 AS=1 PT=20", buffer, sizeof(buffer), ProgramSettings::GetFileName());
 		result = PviInitialize(0, 0, buffer, nullptr);
 	}
 
