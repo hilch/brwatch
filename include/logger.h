@@ -20,6 +20,7 @@
 #define __LOGGER_H
 
 #include <windows.h>
+#include <vector>
 
 class PviObject;
 
@@ -47,7 +48,7 @@ private:
 	static BOOL logger_is_running;
 	static BOOL start_write_by_change;
 	static PviObject *cpu_timemaster;
-	static PviObject **logged_object;
+	static std::vector<PviObject *> logged_object;
 	static int no_of_logged_objects;
 	static int estimated_row_size;
 	static volatile int logger_step;

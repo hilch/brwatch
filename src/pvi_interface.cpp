@@ -29,8 +29,9 @@ and list operations use static members such as PviObject::Start(),
 PviObject::FindByName(), and PviObject::GetNext().
 
 The public data fields remain available to the Win32 UI and logger.
-Add() registers a copy in a std::vector<std::unique_ptr<PviObject>>, using
-std::make_unique rather than explicit new/delete. Object addresses remain
+Add() registers a copy in a registry of unique_ptr-owned entries. Each entry
+owns its object and watch buffer without changing PviObject's copyable data layout.
+Object addresses remain
 stable when the vector grows or other entries are removed. Remove() releases
 that instance, and PviObject::Stop() releases the registry. Returned pointers
 are borrowed and remain valid until their object is removed or PVI is stopped.
@@ -44,6 +45,10 @@ Only scalar variables can be watched directly. Watch(TRUE) also enforces this
 for drag-and-drop: expand arrays and structures in the tree, then select
 individual elements or members.
 
+Temporary PVI response buffers use unique_ptr arrays and are released on every
+return path. Datatype names are interned in a set, keeping their pointers stable
+until Stop(). Logger and UI value pointers borrow storage from registry entries.
+
 Run the object regression tests with:
 mingw32-make.exe -f Makefile SHELL=cmd test
 They mock PVI calls and do not connect to a controller; the matching PVI runtime
@@ -54,7 +59,9 @@ is still required to load the application libraries.
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
+#include <array>
 #include <new>
+#include <set>
 #include <string>
 #include <utility>
 #include <time.h>
@@ -75,7 +82,6 @@ static void AddRowToLog(const char *, int);
 static void DeleteLog(void);
 static void CreateUniqueObjectName(char *name, char *descriptor);
 
-
 /* */
 
 static const char *AddPviDatatype(const char *t);
@@ -88,14 +94,39 @@ static BOOL PLCDataChangeEvents; // PLC- event mode
 static unsigned object_refresh_time = 50;
 
 /* registry for PVI objects */
+struct PviObject::OwnedObject
+{
+	explicit OwnedObject(const PviObject &source) : object(source)
+	{
+		if (object.type == POBJ_PVAR)
+			object.ex.pv.pvalue = nullptr;
+	}
+
+	PviObject object;
+	std::unique_ptr<unsigned char[]> value;
+};
+
 PviObject PviObject::root;
-std::vector<std::unique_ptr<PviObject>> PviObject::objects;
+std::vector<std::unique_ptr<PviObject::OwnedObject>> PviObject::objects;
 std::size_t PviObject::readIndex = 0;
 std::size_t PviObject::childReadIndex = 0;
 
-/* list for structure names  */
-static char structnamesrootname[] = "DATATYPE";
-static PVISTRUCTNAMES structnamesroot = {structnamesrootname, nullptr};
+static std::set<std::string> datatypeNames;
+
+// Allocates a zero-initialized buffer that unique_ptr releases automatically.
+// On allocation failure, logs the operation and returns nullptr for the caller to check.
+static std::unique_ptr<char[]> AllocatePviBuffer(std::size_t size, const char *operation)
+{
+	try
+	{
+		return std::make_unique<char[]>(size);
+	}
+	catch (const std::bad_alloc &)
+	{
+		AddRowToLog(operation, -1);
+		return nullptr;
+	}
+}
 
 PviObject::PviObject()
 	: linkid(0), type(POBJ_PVI), name{}, descriptor{}, error(0), watchsort(0),
@@ -129,6 +160,8 @@ void PviObject::ReadSettings(void)
 	deviceObject.ex.dev.number = 1;
 	deviceObject.Add(TRUE);
 
+	// Reads descriptors from [CPU1] through [CPU256] in the INI file, skipping empty entries.
+	// Each configured CPU receives a descriptor-derived PVI name and is registered under the Ethernet device.
 	for (unsigned cpu = 1; cpu <= MAX_SUPPORTED_CPUS; ++cpu)
 	{
 
@@ -187,15 +220,17 @@ PviObject *PviObject::Add(BOOL create)
 	int result = 0;
 	const char *event_mask;
 
+	// Copies a new object into a registry-owned entry, resets its UI state, and leaves it unwatched.
+	// Moving the unique_ptr into the vector preserves the object's address; allocation failure is logged.
 	if (newobject == nullptr)
 	{
 		try
 		{
-			auto entry = std::make_unique<PviObject>(*this);
-			entry->gui_info = {};
-			entry->gui_info.display_as_decimal = 1;
-			entry->watchsort = -1;
-			newobject = entry.get();
+			auto entry = std::make_unique<OwnedObject>(*this);
+			entry->object.gui_info = {};
+			entry->object.gui_info.display_as_decimal = 1;
+			entry->object.watchsort = -1;
+			newobject = &entry->object;
 			objects.push_back(std::move(entry));
 		}
 		catch (const std::bad_alloc &)
@@ -215,7 +250,7 @@ PviObject *PviObject::Add(BOOL create)
 			descriptor += " RF=" + std::to_string(object_refresh_time);
 			if (PLCDataChangeEvents && newobject->ex.pv.dimension <= 1 && newobject->ex.pv.type != BR_STRUCT && newobject->ex.pv.type != BR_STRING && newobject->ex.pv.type != BR_WSTRING)
 			{
-				descriptor += " AT=rwe";
+				descriptor += " AT=rwe"; // https://help.br-automation.com/#/en/6/automationnet/pvibase/core/pviobjectdescriptor.htm%23at
 			}
 			else
 			{
@@ -251,7 +286,8 @@ PviObject *PviObject::Add(BOOL create)
 PviObject *PviObject::Unlink()
 {
 	auto found = std::find_if(objects.begin(), objects.end(),
-							 [this](const std::unique_ptr<PviObject> &object) { return object.get() == this; });
+							  [this](const std::unique_ptr<OwnedObject> &entry)
+							  { return &entry->object == this; });
 	if (found == objects.end())
 		return nullptr;
 
@@ -270,12 +306,13 @@ PviObject *PviObject::Unlink()
 PviObject *PviObject::Remove()
 {
 	auto found = std::find_if(objects.begin(), objects.end(),
-							 [this](const std::unique_ptr<PviObject> &object) { return object.get() == this; });
+							  [this](const std::unique_ptr<OwnedObject> &entry)
+							  { return &entry->object == this; });
 	if (found == objects.end())
-		return objects.empty() ? &root : objects.back().get();
+		return objects.empty() ? &root : &objects.back()->object;
 
 	std::size_t index = static_cast<std::size_t>(found - objects.begin());
-	PviObject *previous = index == 0 ? &root : objects[index - 1].get();
+	PviObject *previous = index == 0 ? &root : &objects[index - 1]->object;
 	auto removed = std::move(*found);
 	objects.erase(found);
 	if (index < readIndex)
@@ -284,13 +321,10 @@ PviObject *PviObject::Remove()
 		--childReadIndex;
 
 	// Detach before PVI can dispatch callbacks, but keep the object alive until unlink completes.
-	PviUnlink(removed->linkid);
-	removed->linkid = 0;
-	if (removed->type == POBJ_PVAR && removed->ex.pv.pvalue != nullptr)
-	{
-		free(removed->ex.pv.pvalue);
-		removed->ex.pv.pvalue = nullptr;
-	}
+	PviUnlink(removed->object.linkid);
+	removed->object.linkid = 0;
+	if (removed->object.type == POBJ_PVAR)
+		removed->object.ex.pv.pvalue = nullptr;
 	return previous;
 }
 
@@ -298,11 +332,11 @@ PviObject *PviObject::Remove()
 
 PviObject *PviObject::FindByLinkId(DWORD linkid)
 {
-	for (const auto &object : objects)
+	for (const auto &entry : objects)
 	{
-		if (object->linkid == linkid)
+		if (entry->object.linkid == linkid)
 		{
-			return object.get();
+			return &entry->object;
 		}
 	}
 	return nullptr; // object not found
@@ -314,11 +348,11 @@ PviObject *PviObject::FindByName(const char *name)
 {
 	if (name != nullptr)
 	{
-		for (const auto &object : objects)
+		for (const auto &entry : objects)
 		{
-			if (strcmp(object->name, name) == 0)
+			if (strcmp(entry->object.name, name) == 0)
 			{
-				return object.get();
+				return &entry->object;
 			}
 		}
 	}
@@ -334,13 +368,14 @@ PviObject *PviObject::Watch(BOOL watch)
 
 	if (!watch)
 	{
-		Unlink();
+		if (Unlink() == nullptr)
+			return nullptr;
 		watchsort = -1;
-		if (ex.pv.pvalue != nullptr)
-		{
-			free(ex.pv.pvalue);
-			ex.pv.pvalue = nullptr;
-		}
+		auto entry = std::find_if(objects.begin(), objects.end(),
+								  [this](const std::unique_ptr<OwnedObject> &owned)
+								  { return &owned->object == this; });
+		(*entry)->value.reset();
+		ex.pv.pvalue = nullptr;
 		return this;
 	}
 
@@ -354,19 +389,33 @@ PviObject *PviObject::Watch(BOOL watch)
 		return nullptr;
 	}
 
+	PviObject *existing = FindByName(name);
+	DWORD valueLength = existing != nullptr ? existing->ex.pv.length : ex.pv.length;
+	if (valueLength == 0)
+	{
+		AddRowToLog("PviObject::Watch:zero-length value buffer", -1);
+		return nullptr;
+	}
+
+	std::unique_ptr<unsigned char[]> value;
+	try
+	{
+		value = std::make_unique<unsigned char[]>(valueLength);
+	}
+	catch (const std::bad_alloc &)
+	{
+		AddRowToLog("PviObject::Watch:value buffer allocation", -1);
+		return nullptr;
+	}
+
 	PviObject *object = Add(TRUE);
 	if (object != nullptr)
 	{
-		object->ex.pv.pvalue = malloc(object->ex.pv.length);
-		if (object->ex.pv.pvalue)
-		{
-			if (object->ex.pv.type == BR_REAL)
-				*((float *)object->ex.pv.pvalue) = 0.0;
-			else if (object->ex.pv.type == BR_LREAL)
-				*((double *)object->ex.pv.pvalue) = 0.0;
-			else
-				memset(object->ex.pv.pvalue, 0, object->ex.pv.length);
-		}
+		auto entry = std::find_if(objects.begin(), objects.end(),
+								  [object](const std::unique_ptr<OwnedObject> &owned)
+								  { return &owned->object == object; });
+		(*entry)->value = std::move(value);
+		object->ex.pv.pvalue = (*entry)->value.get();
 	}
 	return object;
 }
@@ -381,7 +430,7 @@ PviObject *PviObject::GetNext(BOOL first)
 		return &root;
 	}
 	if (readIndex < objects.size())
-		return objects[readIndex++].get();
+		return &objects[readIndex++]->object;
 	return nullptr;
 }
 
@@ -398,7 +447,7 @@ PviObject *PviObject::FindChild(BOOL first)
 
 	while (childReadIndex < objects.size())
 	{
-		PviObject *find = objects[childReadIndex++].get();
+		PviObject *find = &objects[childReadIndex++]->object;
 		if (strncmp(name, find->name, length) == 0)
 		{
 			if (find->name[length] == '/' || find->name[length] == '[' || find->name[length] == '.')
@@ -783,7 +832,7 @@ int PviObject::Stop(void)
 	KillTimer(nullptr, timerid_cyclic_requests);
 
 	while (!objects.empty())
-		objects.front()->Remove();
+		objects.front()->object.Remove();
 	readIndex = 0;
 	childReadIndex = 0;
 
@@ -803,58 +852,21 @@ int PviObject::Stop(void)
 
 static const char *AddPviDatatype(const char *t)
 {
-	size_t length;
-	PVISTRUCTNAMES *p, *kill;
-
 	if (t == nullptr)
-	{ // delete all data types
-		p = structnamesroot.next;
-		while (p != nullptr)
-		{
-			kill = p;
-			p = kill->next;
-			if (kill->pname != nullptr)
-				free(kill->pname);
-			free(kill);
-		}
-		structnamesroot.next = nullptr;
-		return ("nil!");
-	}
-
-	length = strlen(t); // length of data type's name
-
-	// search for data type
-	p = &structnamesroot;
-	while (p->next != nullptr)
 	{
-		p = p->next;
-		if (p->pname != nullptr)
-		{
-			if (!strcmp(p->pname, t))
-			{ // already exists
-				return (p->pname);
-			}
-		}
-		else
-		{
-			return ("ERROR!");
-		}
+		datatypeNames.clear();
+		return nullptr;
 	}
 
-	// insert data type
-	p->next = static_cast<PVISTRUCTNAMES *>(malloc(sizeof(PVISTRUCTNAMES)));
-	if (p->next != nullptr)
+	try
 	{
-		p = p->next;
-		p->pname = static_cast<char *>(malloc(length + 1)); // space for name
-		p->next = nullptr;
-		if (p->pname != nullptr)
-		{
-			return (strcpy(p->pname, t));
-		}
+		return datatypeNames.emplace(t).first->c_str();
 	}
-
-	return ("ERROR!");
+	catch (const std::bad_alloc &)
+	{
+		AddRowToLog("AddPviDatatype:name allocation", -1);
+		return nullptr;
+	}
 }
 
 /* ===================================================================================
@@ -1082,11 +1094,11 @@ PviObject *PviObject::Expand(unsigned hostsPerAdapter, bool allowBeyondSubnet)
 PviObject *PviObject::AddCpuByIp(const char *ipAddress, unsigned timeoutMs)
 {
 	PviObject *deviceObject = nullptr;
-	for (const auto &object : objects)
+	for (const auto &entry : objects)
 	{
-		if (object->type == POBJ_DEVICE)
+		if (entry->object.type == POBJ_DEVICE)
 		{
-			deviceObject = object.get();
+			deviceObject = &entry->object;
 			break;
 		}
 	}
@@ -1101,8 +1113,8 @@ PviObject *PviObject::AddCpuByIp(const char *ipAddress, unsigned timeoutMs)
 	snprintf(cpuObject.descriptor, sizeof(cpuObject.descriptor), "/IP=%s /COMT=%u", ipAddress, timeoutMs);
 	for (const auto &existing : objects)
 	{
-		if (existing->type == POBJ_CPU && strcmp(existing->descriptor, cpuObject.descriptor) == 0)
-			return existing.get();
+		if (existing->object.type == POBJ_CPU && strcmp(existing->object.descriptor, cpuObject.descriptor) == 0)
+			return &existing->object;
 	}
 	char uniqueName[256];
 	CreateUniqueObjectName(uniqueName, cpuObject.descriptor);
@@ -1127,18 +1139,8 @@ PviObject *PviObject::AddCpuByIp(const char *ipAddress, unsigned timeoutMs)
 PviObject *PviObject::ReadCpuList(unsigned hostsPerAdapter, bool allowBeyondSubnet)
 {
 	char *s;
-	char *pbuffer;
-
-
 	if (this->type != POBJ_DEVICE)
 		return nullptr;
-
-	pbuffer = static_cast<char *>(malloc(65535));
-	if (pbuffer == nullptr)
-	{
-		AddRowToLog("PviObject::ReadCpuList:malloc(65535)", -1);
-		return nullptr;
-	}
 
 	s = _strupr(this->descriptor);
 	while (*s)
@@ -1186,24 +1188,16 @@ PviObject *PviObject::ReadCpuList(unsigned hostsPerAdapter, bool allowBeyondSubn
 		// search for CPUs connected via ethernet
 		if (FindToken(&s, "/IF=TCPIP"))
 		{
-			struct stEthernetCpuInfo *buffer = static_cast<struct stEthernetCpuInfo *>(calloc(256, sizeof(struct stEthernetCpuInfo)));
-			struct stEthernetCpuInfo *ethernetCpuInfo = buffer;
-
-			if (ethernetCpuInfo != nullptr)
-			{
-
-				int noOfCpu = SearchEthernetCpus(ethernetCpuInfo, 256, hostsPerAdapter, allowBeyondSubnet);
-				if (noOfCpu >= 0)
-					AddEthernetCpus(ethernetCpuInfo, noOfCpu);
-				free(buffer);
-			}
+			std::array<stEthernetCpuInfo, MAX_SUPPORTED_CPUS> ethernetCpuInfo{};
+			int noOfCpu = SearchEthernetCpus(ethernetCpuInfo.data(), static_cast<int>(ethernetCpuInfo.size()), hostsPerAdapter, allowBeyondSubnet);
+			if (noOfCpu >= 0)
+				AddEthernetCpus(ethernetCpuInfo.data(), noOfCpu);
 			break;
 		}
 
 		++s;
 	}
 
-	free(pbuffer);
 	return this;
 }
 
@@ -1233,7 +1227,7 @@ PviObject *PviObject::AddEthernetCpus(const stEthernetCpuInfo *cpus, int entries
 		char descriptor[256];
 		snprintf(descriptor, sizeof(descriptor), "CD=\"%s\"", cpuObject.descriptor);
 		int result = PviCreate(&cpuObject.linkid, cpuObject.name, cpuObject.type, descriptor,
-			PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=s");
+							   PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=s");
 		if (result == 0)
 			cpuObject.Add(FALSE);
 		else
@@ -1249,20 +1243,15 @@ PviObject *PviObject::ReadTaskList()
 	PviObject tempobject;
 	PviObject *o;
 	int result = 0;
-	char *pbuffer;
 	char *s, *d;
-
 
 	if (this->type != POBJ_CPU)
 		return nullptr;
 
-	pbuffer = (char *)malloc(65535);
-
-	if (pbuffer == nullptr)
-	{
-		AddRowToLog("PviObject::ReadTaskList:malloc(65535)", -1);
-		return nullptr; // error
-	}
+	auto buffer = AllocatePviBuffer(65535, "PviObject::ReadTaskList:buffer allocation");
+	if (!buffer)
+		return nullptr;
+	char *pbuffer = buffer.get();
 
 	/* get version of Automation Runtime  */
 	this->ex.cpu.arversion[0] = 0;
@@ -1322,7 +1311,7 @@ PviObject *PviObject::ReadTaskList()
 
 			if ((o = tempobject.Add(1)) != nullptr)
 			{
-				o->ex.task.cpu = this;		 // store pointer to CPU this
+				o->ex.task.cpu = this;		   // store pointer to CPU this
 				this->gui_info.has_childs = 1; // children were found
 			}
 		}
@@ -1332,7 +1321,6 @@ PviObject *PviObject::ReadTaskList()
 		AddRowToLog("PviObject::ReadTaskList", result);
 	}
 
-	free(pbuffer);
 	return this; // return pointer to CPU this
 }
 
@@ -1340,22 +1328,16 @@ PviObject *PviObject::ReadTaskList()
 PviObject *PviObject::ReadPvarList()
 {
 	PviObject newobject;
-	char *pbuffer, *s, *d;
+	char *s, *d;
 	int result;
-
 
 	if (this->type != POBJ_CPU && this->type != POBJ_TASK)
 		return nullptr;
 
-	pbuffer = (char *)malloc(65535);
-
-	if (pbuffer == nullptr)
-	{
-		AddRowToLog("PviObject::ReadPvarList:malloc(65535)", -1);
-		return nullptr; // error
-	}
-
-	memset(pbuffer, 0, 65535);
+	auto buffer = AllocatePviBuffer(65535, "PviObject::ReadPvarList:buffer allocation");
+	if (!buffer)
+		return nullptr;
+	char *pbuffer = buffer.get();
 
 	/* link this */
 	this->Add(1);
@@ -1520,16 +1502,16 @@ PviObject *PviObject::ReadPvarList()
 				strcat(newobject.name, "/");
 				strcat(newobject.name, newobject.descriptor);
 				if (this->type == POBJ_CPU)
-				{								   // global variable ?
+				{								 // global variable ?
 					newobject.ex.pv.task = this; // since task does not exist we store CPU this instead
-					newobject.ex.pv.cpu = this;  // store CPU this
+					newobject.ex.pv.cpu = this;	 // store CPU this
 				}
 				else
 				{ // local variable
 					PviObject *cpu = this->ex.task.cpu;
 
 					newobject.ex.pv.task = this; // store pointer to task this
-					newobject.ex.pv.cpu = cpu;	   // store pointer to CPU this
+					newobject.ex.pv.cpu = cpu;	 // store pointer to CPU this
 				}
 				if (newobject.Add(0) != nullptr)
 				{
@@ -1547,8 +1529,6 @@ PviObject *PviObject::ReadPvarList()
 		AddRowToLog("PviObject::ReadPvarList", result);
 	}
 
-	// Speicher freigeben
-	free(pbuffer);
 	return (this);
 }
 
@@ -1556,24 +1536,19 @@ PviObject *PviObject::ReadPvarList()
 PviObject *PviObject::ReadStructElements()
 {
 	const unsigned int buffer_size = 258084;
-	char *pbuffer;
 	int result;
 	char *s, *d;
 	PviObject newobject;
 	PviObject *o;
 	BOOL element_definition;
 
-
 	if (this->type != POBJ_PVAR && this->ex.pv.type != BR_STRUCT)
 		return nullptr;
 
-	pbuffer = (char *)calloc(buffer_size, 1);
-
-	if (pbuffer == nullptr)
-	{
-		AddRowToLog("PviObject::ReadStructElements:calloc(buffer_size)", -1);
-		return nullptr; // error
-	}
+	auto buffer = AllocatePviBuffer(buffer_size, "PviObject::ReadStructElements:buffer allocation");
+	if (!buffer)
+		return nullptr;
+	char *pbuffer = buffer.get();
 
 	newobject = *this;
 	strcpy(newobject.descriptor, "CD=\"");
@@ -1583,7 +1558,7 @@ PviObject *PviObject::ReadStructElements()
 	result = PviCreate(&newobject.linkid, newobject.name, newobject.type, newobject.descriptor, PviObject::Callback, SET_PVICALLBACK_DATA, 0, "Ev=e");
 	if (result == 0 || result == 12002)
 	{
-		result = PviRead(newobject.linkid, POBJ_ACC_TYPE_EXTERN, nullptr, 0, pbuffer, buffer_size );
+		result = PviRead(newobject.linkid, POBJ_ACC_TYPE_EXTERN, nullptr, 0, pbuffer, buffer_size);
 	}
 	PviDelete(newobject.name);
 
@@ -1592,7 +1567,6 @@ PviObject *PviObject::ReadStructElements()
 		if (memchr(pbuffer, '\0', buffer_size) == nullptr)
 		{
 			AddRowToLog("PviObject::ReadStructElements:unterminated type description", -1);
-			free(pbuffer);
 			return nullptr;
 		}
 
@@ -1620,6 +1594,8 @@ PviObject *PviObject::ReadStructElements()
 					}
 					*d = 0;
 					this->ex.pv.pdatatype = AddPviDatatype(tempstring);
+					if (this->ex.pv.pdatatype == nullptr)
+						return nullptr;
 				}
 			}
 
@@ -1646,7 +1622,6 @@ PviObject *PviObject::ReadStructElements()
 					if (end == nullptr)
 					{
 						AddRowToLog("PviObject::ReadStructElements:missing closing brace", -1);
-						free(pbuffer);
 						return nullptr;
 					}
 					s = end + 1;
@@ -1792,6 +1767,8 @@ PviObject *PviObject::ReadStructElements()
 					}
 					*d = 0;
 					newobject.ex.pv.pdatatype = AddPviDatatype(tempstring);
+					if (newobject.ex.pv.pdatatype == nullptr)
+						return nullptr;
 				}
 			}
 			if (FindToken(&s, KWDESC_PVCNT "="))
@@ -1819,7 +1796,7 @@ PviObject *PviObject::ReadStructElements()
 #endif
 
 						if (this->ex.pv.dimension > 1)
-						{																			   // Elternobject ist ein Array
+						{																			 // Elternobject ist ein Array
 							strcpy(tempstring, newobject.descriptor + strlen(this->descriptor) + 1); // Name des Elementes
 							snprintf(newelement.name, sizeof(newelement.name), "%s[%i].%s", this->name, i, tempstring);
 							snprintf(newelement.descriptor, sizeof(newelement.descriptor), "%s[%i].%s", this->descriptor, i, tempstring);
@@ -1835,8 +1812,8 @@ PviObject *PviObject::ReadStructElements()
 #endif
 
 						strncpy(newelement.ex.pv.scope, this->ex.pv.scope, 1); // Scope is inherited
-						newelement.ex.pv.task = this->ex.pv.task;				 // Task is inherited
-						newelement.ex.pv.cpu = this->ex.pv.cpu;				 // CPU is inherited
+						newelement.ex.pv.task = this->ex.pv.task;			   // Task is inherited
+						newelement.ex.pv.cpu = this->ex.pv.cpu;				   // CPU is inherited
 						if ((o = newelement.Add(FALSE)) != nullptr)
 						{
 							// this->gui_info.has_childs = 1;  // mind. 1 "Kind" wurde fÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼r das Objekt angelegt
@@ -1865,7 +1842,6 @@ PviObject *PviObject::ReadStructElements()
 		AddRowToLog("PviObject::ReadStructElements:PviCreate/PviRead", result);
 	}
 
-	free(pbuffer);
 	return result ? nullptr : this;
 }
 
@@ -1892,7 +1868,6 @@ static void AddRowToLog(const char *row, int errcode)
 	FILE *f;
 	char zeit[10];
 	char datum[10];
-	char *pmessage;
 	std::string filename = GetPviLogFileName();
 
 	_strtime(zeit);
@@ -1916,25 +1891,20 @@ static void AddRowToLog(const char *row, int errcode)
 	if (errcode != 0)
 	{
 		const char *errtext;
-		pmessage = (char *)malloc(512);
-
-		if (pmessage != nullptr)
+		switch (errcode)
 		{
-			switch (errcode)
-			{
-			case 12050:
-				errtext = "PVI-Manager not startet";
-				break;
-			case 12060:
-				errtext = "process timeout";
-				break;
-			default:
-				errtext = "please refer to PVI documentation";
-			}
-			sprintf(pmessage, "Error in PVI-Interface\nError: %u\n\"%s\"\n(%s)", errcode, errtext, row);
-			MessageBoxA(nullptr, pmessage, "Error", MB_OK | MB_ICONERROR);
+		case 12050:
+			errtext = "PVI-Manager not startet";
+			break;
+		case 12060:
+			errtext = "process timeout";
+			break;
+		default:
+			errtext = "please refer to PVI documentation";
 		}
-		free(pmessage);
+		std::string message = "Error in PVI-Interface\nError: " + std::to_string(errcode) +
+							  "\n\"" + row + "\"\n(" + errtext + ")";
+		MessageBoxA(nullptr, message.c_str(), "Error", MB_OK | MB_ICONERROR);
 	}
 }
 

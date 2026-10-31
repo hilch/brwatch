@@ -83,7 +83,7 @@ typedef struct PVIPVAROBJECT{
 	const char				*pdatatype;			// Pointer to the data type name
 	int							dimension;			// Number of array elements
 	DWORD						length;				// Variable length
-	void						*pvalue;			// Pointer to watch data
+	void						*pvalue;			// Borrowed watch data, owned by the registry entry
 	BOOL						value_changed;		// Value has changed
 	char						scope[2];			// Scope (global, local, dynamic)
 	PviObject			*task;				// Pointer to the task object (or CPU object for global variables)
@@ -186,8 +186,9 @@ private:
 	static void WINAPI Callback(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO *);
 	static void WINAPI GlobalEvent(WPARAM, LPARAM, LPVOID, DWORD, T_RESPONSE_INFO *);
 	static void CALLBACK CyclicRequests(HWND, UINT, UINT_PTR, DWORD);
+	struct OwnedObject;
 	static PviObject root;
-	static std::vector<std::unique_ptr<PviObject>> objects;
+	static std::vector<std::unique_ptr<OwnedObject>> objects;
 	static std::size_t readIndex;
 	static std::size_t childReadIndex;
 };

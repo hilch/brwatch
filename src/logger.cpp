@@ -25,6 +25,8 @@
  * handles write-on-change events, and ConfigDlgProc() handles the settings dialog.
  * Cyclic logging uses a Win32 timer. Both modes timestamp values using a watched
  * CPU, rotate files at the configured size limit, and optionally compress them.
+ * Watched-object pointers are borrowed in a vector; fixed arrays provide file
+ * caches whose storage remains valid throughout each logging session.
  */
 
 #define WIN32_LEAN_AND_MEAN /* speed up compilations */
@@ -36,6 +38,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <process.h>
+#include <array>
+#include <new>
 #include "main.h"
 #include "settings.h"
 #include "pvi_interface.h"
@@ -63,7 +67,7 @@ PviObject *Logger::cpu_timemaster = nullptr;
 #define COMPRESS_FILE 60
 #define STOP_LOGGING 70
 
-PviObject **Logger::logged_object = nullptr; // point to list with objects to be logged
+std::vector<PviObject *> Logger::logged_object; // borrowed objects to be logged
 int Logger::no_of_logged_objects = 0;		 // number of logged objects
 int Logger::estimated_row_size;				 // estimated row size
 volatile int Logger::logger_step;
@@ -78,43 +82,31 @@ BOOL Logger::IsRunning()
 int Logger::CountLoggedObjects()
 {
 	PviObject *object;
-	PviObject **p;
 
 	no_of_logged_objects = 0;
 	estimated_row_size = 0;
+	logged_object.clear();
 
-	if (logged_object != nullptr)
+	try
 	{
-		free(logged_object);
-		logged_object = nullptr;
-	}
-
-	object = PviObject::GetNext(TRUE);
-	while ((object = PviObject::GetNext(FALSE)) != nullptr)
-	{
-		if (object->watchsort >= 0)
-		{ // is object in watch list ?
-			switch (object->type)
+		object = PviObject::GetNext(TRUE);
+		while ((object = PviObject::GetNext(FALSE)) != nullptr)
+		{
+			if (object->watchsort >= 0 && object->type == POBJ_PVAR)
 			{
-			case POBJ_PVAR:
-				p = static_cast<PviObject **>(realloc(logged_object, sizeof(PviObject *) * (no_of_logged_objects + 1)));
-				if (p == nullptr)
-				{
-					break;
-				}
-				else
-				{
-					logged_object = p;
-					logged_object[no_of_logged_objects] = object;
-					estimated_row_size += object->ex.pv.length;
-					++no_of_logged_objects;
-				}
-				break;
-
-			default:
-				break;
+				logged_object.push_back(object);
+				estimated_row_size += object->ex.pv.length;
+				++no_of_logged_objects;
 			}
 		}
+	}
+	catch (const std::bad_alloc &)
+	{
+		logged_object.clear();
+		no_of_logged_objects = 0;
+		estimated_row_size = 0;
+		MessageBoxA(MainWindowGetHandle(), "Logger: can't allocate the watched-object list !", "Logger Error - Memory", MB_OK | MB_ICONERROR);
+		return -1;
 	}
 
 	return no_of_logged_objects;
@@ -208,7 +200,10 @@ BOOL Logger::ValidateSettings()
 		return FALSE;
 	}
 
-	if (CountLoggedObjects() == 0)
+	int objectCount = CountLoggedObjects();
+	if (objectCount < 0)
+		return FALSE;
+	if (objectCount == 0)
 	{
 		MessageBoxA(MainWindowGetHandle(), "no objects to log !", "Logger Error - No Objects", MB_OK | MB_ICONERROR);
 		return FALSE;
@@ -265,7 +260,7 @@ void Logger::DataChanged(PviObject *object)
 {
 	static FILE *f;
 	//    char *p_step_str;
-	static char *cache;
+	static std::array<char, CACHESIZE> cache;
 	static char errstring[130];
 	static long long int written_chars;
 	static char renamedfilename[MAX_PATH];
@@ -299,14 +294,7 @@ void Logger::DataChanged(PviObject *object)
 			case START_LOGGING:
 				//					p_step_str = "START_LOGGING";
 				strcpy(errstring, "");
-				cache = static_cast<char *>(malloc(CACHESIZE));
 				milliseconds = 0;
-				if (cache == nullptr)
-				{
-					strcpy(errstring, "Logger: can't allocate cache. To less memory !");
-					logger_step = STOP_LOGGING;
-					break;
-				}
 				logger_step = RENAME_OLD_FILE;
 				continue;
 
@@ -372,7 +360,7 @@ void Logger::DataChanged(PviObject *object)
 				}
 				else
 				{
-					setvbuf(f, cache, _IOFBF, CACHESIZE);
+					setvbuf(f, cache.data(), _IOFBF, cache.size());
 					logger_step = WRITE_TO_FILE;
 					flushinterval = 0;
 				}
@@ -575,7 +563,11 @@ void Logger::DataChanged(PviObject *object)
 
 			case STOP_LOGGING:
 				//			p_step_str = "STOP_LOGGING";
-				free(cache);
+				if (f != nullptr)
+				{
+					fclose(f);
+					f = nullptr;
+				}
 				logger_is_running = FALSE;
 				start_write_by_change = 0; // self stop
 				SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
@@ -607,7 +599,7 @@ VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, 
 	static long long int written_chars;
 	int result;
 	int i;
-	static char *cache;
+	static std::array<char, CACHESIZE> cache;
 	static char errstring[130];
 	//    char *p_step_str;
 	static char renamedfilename[MAX_PATH];
@@ -629,13 +621,6 @@ VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, 
 		//			p_step_str = "START_LOGGING";
 		milliseconds = 0;
 		strcpy(errstring, "");
-		cache = static_cast<char *>(malloc(CACHESIZE));
-		if (cache == nullptr)
-		{
-			strcpy(errstring, "Logger: can't allocate cache. To less memory !");
-			logger_step = STOP_LOGGING;
-			break;
-		}
 		logger_step = RENAME_OLD_FILE;
 		break;
 
@@ -728,7 +713,7 @@ VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, 
 		}
 		else
 		{
-			setvbuf(f, cache, _IOFBF, CACHESIZE);
+			setvbuf(f, cache.data(), _IOFBF, cache.size());
 			logger_step = WRITE_TO_FILE;
 			flushinterval = 0;
 		}
@@ -924,7 +909,11 @@ VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, 
 	case STOP_LOGGING:
 		//			p_step_str = "STOP_LOGGING";
 		KillTimer(nullptr, idEvent); // function kills itself
-		free(cache);
+		if (f != nullptr)
+		{
+			fclose(f);
+			f = nullptr;
+		}
 		logger_is_running = FALSE;
 		SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
 		if (strcmp(errstring, ""))
@@ -948,6 +937,7 @@ VOID CALLBACK Logger::TimerProc(HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR idEvent, 
 INT_PTR CALLBACK Logger::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM /* lParam */)
 {
 	char tempstring[512];
+	int objectCount;
 
 	switch (uMsg)
 	{
@@ -973,7 +963,13 @@ INT_PTR CALLBACK Logger::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
 			sprintf(tempstring, "%s %s %s", cpu_timemaster->ex.cpu.cputype, cpu_timemaster->ex.cpu.arversion, cpu_timemaster->descriptor);
 		}
 		SetDlgItemTextA(hDlg, IDR_EDIT_TIMESTAMP_CPU, tempstring);
-		SetDlgItemInt(hDlg, IDR_EDIT_OBJECT_COUNT, CountLoggedObjects(), 0);
+		objectCount = CountLoggedObjects();
+		if (objectCount < 0)
+		{
+			EndDialog(hDlg, FALSE);
+			return TRUE;
+		}
+		SetDlgItemInt(hDlg, IDR_EDIT_OBJECT_COUNT, objectCount, 0);
 
 		if (logger_is_running)
 		{ // bei laufendem Logger nur schauen erlaubt
@@ -1080,7 +1076,6 @@ BOOL Logger::Toggle()
 	{ // Logger wird gestartet;
 		if (!ReadSettings())
 			return FALSE;
-		CountLoggedObjects();
 		if (ValidateSettings() == FALSE)
 			logger_is_running = FALSE; // could not be started
 		else

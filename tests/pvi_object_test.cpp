@@ -33,6 +33,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <fstream>
+#include <iterator>
 
 static_assert(std::is_standard_layout<PviObject>::value, "Keep the Win32-facing data layout");
 static_assert(std::is_trivially_copyable<PviObject>::value, "Object descriptions remain value-copyable");
@@ -90,6 +92,10 @@ static SocketMode socketMode = SocketMode::Timeout;
 static DWORD mockTicks;
 static unsigned readRequests;
 static unsigned unlinkRequests;
+static int unlinkError;
+static bool captureLoggerTimer;
+static TIMERPROC loggerTimer;
+static UINT_PTR loggerTimerId;
 static CpuScanControl *cancelOnRead;
 static unsigned cancelReadRequest;
 static CpuScanControl *cancelOnConnect;
@@ -113,6 +119,40 @@ static void Check(bool condition, const char *expression, int line)
 }
 
 #define CHECK(expression) Check((expression), #expression, __LINE__)
+
+template <typename Function>
+static Function LoadUser32Function(const char *name)
+{
+	FARPROC address = GetProcAddress(GetModuleHandleA("user32.dll"), name);
+	CHECK(address != nullptr);
+	Function function;
+	static_assert(sizeof(function) == sizeof(address), "Win32 function pointer sizes must match");
+	memcpy(&function, &address, sizeof(function));
+	return function;
+}
+
+static UINT_PTR WINAPI TestSetTimer(HWND window, UINT_PTR timerId, UINT interval, TIMERPROC procedure)
+{
+	if (captureLoggerTimer && window == nullptr)
+	{
+		loggerTimer = procedure;
+		loggerTimerId = 0x1234;
+		return loggerTimerId;
+	}
+	static auto nativeSetTimer = LoadUser32Function<decltype(&SetTimer)>("SetTimer");
+	return nativeSetTimer(window, timerId, interval, procedure);
+}
+
+static BOOL WINAPI TestKillTimer(HWND window, UINT_PTR timerId)
+{
+	if (captureLoggerTimer && window == nullptr && timerId == loggerTimerId)
+	{
+		loggerTimer = nullptr;
+		return TRUE;
+	}
+	static auto nativeKillTimer = LoadUser32Function<decltype(&KillTimer)>("KillTimer");
+	return nativeKillTimer(window, timerId);
+}
 
 static int WINAPI TestMessageBoxA(HWND, LPCSTR text, LPCSTR caption, UINT)
 {
@@ -353,6 +393,8 @@ extern "C"
 	decltype(&select) __imp_select = TestSelect;
 	decltype(&getsockopt) __imp_getsockopt = TestGetSockOpt;
 	decltype(&GetTickCount) __imp_GetTickCount = TestGetTickCount;
+	decltype(&SetTimer) __imp_SetTimer = TestSetTimer;
+	decltype(&KillTimer) __imp_KillTimer = TestKillTimer;
 }
 
 extern "C" INT WINAPI PviInitialize(LONG, LONG, LPCSTR, LPVOID)
@@ -452,6 +494,8 @@ extern "C" INT WINAPI PviDelete(LPCSTR)
 extern "C" INT WINAPI PviUnlink(DWORD linkid)
 {
 	++unlinkRequests;
+	if (unlinkError != 0)
+		return unlinkError;
 	snmpProperties.erase(linkid);
 	if (detachedLinkId != 0 && linkid == detachedLinkId)
 	{
@@ -554,6 +598,62 @@ static void CheckCursorRemoval()
 	CHECK(parent->FindChild(FALSE) == nullptr);
 	third->Remove();
 	parent->Remove();
+}
+
+static void CheckWatchBufferOwnership()
+{
+	PviObject *object = AddObject("@Pvi/BufferOwnership", "BufferOwnership", POBJ_PVAR);
+	object->ex.pv.type = BR_DINT;
+	object->ex.pv.length = sizeof(LONG);
+	object->ex.pv.dimension = 1;
+	for (unsigned i = 0; i < 128; ++i)
+	{
+		CHECK(object->Watch(TRUE) == object);
+		CHECK(object->ex.pv.pvalue != nullptr);
+		CHECK(*static_cast<LONG *>(object->ex.pv.pvalue) == 0);
+		*static_cast<LONG *>(object->ex.pv.pvalue) = 42;
+	}
+
+	PviObject copy = *object;
+	strcpy(copy.name, "@Pvi/BufferCopy");
+	PviObject *copied = copy.Add(FALSE);
+	CHECK(copied != nullptr && copied->ex.pv.pvalue == nullptr);
+	CHECK(copied->Watch(TRUE) == copied);
+	CHECK(copied->ex.pv.pvalue != object->ex.pv.pvalue);
+	copied->Remove();
+	CHECK(*static_cast<LONG *>(object->ex.pv.pvalue) == 42);
+
+	void *retainedValue = object->ex.pv.pvalue;
+	DWORD retainedLink = object->linkid;
+	object->watchsort = 0;
+	unlinkError = 123;
+	expectedErrorMessages = 1;
+	CHECK(object->Watch(FALSE) == nullptr);
+	CHECK(expectedErrorMessages == 0);
+	CHECK(object->ex.pv.pvalue == retainedValue && object->linkid == retainedLink);
+	CHECK(object->watchsort == 0 && *static_cast<LONG *>(retainedValue) == 42);
+	unlinkError = 0;
+	CHECK(object->Watch(FALSE) == object);
+	CHECK(object->ex.pv.pvalue == nullptr && object->linkid == 0);
+
+	for (PVIPVARTYPE type : {BR_REAL, BR_LREAL, BR_STRING, BR_WSTRING})
+	{
+		object->ex.pv.type = type;
+		object->ex.pv.length = type == BR_LREAL ? sizeof(double) : 32;
+		CHECK(object->Watch(TRUE) == object);
+		for (DWORD i = 0; i < object->ex.pv.length; ++i)
+			CHECK(static_cast<unsigned char *>(object->ex.pv.pvalue)[i] == 0);
+		if (type == BR_REAL)
+			CHECK(*static_cast<float *>(object->ex.pv.pvalue) == 0.0f);
+		if (type == BR_LREAL)
+			CHECK(*static_cast<double *>(object->ex.pv.pvalue) == 0.0);
+		CHECK(object->Watch(FALSE) == object);
+	}
+	object->ex.pv.length = 0;
+	expectedErrorMessages = 1;
+	CHECK(object->Watch(TRUE) == nullptr);
+	CHECK(expectedErrorMessages == 0 && object->ex.pv.pvalue == nullptr);
+	object->Remove();
 }
 
 static void CheckStringCallbacks(PVIPVARTYPE type)
@@ -1697,6 +1797,75 @@ static void CheckAboutLink()
 	CHECK(DestroyWindow(dialog) != 0);
 }
 
+static void CheckLoggerBuffers(const char *testDirectory)
+{
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, ProgramSettings::GetFileName());
+	std::string settingsFile = std::string(testDirectory) + "\\logging-settings.ini";
+	strcpy(ProgramSettings::GetFileName(), settingsFile.c_str());
+	CHECK(WritePrivateProfileStringA("Logger", "maxfilesize", "10", settingsFile.c_str()));
+	CHECK(WritePrivateProfileStringA("Logger", "cycletime", "50", settingsFile.c_str()));
+	CHECK(WritePrivateProfileStringA("Logger", "zip", "0", settingsFile.c_str()));
+
+	PviObject *cpu = AddObject("@Pvi/LoggerCPU", "LoggerCPU", POBJ_CPU);
+	cpu->watchsort = 0;
+	cpu->ex.cpu.rtc_time.tm_year = 126;
+	cpu->ex.cpu.rtc_time.tm_mon = 9;
+	cpu->ex.cpu.rtc_time.tm_mday = 31;
+	strcpy(cpu->ex.cpu.cputype, "TestCPU");
+	strcpy(cpu->ex.cpu.arversion, "1.0");
+	PviObject *variable = AddObject("@Pvi/LoggerCPU/Value", "Value", POBJ_PVAR);
+	variable->ex.pv.type = BR_DINT;
+	variable->ex.pv.length = sizeof(LONG);
+	variable->ex.pv.dimension = 1;
+	variable->ex.pv.cpu = cpu;
+	strcpy(variable->ex.pv.scope, "g");
+	CHECK(variable->Watch(TRUE) == variable);
+	variable->watchsort = 1;
+	*static_cast<LONG *>(variable->ex.pv.pvalue) = 42;
+
+	for (bool writeByChange : {true, false})
+	{
+		std::string filename = std::string(testDirectory) + (writeByChange ? "\\changes.csv" : "\\cycles.csv");
+		CHECK(WritePrivateProfileStringA("Logger", "Filename", filename.c_str(), settingsFile.c_str()));
+		CHECK(WritePrivateProfileStringA("Logger", "write_by_change", writeByChange ? "1" : "0", settingsFile.c_str()));
+		captureLoggerTimer = !writeByChange;
+		for (unsigned session = 0; session < 2; ++session)
+		{
+			CHECK(Logger::Toggle());
+			if (writeByChange)
+				Logger::DataChanged(variable);
+			else
+			{
+				CHECK(loggerTimer != nullptr);
+				for (unsigned i = 0; i < 6; ++i)
+					loggerTimer(nullptr, WM_TIMER, loggerTimerId, i * 50);
+			}
+			CHECK(!Logger::Toggle());
+			if (!writeByChange)
+			{
+				for (unsigned i = 0; i < 10 && loggerTimer != nullptr; ++i)
+					loggerTimer(nullptr, WM_TIMER, loggerTimerId, 500 + i * 50);
+				CHECK(loggerTimer == nullptr);
+			}
+			std::ifstream file(filename, std::ios::binary);
+			CHECK(file.good());
+			std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+			CHECK(!file.bad());
+			file.close();
+			CHECK(data.find(writeByChange ? LOGFILE_HEADER_BY_CHANGE : LOGFILE_HEADER) == 0);
+			CHECK(data.find("2026/10/31-") != std::string::npos);
+			CHECK(data.find(writeByChange ? ",+42" : ";+42") != std::string::npos);
+			CHECK(DeleteFileA(filename.c_str()));
+		}
+		captureLoggerTimer = false;
+	}
+	variable->Remove();
+	cpu->Remove();
+	CHECK(DeleteFileA(settingsFile.c_str()));
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
+}
+
 static void CheckObjectRefreshTime(const char *testDirectory)
 {
 	char originalSettings[MAX_PATH];
@@ -1878,6 +2047,8 @@ int main()
 	CheckProgramSettings(testDirectory);
 	CheckLogger(testDirectory);
 	CheckObjectRefreshTime(testDirectory);
+	CheckLoggerBuffers(testDirectory);
+	CheckWatchBufferOwnership();
 
 	PviObject *device = AddObject("@Pvi/Device", "/IF=tcpip", POBJ_DEVICE);
 	PviObject duplicate = *device;
@@ -1941,6 +2112,10 @@ int main()
 	PviObject *axisName = PviObject::FindByName("@Pvi/Device/CPU/Task/AxisHandling.ax[1].name");
 	CHECK(axisName != nullptr && axisName->ex.pv.type == BR_STRING);
 	CHECK(axisName->ex.pv.cpu == cpu && axisName->ex.pv.task == task);
+	PviObject *cncGroup = PviObject::FindByName("@Pvi/Device/CPU/Task/AxisHandling.axGroupCnc");
+	PviObject *auxGroup = PviObject::FindByName("@Pvi/Device/CPU/Task/AxisHandling.axGroupAux");
+	CHECK(cncGroup != nullptr && auxGroup != nullptr);
+	CHECK(cncGroup->ex.pv.pdatatype == auxGroup->ex.pv.pdatatype);
 
 	PviObject *variable = AddObject("@Pvi/Device/CPU/Task/Value", "Value", POBJ_PVAR);
 	variable->ex.pv.type = BR_DINT;
@@ -2008,6 +2183,6 @@ int main()
 	snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
 	CHECK(DeleteFileA(logFile) != 0);
 	CHECK(RemoveDirectoryA(testDirectory) != 0);
-	puts("PASS: PviObject lifecycle, vector growth, cursor removal, expansion, bounded string callbacks, configurable PVI refresh time, scalar-only watches, tree/list views, ProgramSettings CPU sections/editor, Logger state/configuration, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
+	puts("PASS: PviObject lifecycle, RAII watch buffers, vector growth, cursor removal, expansion, bounded string callbacks, configurable PVI refresh time, scalar-only watches, tree/list views, ProgramSettings CPU sections/editor, repeated Logger sessions in both modes, About link, CPU scan plans/sockets/dialog/tree integration, and watch files");
 	return 0;
 }
