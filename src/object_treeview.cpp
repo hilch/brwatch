@@ -41,6 +41,9 @@ struct ObjectTreeView::CpuScanTask {
 	bool allowBeyondSubnet = false;
 	std::atomic<bool> done{false};
 	int entries = 0;
+	int registered = 0;
+	bool registering = false;
+	bool processing = false;
 	DWORD failure = ERROR_SUCCESS;
 
 	~CpuScanTask()
@@ -157,6 +160,8 @@ void ObjectTreeView::UpdateCpuScanProgress()
 	if (scanTask == nullptr)
 		return;
 	HWND dialog = scanTask->dialog;
+	if (scanTask->registering)
+		return;
 	if (scanTask->control.cancelRequested.load())
 	{
 		SetDlgItemTextA(dialog, IDC_CPU_SCAN_STATUS, "Cancelling... waiting for the current PVI/socket operation to finish.");
@@ -191,33 +196,61 @@ void ObjectTreeView::UpdateCpuScanProgress()
 
 void ObjectTreeView::FinishCpuScan()
 {
-	auto task = std::move(scanTask);
-	KillTimer(task->dialog, 1);
-	EnableWindow(GetDlgItem(task->dialog, IDCANCEL), FALSE);
-	WaitForSingleObject(task->thread, INFINITE);
-	CloseHandle(task->thread);
-	if (task->control.cancelRequested.load())
+	auto task = scanTask.get();
+	if (task->processing)
 		return;
+	task->processing = true;
+	if (!task->registering)
+	{
+		WaitForSingleObject(task->thread, INFINITE);
+		CloseHandle(task->thread);
+		task->thread = nullptr;
+		task->registering = true;
+		EnableWindow(GetDlgItem(task->dialog, IDCANCEL), FALSE);
+	}
+	if (task->control.cancelRequested.load())
+	{
+		scanTask.reset();
+		return;
+	}
 	if (task->failure != ERROR_SUCCESS)
 	{
 		MessageBoxA(parentWindow, "Not enough memory to complete the CPU scan.", "CPU scan", MB_OK | MB_ICONERROR);
+		scanTask.reset();
 		return;
 	}
 	for (const auto &error : task->control.errors)
 		MessageBoxA(parentWindow, error.c_str(), "CPU scan", MB_OK | MB_ICONERROR);
+	task->control.errors.clear();
 	PviObject *parent = PviObject::FindByName(task->parentName.c_str());
 	if (parent == nullptr || parent->type != POBJ_DEVICE || parent->linkid != task->parentLink || task->entries < 0)
+	{
+		scanTask.reset();
 		return;
+	}
 	TVITEMA item = {};
 	item.hItem = task->item;
 	item.mask = TVIF_PARAM;
 	if (!IsWindow(window) || !TreeView_GetItem(window, &item) || item.lParam != reinterpret_cast<LPARAM>(parent->name))
+	{
+		scanTask.reset();
 		return;
+	}
 	SetDlgItemTextA(task->dialog, IDC_CPU_SCAN_STATUS, "Adding discovered CPUs...");
 	RedrawWindow(task->dialog, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-	parent->AddEthernetCpus(task->cpus.data(), task->entries);
+	if (task->registered < task->entries)
+	{
+		parent->AddEthernetCpus(&task->cpus[task->registered], 1);
+		++task->registered;
+		InsertExistingChildObjects(task->item, parent);
+		TreeView_Expand(window, task->item, TVE_EXPAND);
+		RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+		task->processing = false;
+		return;
+	}
 	InsertExistingChildObjects(task->item, parent);
-	UpdateWindow(window);
+	RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+	scanTask.reset();
 }
 
 INT_PTR CALLBACK ObjectTreeView::CpuScanProgressDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
@@ -237,6 +270,8 @@ INT_PTR CALLBACK ObjectTreeView::CpuScanProgressDlgProc(HWND dialog, UINT messag
 		return FALSE;
 	if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(wParam) == IDCANCEL))
 	{
+		if (view->scanTask->registering)
+			return TRUE;
 		view->scanTask->control.cancelRequested.store(true);
 		view->UpdateCpuScanProgress();
 		return TRUE;

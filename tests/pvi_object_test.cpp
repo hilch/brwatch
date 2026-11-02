@@ -55,6 +55,7 @@ static DWORD detachedLinkId;
 static unsigned expectedErrorMessages;
 static unsigned createRequests;
 static HWND registrationDialog;
+static ObjectTreeView *registrationTree;
 static unsigned registrationsWithProgress;
 static const char *expectedMessageCaption = "Error";
 static std::string lastMessage;
@@ -435,6 +436,10 @@ extern "C" INT WINAPI PviCreate(LPDWORD link, LPCSTR name, DWORD type, LPCSTR de
 	{
 		CHECK(GetCurrentThreadId() == testUiThread);
 		CHECK(IsWindow(registrationDialog));
+		CHECK(registrationTree != nullptr && registrationTree->GetCpuScanDialogHandle() == registrationDialog);
+		unsigned requestsBeforeTimer = createRequests;
+		SendMessageA(registrationDialog, WM_TIMER, 1, 0);
+		CHECK(createRequests == requestsBeforeTimer);
 		SetCursor(LoadCursor(nullptr, IDC_ARROW));
 		CHECK(SendMessageA(registrationDialog, WM_SETCURSOR,
 			reinterpret_cast<WPARAM>(registrationDialog), MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)) == TRUE);
@@ -1823,21 +1828,26 @@ static void CheckCpuScanTree()
 	testAdapters.clear();
 	ResetSocketTest();
 	socketMode = SocketMode::Immediate;
+	testAdapters = {{"192.168.10.1", "255.255.255.252", "Registration Ethernet"}};
 	HCURSOR savedCursor = SetCursor(LoadCursor(nullptr, IDC_CROSS));
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
 	registrationDialog = tree.GetCpuScanDialogHandle();
+	registrationTree = &tree;
 	CHECK(registrationDialog != nullptr);
 	unsigned previousRegistrations = registrationsWithProgress;
 	WaitForCpuScan(tree);
-	CHECK(registrationsWithProgress == previousRegistrations + 1);
+	CHECK(registrationsWithProgress == previousRegistrations + 2);
 	CHECK(!IsWindow(registrationDialog));
 	CHECK(GetCursor() == LoadCursor(nullptr, IDC_CROSS));
 	SetCursor(savedCursor);
 	registrationDialog = nullptr;
+	registrationTree = nullptr;
 	CHECK(TreeView_GetChild(tree.GetHandle(), root) != nullptr);
-	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 1);
+	CHECK((TreeView_GetItemState(tree.GetHandle(), root, TVIS_EXPANDED) & TVIS_EXPANDED) != 0);
+	CHECK(TreeView_GetCount(tree.GetHandle()) == 3);
+	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 2);
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
-	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 1);
+	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 2);
 	tree.ClearAll();
 	CHECK(DestroyWindow(parent));
 	while (PviObject *child = device->FindChild(TRUE))
@@ -2444,6 +2454,18 @@ int main(int argc, char **argv)
 	CHECK(PviObject::Start() == 0);
 	CHECK(PviObject::Count() == 0);
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
+	if (argc == 2 && strcmp(argv[1], "--cpu-scan-test") == 0)
+	{
+		CheckCpuScanTree();
+		CheckCpuScanProgress();
+		CHECK(PviObject::Stop() == 0);
+		char logFile[MAX_PATH];
+		snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
+		DeleteFileA(logFile);
+		CHECK(RemoveDirectoryA(testDirectory));
+		puts("PASS: CPU scan registration progress, cursor lifetime, incremental tree visibility, reentrancy and cancellation");
+		return 0;
+	}
 	CheckProgramSettings(testDirectory);
 	CheckLogger(testDirectory);
 	CheckObjectRefreshTime(testDirectory);
