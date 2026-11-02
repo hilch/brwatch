@@ -2355,8 +2355,74 @@ static void CheckLogger(const char *testDirectory)
 	strcpy(ProgramSettings::GetFileName(), originalSettings);
 }
 
-int main()
+static void CheckMainViewTab()
 {
+	HINSTANCE instance = GetModuleHandleA(nullptr);
+	HWND previousMain = g_hwndMainWindow;
+	HWND previousFocus = GetFocus();
+	HWND parent = CreateWindowExA(0, "STATIC", "", WS_OVERLAPPEDWINDOW,
+		0, 0, 640, 480, nullptr, nullptr, instance, nullptr);
+	CHECK(parent != nullptr);
+	g_hwndMainWindow = parent;
+	CHECK(objectTreeView.Create(instance, parent) != nullptr);
+	CHECK(watchListView.Create(instance, parent) != nullptr);
+	HWND tree = objectTreeView.GetHandle();
+	HWND list = watchListView.GetHandle();
+	HWND edit = CreateWindowExA(0, "EDIT", "", WS_CHILD, 0, 0, 100, 20, parent, nullptr, instance, nullptr);
+	CHECK(edit != nullptr);
+	BYTE savedKeys[256];
+	CHECK(GetKeyboardState(savedKeys));
+	BYTE keys[256] = {};
+	MSG message = {};
+	message.message = WM_KEYDOWN;
+	message.wParam = VK_TAB;
+	for (bool shift : {false, true})
+	{
+		keys[VK_SHIFT] = shift ? 0x80 : 0;
+		CHECK(SetKeyboardState(keys));
+		SetFocus(tree);
+		CHECK(GetFocus() == tree);
+		message.hwnd = tree;
+		CHECK(MainWindowHandleTab(message) && GetFocus() == list);
+		message.hwnd = list;
+		CHECK(MainWindowHandleTab(message) && GetFocus() == tree);
+	}
+	for (int modifier : {VK_CONTROL, VK_MENU})
+	{
+		keys[modifier] = 0x80;
+		CHECK(SetKeyboardState(keys));
+		CHECK(!MainWindowHandleTab(message) && GetFocus() == tree);
+		keys[modifier] = 0;
+	}
+	CHECK(SetKeyboardState(keys));
+	message.wParam = VK_RETURN;
+	CHECK(!MainWindowHandleTab(message) && GetFocus() == tree);
+	message.wParam = VK_TAB;
+	message.message = WM_KEYUP;
+	CHECK(!MainWindowHandleTab(message) && GetFocus() == tree);
+	message.message = WM_KEYDOWN;
+	message.hwnd = edit;
+	SetFocus(edit);
+	CHECK(!MainWindowHandleTab(message) && GetFocus() == edit);
+	message.hwnd = parent;
+	CHECK(MainWindowHandleTab(message) && GetFocus() == tree);
+	EnableWindow(list, FALSE);
+	message.hwnd = tree;
+	CHECK(!MainWindowHandleTab(message) && GetFocus() == tree);
+	CHECK(SetKeyboardState(savedKeys));
+	CHECK(DestroyWindow(parent));
+	g_hwndMainWindow = previousMain;
+	SetFocus(previousFocus);
+}
+
+int main(int argc, char **argv)
+{
+	CheckMainViewTab();
+	if (argc == 2 && strcmp(argv[1], "--main-view-tab-test") == 0)
+	{
+		puts("PASS: main view Tab/Shift+Tab focus navigation and keyboard isolation");
+		return 0;
+	}
 	CheckDialogButtonLayouts();
 	CheckCpuScanPlansAndSockets();
 	CheckCpuScanCancellation();

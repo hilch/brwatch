@@ -46,6 +46,7 @@
 
 char *GetApplicationPath( void );
 HWND MainWindowGetHandle( void );
+bool MainWindowHandleTab(const MSG &message);
 int ResourcesGetImageIndex( WORD resource );
 int ResourcesGetPviObjectImage( PviObject *object );
 

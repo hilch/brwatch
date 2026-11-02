@@ -82,6 +82,23 @@ HWND MainWindowGetHandle(void)
 {
 	return (g_hwndMainWindow);
 }
+
+bool MainWindowHandleTab(const MSG &message)
+{
+	if (message.message != WM_KEYDOWN || message.wParam != VK_TAB ||
+		(GetKeyState(VK_CONTROL) & 0x8000) != 0 || (GetKeyState(VK_MENU) & 0x8000) != 0)
+		return false;
+	HWND tree = objectTreeView.GetHandle();
+	HWND list = watchListView.GetHandle();
+	if (message.hwnd == nullptr ||
+		(message.hwnd != tree && message.hwnd != list && message.hwnd != g_hwndMainWindow))
+		return false;
+	HWND target = message.hwnd == tree ? list : tree;
+	if (!IsWindow(target) || !IsWindowEnabled(target))
+		return false;
+	SetFocus(target);
+	return true;
+}
 /* ============================================================================================== */
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM /*lParam*/)
@@ -184,6 +201,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR lpCmd
 	{
 		HWND scanDialog = objectTreeView.GetCpuScanDialogHandle();
 		if (scanDialog != nullptr && IsDialogMessageA(scanDialog, &msg))
+			continue;
+		if (MainWindowHandleTab(msg))
 			continue;
 		TranslateMessage(&msg);
 		DispatchMessageA(&msg);
@@ -669,15 +688,6 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			watchListView.InsertPVIObjects(g_draggedPVIObject);
 			g_draggedPVIObject = nullptr;
 			TreeView_Select(objectTreeView.GetHandle(), 0, TVGN_DROPHILITE); // only for nicer view
-		}
-		return 0;
-
-	case WM_KEYDOWN:
-		switch (wParam)
-		{
-		case VK_TAB:
-			SetFocus(objectTreeView.GetHandle());
-			break;
 		}
 		return 0;
 
