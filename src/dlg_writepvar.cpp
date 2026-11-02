@@ -29,6 +29,37 @@
 
 static int WritePviPvar(PviObject *object, void *value);
 
+static bool ConvertDate(unsigned year, unsigned month, unsigned day, uint32_t &value)
+{
+	if (year < 1970 || year > 2106 || month < 1 || month > 12 || day < 1 || day > 31 ||
+		(year == 2106 && (month > 2 || (month == 2 && day > 7))))
+		return false;
+	struct tm date = {};
+	date.tm_year = static_cast<int>(year) - 1900;
+	date.tm_mon = static_cast<int>(month) - 1;
+	date.tm_mday = static_cast<int>(day);
+	__time64_t timestamp = _mkgmtime64(&date);
+	if (timestamp < 0 || timestamp > UINT32_MAX ||
+		date.tm_year != static_cast<int>(year) - 1900 ||
+		date.tm_mon != static_cast<int>(month) - 1 || date.tm_mday != static_cast<int>(day))
+		return false;
+	value = static_cast<uint32_t>(timestamp);
+	return true;
+}
+
+static bool ConvertDateAndTime(unsigned year, unsigned month, unsigned day,
+	unsigned hour, unsigned minute, unsigned milliseconds, uint32_t &value)
+{
+	uint32_t midnight = 0;
+	if (hour > 23 || minute > 59 || milliseconds > 59999 || !ConvertDate(year, month, day, midnight))
+		return false;
+	uint64_t timestamp = static_cast<uint64_t>(midnight) + hour * 3600 + minute * 60 + milliseconds / 1000;
+	if (timestamp > UINT32_MAX)
+		return false;
+	value = static_cast<uint32_t>(timestamp);
+	return true;
+}
+
 static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static PviObject *object;
@@ -152,19 +183,20 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 				break;
 
 			case BR_DATI:
-				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DATE_AND_TIME (DT#1970-01-01-00:00 ... DT#2106-02-06-06:28:15)");
+				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DATE_AND_TIME (DT#1970-01-01-00:00 ... DT#2106-02-07-06:28:15)");
 				if (object->ex.pv.pvalue != nullptr)
 				{
-					__time64_t t = 0;
+					uint32_t rawTimestamp = 0;
+					memcpy(&rawTimestamp, object->ex.pv.pvalue, sizeof(rawTimestamp));
+					__time64_t timestamp = rawTimestamp;
 					struct tm *ptst;
 
-					memcpy(&t, object->ex.pv.pvalue, sizeof(time_t));
-					ptst = _gmtime64(&t);
+					ptst = _gmtime64(&timestamp);
 
 					if (ptst == nullptr)
 					{
-						time_t t = time(0);
-						ptst = gmtime(&t);
+						timestamp = _time64(nullptr);
+						ptst = _gmtime64(&timestamp);
 						MessageBoxA(GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR);
 					}
 					SetDlgItemInt(hDlg, IDC_EDIT_YEAR, ptst->tm_year + 1900, FALSE);
@@ -187,16 +219,17 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 				SetDlgItemTextA(hDlg, IDC_STATIC_VARTYPE, "DATE (D#1970-01-01 ... D#2106-02-07 )");
 				if (object->ex.pv.pvalue != nullptr)
 				{
-					__time64_t t = 0;
+					uint32_t rawDate = 0;
+					memcpy(&rawDate, object->ex.pv.pvalue, sizeof(rawDate));
+					__time64_t timestamp = rawDate;
 					struct tm *ptst;
 
-					memcpy(&t, object->ex.pv.pvalue, sizeof(time_t));
-					ptst = _gmtime64(&t);
+					ptst = _gmtime64(&timestamp);
 
 					if (ptst == nullptr)
 					{
-						time_t t = time(0);
-						ptst = gmtime(&t);
+						timestamp = _time64(nullptr);
+						ptst = _gmtime64(&timestamp);
 						MessageBoxA(GetParent(hDlg), "Actual time was invalid.\nUsed system time !", "Error", MB_OK | MB_ICONERROR);
 					}
 					SetDlgItemInt(hDlg, IDC_EDIT_YEAR, ptst->tm_year + 1900, FALSE);
@@ -402,9 +435,10 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, nullptr, FALSE);
 					tst.tm_hour = GetDlgItemInt(hDlg, IDC_EDIT_HOUR, nullptr, FALSE);
 					tst.tm_min = GetDlgItemInt(hDlg, IDC_EDIT_MINUTE, nullptr, FALSE);
-					tst.tm_sec = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, nullptr, FALSE) / 1000;
+					unsigned milliseconds = GetDlgItemInt(hDlg, IDC_EDIT_MILLISECONDS, nullptr, FALSE);
+					uint32_t rawTimestamp = 0;
 
-					if (tst.tm_year > 138 || tst.tm_year < 70)
+					if (tst.tm_year > 206 || tst.tm_year < 70)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_YEAR);
 						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong year !");
@@ -434,86 +468,69 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					}
 					else if (tst.tm_min > 59)
 					{
-						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_MILLISECONDS);
-						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !");
+						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_MINUTE);
+						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong minute !");
 						SetFocus(hwnd);
 						SendMessage(hwnd, EM_SETSEL, 0, -1);
 					}
-					else if (tst.tm_sec > 59)
+					else if (milliseconds > 59999)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_MILLISECONDS);
 						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong milliseconds !");
 						SetFocus(hwnd);
 						SendMessage(hwnd, EM_SETSEL, 0, -1);
+					}
+					else if (!ConvertDateAndTime(tst.tm_year + 1900, tst.tm_mon + 1, tst.tm_mday,
+						tst.tm_hour, tst.tm_min, milliseconds, rawTimestamp))
+					{
+						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Invalid date/time or outside the supported range.");
 					}
 					else
 					{
-						time_t t = mktime(&tst);
-						/* apply possible corrections */
-						SetDlgItemInt(hDlg, IDC_EDIT_YEAR, tst.tm_year + 1900, FALSE);
-						SetDlgItemInt(hDlg, IDC_EDIT_MONTH, tst.tm_mon + 1, FALSE);
-						SetDlgItemInt(hDlg, IDC_EDIT_DAY, tst.tm_mday, FALSE);
-						if (t == -1)
-						{
-							SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong date !");
-						}
-						else
-						{
-							SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "");
-							WritePviPvar(object, &t);
-							result = 0;
-						}
+						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "");
+						result = WritePviPvar(object, &rawTimestamp);
 					}
 				}
 				break;
 
 				case BR_DATE:
 				{
-					struct tm tst;
-
-					memset(&tst, 0, sizeof(tst));
-					tst.tm_hour = tst.tm_min = tst.tm_sec = 0;
-					tst.tm_year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, nullptr, FALSE) - 1900;
-					tst.tm_mon = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, nullptr, FALSE) - 1;
-					tst.tm_mday = GetDlgItemInt(hDlg, IDC_EDIT_DAY, nullptr, FALSE);
-					if (tst.tm_year > 106 || tst.tm_year < 70)
+					unsigned year = GetDlgItemInt(hDlg, IDC_EDIT_YEAR, nullptr, FALSE);
+					unsigned month = GetDlgItemInt(hDlg, IDC_EDIT_MONTH, nullptr, FALSE);
+					unsigned day = GetDlgItemInt(hDlg, IDC_EDIT_DAY, nullptr, FALSE);
+					uint32_t value = 0;
+					if (year < 1970 || year > 2106)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_YEAR);
 						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong year !");
 						SetFocus(hwnd);
 						SendMessage(hwnd, EM_SETSEL, 0, -1);
 					}
-					else if (tst.tm_mon < 0 || tst.tm_mon > 11)
+					else if (month < 1 || month > 12)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_MONTH);
 						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong month !");
 						SetFocus(hwnd);
 						SendMessage(hwnd, EM_SETSEL, 0, -1);
 					}
-					else if (tst.tm_mday < 1 || tst.tm_mday > 31)
+					else if (day < 1 || day > 31)
 					{
 						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_DAY);
 						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong day !");
 						SetFocus(hwnd);
 						SendMessage(hwnd, EM_SETSEL, 0, -1);
 					}
+					else if (!ConvertDate(year, month, day, value))
+					{
+						HWND hwnd = GetDlgItem(hDlg, IDC_EDIT_DAY);
+						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Invalid date. Use 1970-01-01 through 2106-02-07.");
+						SetFocus(hwnd);
+						SendMessage(hwnd, EM_SETSEL, 0, -1);
+					}
 					else
 					{
-						time_t t = mktime(&tst);
-						/* apply possible corrections */
-						SetDlgItemInt(hDlg, IDC_EDIT_YEAR, tst.tm_year + 1900, FALSE);
-						SetDlgItemInt(hDlg, IDC_EDIT_MONTH, tst.tm_mon + 1, FALSE);
-						SetDlgItemInt(hDlg, IDC_EDIT_DAY, tst.tm_mday, FALSE);
-						if (t == -1)
-						{
-							SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "Wrong date !");
-						}
-						else
-						{
-							SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "");
-							WritePviPvar(object, &t);
-							result = 0;
-						}
+						SetDlgItemTextA(hDlg, IDC_STATUS_MESSAGE, "");
+						result = WritePviPvar(object, &value);
 					}
 				}
 				break;

@@ -635,25 +635,51 @@ void WatchListView::UpdateValue(PviObject *object)
 				return;
 
 			case BR_DATI:
-			case BR_DATE:
 				if (object->ex.pv.pvalue != nullptr)
 				{
 					struct tm *ptst;
-					__time64_t t = 0;
+					DWORD rawTimestamp = 0;
 
 					memset(value, 0, sizeof(value));
 
-					memcpy(&t, object->ex.pv.pvalue, sizeof(time_t));
-					ptst = _gmtime64(&t);
-					if (ptst != nullptr)
-						strncpy(value, asctime(ptst), 24);
-					else
-						strcpy(value, "(illegal time!)");
+					memcpy(&rawTimestamp, object->ex.pv.pvalue, sizeof(rawTimestamp));
+					__time64_t timestamp = rawTimestamp;
+                    ptst = _gmtime64(&timestamp);
+                    if (ptst == nullptr ||
+                        strftime(value, sizeof(value), "DT#%Y-%m-%d-%H:%M:%S", ptst) == 0)
+                    {
+                        strcpy(value, "(illegal time!)");
+                    }
 
 					if (object->gui_info.display_as_decimal)
 					{
 						char tempstring[20];
-						sprintf(tempstring, "  (10#%.5u)", *((unsigned int *)object->ex.pv.pvalue));
+						sprintf(tempstring, "  (10#%.5lu)", rawTimestamp);
+						strcat(value, tempstring);
+					}
+				}
+				break;
+
+			case BR_DATE:
+				if (object->ex.pv.pvalue != nullptr)
+				{
+					struct tm *ptst;
+					DWORD rawDate = 0;
+
+					memset(value, 0, sizeof(value));
+
+					memcpy(&rawDate, object->ex.pv.pvalue, sizeof(rawDate));
+					__time64_t timestamp = rawDate;
+					ptst = _gmtime64(&timestamp);
+					if (ptst != nullptr)
+						strftime(value, sizeof(value), "D#%Y-%m-%d", ptst);
+					else
+						strcpy(value, "(illegal date!)");
+
+					if (object->gui_info.display_as_decimal)
+					{
+						char tempstring[20];
+						sprintf(tempstring, "  (10#%.5lu)", rawDate);
 						strcat(value, tempstring);
 					}
 				}
