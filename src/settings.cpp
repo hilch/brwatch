@@ -318,7 +318,7 @@ INT_PTR CALLBACK ProgramSettings::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, L
 
 	case WM_GETMINMAXINFO:
 	{
-		RECT minimum = {0, 0, 260, 120};
+		RECT minimum = {0, 0, 280, 120};
 		MapDialogRect(hDlg, &minimum);
 		AdjustWindowRectEx(&minimum, static_cast<DWORD>(GetWindowLongPtr(hDlg, GWL_STYLE)), FALSE,
 			static_cast<DWORD>(GetWindowLongPtr(hDlg, GWL_EXSTYLE)));
@@ -335,7 +335,7 @@ INT_PTR CALLBACK ProgramSettings::DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, L
 		RECT client;
 		GetClientRect(hDlg, &client);
 		RECT margin = {0, 0, 7, 7};
-		RECT button = {0, 0, 50, 14};
+		RECT button = {0, 0, 80, 18};
 		RECT spacing = {0, 0, 9, 6};
 		MapDialogRect(hDlg, &margin);
 		MapDialogRect(hDlg, &button);

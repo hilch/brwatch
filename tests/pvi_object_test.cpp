@@ -1500,6 +1500,65 @@ static HWND CreateHiddenDialog(UINT resourceId, DLGPROC procedure, LPARAM data)
 	return dialog;
 }
 
+static void CheckDialogButtons(HWND dialog)
+{
+	RECT expected = {0, 0, 80, 18};
+	CHECK(MapDialogRect(dialog, &expected));
+	RECT client = {};
+	CHECK(GetClientRect(dialog, &client));
+	for (HWND button = GetWindow(dialog, GW_CHILD); button != nullptr; button = GetWindow(button, GW_HWNDNEXT))
+	{
+		char className[32];
+		CHECK(GetClassNameA(button, className, sizeof(className)) != 0);
+		LONG_PTR type = GetWindowLongPtrA(button, GWL_STYLE) & BS_TYPEMASK;
+		if (strcmp(className, "Button") != 0 || (type != BS_PUSHBUTTON && type != BS_DEFPUSHBUTTON))
+			continue;
+		RECT bounds = {};
+		CHECK(GetWindowRect(button, &bounds));
+		MapWindowPoints(nullptr, dialog, reinterpret_cast<POINT *>(&bounds), 2);
+		CHECK(bounds.right - bounds.left == expected.right);
+		CHECK(bounds.bottom - bounds.top == expected.bottom);
+		CHECK(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= client.right && bounds.bottom <= client.bottom);
+		char text[128];
+		CHECK(GetWindowTextA(button, text, sizeof(text)) != 0);
+		HDC dc = GetDC(button);
+		CHECK(dc != nullptr);
+		HGDIOBJ font = SelectObject(dc, reinterpret_cast<HFONT>(SendMessageA(button, WM_GETFONT, 0, 0)));
+		RECT caption = {};
+		CHECK(DrawTextA(dc, text, -1, &caption, DT_CALCRECT | DT_SINGLELINE) != 0);
+		SelectObject(dc, font);
+		CHECK(ReleaseDC(button, dc));
+		CHECK(caption.right + 12 <= expected.right && caption.bottom + 6 <= expected.bottom);
+		for (HWND sibling = GetWindow(dialog, GW_CHILD); sibling != nullptr; sibling = GetWindow(sibling, GW_HWNDNEXT))
+		{
+			if (sibling == button)
+				continue;
+			CHECK(GetClassNameA(sibling, className, sizeof(className)) != 0);
+			if (strcmp(className, "Button") == 0 && (GetWindowLongPtrA(sibling, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX)
+				continue;
+			RECT other = {};
+			CHECK(GetWindowRect(sibling, &other));
+			MapWindowPoints(nullptr, dialog, reinterpret_cast<POINT *>(&other), 2);
+			RECT intersection = {};
+			CHECK(!IntersectRect(&intersection, &bounds, &other));
+		}
+	}
+}
+
+static void CheckDialogButtonLayouts()
+{
+	INITCOMMONCONTROLSEX controls = {sizeof(INITCOMMONCONTROLSEX), ICC_LINK_CLASS | ICC_PROGRESS_CLASS};
+	CHECK(InitCommonControlsEx(&controls));
+	for (UINT resource : {DLG_ABOUT, DLG_CPU_SCAN, DLG_CPU_SCAN_PROGRESS, DLG_WRITE_NUMBERS,
+		DLG_WRITE_STRINGS, DLG_WRITE_DATE_AND_TIME, DLG_ADD_CPU, DLG_EDIT_CPU, DLG_EDIT_TASK,
+		DLG_LOGGER_CONFIG, DLG_SETTINGS})
+	{
+		HWND dialog = CreateHiddenDialog(resource, [](HWND, UINT, WPARAM, LPARAM) -> INT_PTR { return FALSE; }, 0);
+		CheckDialogButtons(dialog);
+		CHECK(DestroyWindow(dialog));
+	}
+}
+
 static void CheckCpuScanDialog()
 {
 	CpuScanDialogData data;
@@ -2012,12 +2071,12 @@ static void CheckEditDialogHotkeys()
 	CheckDialogTabOrder(dialog, {IDR_EDIT_IPADDRESS, IDR_EDIT_SUBNETMASK, IDR_EDIT_GATEWAY,
 		IDR_BUTTON_CHANGEIP, IDR_CHECK_DHCP_CLIENT, IDR_BUTTON_STOP, IDR_BUTTON_WARMSTART,
 		IDR_BUTTON_COLDSTART, IDR_BUTTON_DIAGNOSIS, IDCANCEL});
-	CheckButtonMnemonic(dialog, 'c', IDR_BUTTON_CHANGEIP);
+	CheckButtonMnemonic(dialog, 'h', IDR_BUTTON_CHANGEIP);
 	CheckButtonMnemonic(dialog, 's', IDR_BUTTON_STOP);
 	CheckButtonMnemonic(dialog, 'w', IDR_BUTTON_WARMSTART);
-	CheckButtonMnemonic(dialog, 'o', IDR_BUTTON_COLDSTART);
+	CheckButtonMnemonic(dialog, 'c', IDR_BUTTON_COLDSTART);
 	CheckButtonMnemonic(dialog, 'g', IDR_BUTTON_DIAGNOSIS);
-	CheckButtonCaption(dialog, IDCANCEL, "Hide <Esc>");
+	CheckButtonCaption(dialog, IDCANCEL, "Cancel <Esc>");
 	CheckButtonMnemonic(dialog, 'd', IDR_CHECK_DHCP_CLIENT);
 	const char keys[] = {'i', 'b', 't'};
 	const int fields[] = {IDR_EDIT_IPADDRESS, IDR_EDIT_SUBNETMASK, IDR_EDIT_GATEWAY};
@@ -2213,6 +2272,12 @@ static void CheckProgramSettings(const char *testDirectory)
 	CHECK(ProgramSettings::StoreCpu("Second CPU"));
 
 	HWND dialog = CreateHiddenDialog(DLG_SETTINGS, ProgramSettings::DlgProc, 0);
+	CheckDialogButtons(dialog);
+	MINMAXINFO limits = {};
+	SendMessageA(dialog, WM_GETMINMAXINFO, 0, reinterpret_cast<LPARAM>(&limits));
+	CHECK(SetWindowPos(dialog, nullptr, 0, 0, limits.ptMinTrackSize.x, limits.ptMinTrackSize.y,
+		SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE));
+	CheckDialogButtons(dialog);
 	char title[MAX_PATH + 20];
 	CHECK(GetWindowTextA(dialog, title, sizeof(title)) != 0);
 	CHECK(std::string(title) == std::string("Settings - ") + settingsFile);
@@ -2292,6 +2357,7 @@ static void CheckLogger(const char *testDirectory)
 
 int main()
 {
+	CheckDialogButtonLayouts();
 	CheckCpuScanPlansAndSockets();
 	CheckCpuScanCancellation();
 	CheckCpuScanAdapters();

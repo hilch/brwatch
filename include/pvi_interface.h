@@ -105,9 +105,6 @@ struct stEthernetCpuInfo {
     char gateway[16+1];
     int ipMethod;  /* 0 = fixed IP, 1 = DHCP-Client */
     int SNMP_mode; /* 0 = not activated, 1 = read only, 2 = active */
-    int INA_activated;
-    int INA_nodeNumber;
-    int INA_portNumber;
     char targetTypeDescription[32+1];
     char arVersion[8+1];
     char arState[10+1];

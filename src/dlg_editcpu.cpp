@@ -139,11 +139,8 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			SetDlgItemTextA(hDlg, IDR_EDIT_SUBNETMASK, tempstring);
 			sprintf(tempstring, "%s", object->ex.cpu.ethernetCpuInfo.gateway);
 			SetDlgItemTextA(hDlg, IDR_EDIT_GATEWAY, tempstring);
-			sprintf(tempstring, "INA-node:%u  INA-port:%u", object->ex.cpu.ethernetCpuInfo.INA_nodeNumber, object->ex.cpu.ethernetCpuInfo.INA_portNumber);
-			SetDlgItemTextA(hDlg, IDR_INA_SETTINGS, tempstring);
 
 			SendMessage(GetDlgItem(hDlg, IDR_CHECK_DHCP_CLIENT), BM_SETCHECK, object->ex.cpu.ethernetCpuInfo.ipMethod ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendMessage(GetDlgItem(hDlg, IDR_INA_ACTIVATED), BM_SETCHECK, object->ex.cpu.ethernetCpuInfo.INA_activated ? BST_CHECKED : BST_UNCHECKED, 0);
 
 			int haveMAC = strlen(object->ex.cpu.ethernetCpuInfo.macAddress);
 			EnableWindow(GetDlgItem(hDlg, IDR_CHECK_DHCP_CLIENT), haveMAC);
@@ -165,7 +162,6 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			EnableWindow(GetDlgItem(hDlg, IDR_BUTTON_COLDSTART), object->error == 0);
 			EnableWindow(GetDlgItem(hDlg, IDR_BUTTON_STOP), object->error == 0);
 			EnableWindow(GetDlgItem(hDlg, IDR_BUTTON_DIAGNOSIS), object->error == 0);
-			EnableWindow(GetDlgItem(hDlg, IDR_INA_ACTIVATED), FALSE);
 
 			return TRUE;
 		}
