@@ -292,6 +292,7 @@ BEGIN
     POPUP "Object-&Tree"
     BEGIN
         MENUITEM "&Add Cpu",                    IDM_ADD_CPU
+        MENUITEM "&CPU-Scan",                   IDM_CPU_SCAN, GRAYED
         MENUITEM "&Store to settings",          IDM_STORE_CPU_SETTINGS, GRAYED
         MENUITEM "Remove &from settings",       IDM_REMOVE_CPU_SETTINGS, GRAYED
         MENUITEM SEPARATOR
@@ -303,6 +304,12 @@ BEGIN
     BEGIN
         MENUITEM "&Edit",                       IDM_WATCH_EDIT, GRAYED
         MENUITEM "&Remove",                     IDM_WATCH_REMOVE, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "Display as &Decimal",        IDM_CHANGE_VIEW_DECIMAL, GRAYED
+        MENUITEM "Display as &Hex",            IDM_CHANGE_VIEW_HEX, GRAYED
+        MENUITEM "Display as &Binary",         IDM_CHANGE_VIEW_BINARY, GRAYED
+        MENUITEM "&char",                      IDM_CHANGE_VIEW_CHAR, GRAYED
+        MENUITEM "&interpret as OEM",          IDM_CHANGE_VIEW_OEMCHAR, GRAYED
     END
     POPUP "&Logger"
     BEGIN

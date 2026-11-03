@@ -660,8 +660,41 @@ void ObjectTreeView::UpdateCpuSettings(PviObject *object, UINT command)
 			"CPU settings", MB_OK | MB_ICONERROR);
 }
 
+HTREEITEM ObjectTreeView::GetCpuScanItem() const
+{
+	if (window == nullptr || !IsWindowEnabled(window) || cpuScanBusy || scanTask != nullptr)
+		return nullptr;
+	HTREEITEM selected = TreeView_GetSelection(window);
+	TVITEMA item = {};
+	item.mask = TVIF_PARAM | TVIF_STATE;
+	item.stateMask = TVIS_EXPANDED;
+	for (item.hItem = selected != nullptr ? selected : TreeView_GetRoot(window);
+		item.hItem != nullptr;
+		item.hItem = selected != nullptr ? nullptr : TreeView_GetNextSibling(window, item.hItem))
+	{
+		if (!TreeView_GetItem(window, &item) || item.lParam == 0 ||
+			(item.state & TVIS_EXPANDED) != 0 || TreeView_GetChild(window, item.hItem) != nullptr)
+			continue;
+		PviObject *object = PviObject::FindByName(reinterpret_cast<const char *>(item.lParam));
+		if (object != nullptr && object->type == POBJ_DEVICE && object->error == 0)
+			return item.hItem;
+	}
+	return nullptr;
+}
+
+void ObjectTreeView::ScanSelectedDevice()
+{
+	TVITEMA item = {};
+	item.hItem = GetCpuScanItem();
+	item.mask = TVIF_PARAM;
+	if (item.hItem != nullptr && TreeView_GetItem(window, &item))
+		ItemSelected(item.hItem, item.lParam);
+}
+
 void ObjectTreeView::UpdateCpuSettingsMenu(HMENU menu)
 {
+	EnableMenuItem(menu, IDM_CPU_SCAN, MF_BYCOMMAND |
+		(GetCpuScanItem() != nullptr ? MF_ENABLED : MF_GRAYED));
 	PviObject *object = GetSelectedCpu();
 	BOOL stored = object != nullptr && ProgramSettings::FindCpuSection(object->descriptor) != 0;
 	EnableMenuItem(menu, IDM_STORE_CPU_SETTINGS, MF_BYCOMMAND |

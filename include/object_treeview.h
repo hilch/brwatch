@@ -43,6 +43,7 @@ public:
 	LRESULT HandleMessages(UINT message, WPARAM wParam, LPARAM lParam);
 	void UpdateCpuSettingsMenu(HMENU menu);
 	void CpuSettingsCommand(UINT command);
+	void ScanSelectedDevice();
 
 private:
 	struct CpuScanTask;
@@ -59,6 +60,7 @@ private:
 	void DblClick(HTREEITEM item, LPARAM data);
 	void RClick(HTREEITEM item, LPARAM data);
 	PviObject *GetSelectedCpu() const;
+	HTREEITEM GetCpuScanItem() const;
 	void UpdateCpuSettings(PviObject *object, UINT command);
 
 	HWND window = nullptr;

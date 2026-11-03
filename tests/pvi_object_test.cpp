@@ -1052,15 +1052,30 @@ static void CheckWatchListView(const char *testDirectory)
 	{
 		char label[80];
 		CHECK(GetMenuStringA(mainMenu, index, label, sizeof(label), MF_BYPOSITION) != 0);
-		if (strcmp(label, "&Watch") == 0)
+		if (strcmp(label, "&Watch-List") == 0)
 			watchMenu = GetSubMenu(mainMenu, index);
 	}
-	CHECK(watchMenu != nullptr && GetMenuItemCount(watchMenu) == 2);
+	CHECK(watchMenu != nullptr && GetMenuItemCount(watchMenu) == 8);
 	CHECK(GetMenuItemID(watchMenu, 0) == IDM_WATCH_EDIT);
 	CHECK(GetMenuItemID(watchMenu, 1) == IDM_WATCH_REMOVE);
+	const UINT displayCommands[] = { IDM_CHANGE_VIEW_DECIMAL, IDM_CHANGE_VIEW_HEX,
+		IDM_CHANGE_VIEW_BINARY, IDM_CHANGE_VIEW_CHAR, IDM_CHANGE_VIEW_OEMCHAR };
+	const char *displayLabels[] = { "Display as Decimal", "Display as Hex",
+		"Display as Binary", "char", "interpret as OEM" };
+	const char *mainDisplayLabels[] = { "Display as &Decimal", "Display as &Hex",
+		"Display as &Binary", "&char", "&interpret as OEM" };
+	for (unsigned index = 0; index < 5; ++index)
+	{
+		char label[80];
+		CHECK(GetMenuStringA(watchMenu, displayCommands[index], label, sizeof(label), MF_BYCOMMAND) != 0);
+		CHECK(strcmp(label, mainDisplayLabels[index]) == 0);
+	}
 	first.UpdateMenu(watchMenu);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_EDIT, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_REMOVE, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	CHECK(g_selectedPVIObject == nullptr);
+	for (UINT command : displayCommands)
+		CHECK((GetMenuState(watchMenu, command, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	first.EditSelected();
 	first.RemoveSelected();
 	CHECK(editDialogs == previousDialogs && ListView_GetItemCount(first.GetHandle()) == 1);
@@ -1068,6 +1083,31 @@ static void CheckWatchListView(const char *testDirectory)
 	first.UpdateMenu(watchMenu);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_EDIT, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_REMOVE, MF_BYCOMMAND) & MF_GRAYED) == 0);
+	CHECK(g_selectedPVIObject == number);
+	const PVIPVARTYPE types[] = { BR_DINT, BR_INT, BR_UINT, BR_UDINT, BR_TIME,
+		BR_SINT, BR_USINT, BR_STRING, BR_DATI, BR_DATE, BR_REAL, BR_WSTRING };
+	for (PVIPVARTYPE type : types)
+	{
+		number->ex.pv.type = type;
+		first.UpdateMenu(watchMenu);
+		bool integer = type == BR_DINT || type == BR_INT || type == BR_UINT || type == BR_UDINT || type == BR_TIME;
+		const bool applicable[] = { integer || type == BR_DATI, integer, integer,
+			type == BR_SINT || type == BR_USINT, type == BR_STRING };
+		for (unsigned index = 0; index < 5; ++index)
+			CHECK(((GetMenuState(watchMenu, displayCommands[index], MF_BYCOMMAND) & MF_GRAYED) == 0) == applicable[index]);
+	}
+	number->ex.pv.type = BR_DINT;
+	first.UpdateMenu(watchMenu);
+	CHECK((GetMenuState(watchMenu, IDM_CHANGE_VIEW_HEX, MF_BYCOMMAND) & MF_CHECKED) != 0);
+	CHECK((GetMenuState(watchMenu, IDM_CHANGE_VIEW_BINARY, MF_BYCOMMAND) & MF_CHECKED) != 0);
+	number->ex.pv.type = BR_STRING;
+	number->gui_info.interpret_as_oem = 1;
+	first.UpdateMenu(watchMenu);
+	char interpretationLabel[80];
+	CHECK(GetMenuStringA(watchMenu, IDM_CHANGE_VIEW_OEMCHAR, interpretationLabel, sizeof(interpretationLabel), MF_BYCOMMAND) != 0);
+	CHECK(strcmp(interpretationLabel, "&interpret as ANSI") == 0);
+	number->gui_info.interpret_as_oem = 0;
+	number->ex.pv.type = BR_DINT;
 	first.EditSelected();
 	NMLVKEYDOWN deniedKey = {};
 	deniedKey.hdr.hwndFrom = first.GetHandle();
@@ -1088,6 +1128,8 @@ static void CheckWatchListView(const char *testDirectory)
 	first.UpdateMenu(watchMenu);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_EDIT, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	CHECK((GetMenuState(watchMenu, IDM_WATCH_REMOVE, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	for (UINT command : displayCommands)
+		CHECK((GetMenuState(watchMenu, command, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	previousDialogs = editDialogs;
 	first.EditSelected();
 	first.RemoveSelected();
@@ -1124,6 +1166,15 @@ static void CheckWatchListView(const char *testDirectory)
 	CHECK(g_selectedPVIObject == number);
 	CHECK(lastPopupOwner == parent && lastPopupMenu != nullptr);
 	CHECK(GetMenuState(lastPopupMenu, IDM_DELETE_OBJECT_FROM_LIST, MF_BYCOMMAND) != static_cast<UINT>(-1));
+	for (unsigned index = 0; index < 3; ++index)
+	{
+		char label[80];
+		CHECK(GetMenuStringA(lastPopupMenu, displayCommands[index], label, sizeof(label), MF_BYCOMMAND) != 0);
+		CHECK(strcmp(label, displayLabels[index]) == 0);
+	}
+	char removeLabel[80];
+	CHECK(GetMenuStringA(lastPopupMenu, IDM_DELETE_OBJECT_FROM_LIST, removeLabel, sizeof(removeLabel), MF_BYCOMMAND) != 0);
+	CHECK(strcmp(removeLabel, "Remove") == 0);
 	CHECK(DestroyMenu(lastPopupMenu) != 0);
 	lastPopupMenu = nullptr;
 
@@ -1798,6 +1849,14 @@ static void CheckCpuScanTree()
 	PviObject *device = AddObject("@Pvi/CpuScanTreeDevice", "/IF=tcpip", POBJ_DEVICE);
 	HTREEITEM root = tree.AddItem(TVI_ROOT, device->descriptor, reinterpret_cast<LPARAM>(device->name), 0);
 	CHECK(root != nullptr);
+	HMENU mainMenu = LoadMenuA(instance, MAKEINTRESOURCEA(IDR_MNU_MAIN));
+	CHECK(mainMenu != nullptr);
+	HMENU treeMenu = GetSubMenu(mainMenu, 1);
+	CHECK(GetMenuItemID(treeMenu, 0) == IDM_ADD_CPU);
+	CHECK(GetMenuItemID(treeMenu, 1) == IDM_CPU_SCAN);
+	CHECK(TreeView_GetSelection(tree.GetHandle()) == nullptr);
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) == 0);
 	NMTREEVIEWA selection = {};
 	selection.hdr.hwndFrom = tree.GetHandle();
 	selection.hdr.code = TVN_SELCHANGEDA;
@@ -1806,12 +1865,22 @@ static void CheckCpuScanTree()
 	unsigned previousDialogs = scanDialogs;
 	unsigned previousCreates = createRequests;
 	scanDialogResult = IDCANCEL;
-	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	tree.ScanSelectedDevice();
 	CHECK(scanDialogs == previousDialogs + 1 && createRequests == previousCreates);
 	CHECK(TreeView_GetChild(tree.GetHandle(), root) == nullptr && startupCalls == 0);
+	CHECK(TreeView_SelectItem(tree.GetHandle(), root));
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) == 0);
+	device->error = 1;
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	device->error = 0;
 	scanDialogHosts = 512;
 	scanDialogResult = IDOK;
-	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
+	tree.ScanSelectedDevice();
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	tree.ScanSelectedDevice();
 	WaitForCpuScan(tree);
 	CHECK(scanDialogs == previousDialogs + 2 && scanTargets.size() == 512);
 	CHECK(startupCalls == 2 && cleanupCalls == 2);
@@ -1846,8 +1915,18 @@ static void CheckCpuScanTree()
 	CHECK((TreeView_GetItemState(tree.GetHandle(), root, TVIS_EXPANDED) & TVIS_EXPANDED) != 0);
 	CHECK(TreeView_GetCount(tree.GetHandle()) == 3);
 	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 2);
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	tree.ScanSelectedDevice();
+	CHECK(TreeView_Expand(tree.GetHandle(), root, TVE_COLLAPSE));
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) != 0);
+	CHECK(TreeView_SelectItem(tree.GetHandle(), TreeView_GetChild(tree.GetHandle(), root)));
+	tree.UpdateCpuSettingsMenu(treeMenu);
+	CHECK((GetMenuState(treeMenu, IDM_CPU_SCAN, MF_BYCOMMAND) & MF_GRAYED) != 0);
 	CHECK(tree.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&selection)) == 0);
 	CHECK(scanDialogs == previousDialogs + 4 && scanTargets.size() == 2);
+	CHECK(DestroyMenu(mainMenu));
 	tree.ClearAll();
 	CHECK(DestroyWindow(parent));
 	while (PviObject *child = device->FindChild(TRUE))

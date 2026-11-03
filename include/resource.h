@@ -101,6 +101,7 @@
 #define IDM_REMOVE_CPU_SETTINGS         6008
 #define IDM_WATCH_EDIT                  6009
 #define IDM_WATCH_REMOVE                6010
+#define IDM_CPU_SCAN                    6011
 #define IDM_CHANGE_VIEW_DECIMAL         6101
 #define IDM_CHANGE_VIEW_HEX             6102
 #define IDM_CHANGE_VIEW_BINARY          6103

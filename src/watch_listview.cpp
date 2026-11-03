@@ -164,11 +164,71 @@ bool WatchListView::CanEdit(const PviObject *object) const
 		GetPrivateProfileIntA("General", "WriteAllowed", 0, ProgramSettings::GetFileName()) != 0;
 }
 
+static void UpdateDisplayMenu(HMENU menu, const PviObject *object, bool enabled)
+{
+	bool integer = false;
+	bool character = false;
+	bool string = false;
+	bool dateTime = false;
+	if (enabled && object != nullptr && object->type == POBJ_PVAR)
+	{
+		switch (object->ex.pv.type)
+		{
+		case BR_USINT:
+		case BR_SINT:
+			character = true;
+			break;
+		case BR_UINT:
+		case BR_INT:
+		case BR_UDINT:
+		case BR_DINT:
+		case BR_TIME:
+			integer = true;
+			break;
+		case BR_STRING:
+			string = true;
+			break;
+		case BR_DATI:
+			dateTime = true;
+			break;
+		default:
+			break;
+		}
+	}
+	const UINT commands[] = { IDM_CHANGE_VIEW_DECIMAL, IDM_CHANGE_VIEW_HEX,
+		IDM_CHANGE_VIEW_BINARY, IDM_CHANGE_VIEW_CHAR, IDM_CHANGE_VIEW_OEMCHAR };
+	const bool applicable[] = { integer || dateTime, integer, integer, character, string };
+	const bool checked[] = {
+		object != nullptr && object->gui_info.display_as_decimal,
+		object != nullptr && object->gui_info.display_as_hex,
+		object != nullptr && object->gui_info.display_as_binary,
+		object != nullptr && object->gui_info.display_as_char, false };
+	for (unsigned index = 0; index < sizeof(commands) / sizeof(commands[0]); ++index)
+	{
+		EnableMenuItem(menu, commands[index], MF_BYCOMMAND | (applicable[index] ? MF_ENABLED : MF_GRAYED));
+		CheckMenuItem(menu, commands[index], MF_BYCOMMAND |
+			(applicable[index] && checked[index] ? MF_CHECKED : MF_UNCHECKED));
+	}
+	bool mainMenu = GetMenuState(menu, IDM_WATCH_REMOVE, MF_BYCOMMAND) != static_cast<UINT>(-1);
+	const char *interpretation = string && object->gui_info.interpret_as_oem
+		? (mainMenu ? "&interpret as ANSI" : "interpret as ANSI")
+		: (mainMenu ? "&interpret as OEM" : "interpret as OEM");
+	ModifyMenuA(menu, IDM_CHANGE_VIEW_OEMCHAR, MF_BYCOMMAND | MF_STRING |
+		(string ? MF_ENABLED : MF_GRAYED), IDM_CHANGE_VIEW_OEMCHAR,
+		interpretation);
+}
+
 void WatchListView::UpdateMenu(HMENU menu) const
 {
 	int index = ListView_GetNextItem(window, -1, LVNI_SELECTED);
+	PviObject *object = GetItemObject(index);
+	if (GetMenuState(menu, IDM_WATCH_REMOVE, MF_BYCOMMAND) != static_cast<UINT>(-1))
+	{
+		g_selectedPVIObject = object;
+		UpdateDisplayMenu(menu, object, window != nullptr && IsWindowEnabled(window));
+	}
 	EnableMenuItem(menu, IDM_WATCH_EDIT, MF_BYCOMMAND |
-		(CanEdit(GetItemObject(index)) ? MF_ENABLED : MF_GRAYED));
+		(CanEdit(object) ? MF_ENABLED : MF_GRAYED));
 	EnableMenuItem(menu, IDM_WATCH_REMOVE, MF_BYCOMMAND |
 		(CanModify() && index >= 0 ? MF_ENABLED : MF_GRAYED));
 }
@@ -840,11 +900,11 @@ void WatchListView::RClick(LPNMLISTVIEW lpnm)
 		case BR_DINT:
 		case BR_TIME:
 			enabled = g_selectedPVIObject->gui_info.display_as_decimal ? MF_CHECKED : MF_UNCHECKED;
-			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_DECIMAL, "dec");
+			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_DECIMAL, "Display as Decimal");
 			enabled = g_selectedPVIObject->gui_info.display_as_hex ? MF_CHECKED : MF_UNCHECKED;
-			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_HEX, "hex");
+			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_HEX, "Display as Hex");
 			enabled = g_selectedPVIObject->gui_info.display_as_binary ? MF_CHECKED : MF_UNCHECKED;
-			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_BINARY, "bin");
+			AppendMenuA(hmenu, MF_ENABLED | MF_STRING | enabled, IDM_CHANGE_VIEW_BINARY, "Display as Binary");
 			break;
 
 		case BR_REAL:
@@ -858,8 +918,7 @@ void WatchListView::RClick(LPNMLISTVIEW lpnm)
 			break;
 
 		case BR_DATI:
-			entry = g_selectedPVIObject->gui_info.display_as_decimal ? "hide decimal value" : "show decimal value";
-			AppendMenuA(hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_DECIMAL, entry);
+			AppendMenuA(hmenu, MF_ENABLED | MF_STRING, IDM_CHANGE_VIEW_DECIMAL, "Display as Decimal");
 			break;
 
 		default:
@@ -872,7 +931,8 @@ void WatchListView::RClick(LPNMLISTVIEW lpnm)
 		break;
 	}
 
-	AppendMenuA(hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "remove this object");
+	UpdateDisplayMenu(hmenu, g_selectedPVIObject, IsWindowEnabled(window) != FALSE);
+	AppendMenuA(hmenu, MF_ENABLED | MF_STRING, IDM_DELETE_OBJECT_FROM_LIST, "Remove");
 	// TrackPopupMenu( hmenu, TPM_VERTICAL, offset.left + lpnm->ptAction.x , offset.top + lpnm->ptAction.y, 0, hMainWindow, NULL );
 	TrackPopupMenu(hmenu, TPM_VERTICAL, pt.x, pt.y, 0, parentWindow, nullptr);
 }
