@@ -387,9 +387,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 	{
 
 	case WM_INITMENUPOPUP:
+	{
+		LOGFONTA font = {};
+		EnableMenuItem(reinterpret_cast<HMENU>(wParam), IDM_VIEW_SELECT_LAST_FONT,
+			MF_BYCOMMAND | (ProgramSettings::LoadFont(font) ? MF_ENABLED : MF_GRAYED));
 		objectTreeView.UpdateCpuSettingsMenu(reinterpret_cast<HMENU>(wParam));
 		watchListView.UpdateMenu(reinterpret_cast<HMENU>(wParam));
 		break;
+	}
 
 	case WM_COMMAND:
 		switch (wParam)
@@ -622,21 +627,21 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 		}
 		break;
 
+		case IDM_VIEW_SELECT_LAST_FONT:
 		case IDM_VIEW_SELECT_FONT:
 		{
 			CHOOSEFONTA cf;
-			LOGFONTA font;
-
-			if (hfont_watchlist != nullptr)
+			LOGFONTA font = {};
+			if (wParam == IDM_VIEW_SELECT_LAST_FONT)
 			{
-				DeleteObject(hfont_watchlist);
-				hfont_watchlist = nullptr;
+				if (!ProgramSettings::LoadFont(font))
+					break;
 			}
-
-			ZeroMemory(&font, sizeof(font));
-			font.lfCharSet = ANSI_CHARSET;
-			font.lfWeight = FW_THIN;
-			strncpy(font.lfFaceName, "System", LF_FACESIZE);
+			else
+			{
+				HFONT current = reinterpret_cast<HFONT>(SendMessage(watchListView.GetHandle(), WM_GETFONT, 0, 0));
+				GetObjectA(current, sizeof(font), &font);
+			}
 
 			ZeroMemory(&cf, sizeof(cf));
 			cf.lStructSize = sizeof(cf);
@@ -644,10 +649,17 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			cf.hwndOwner = hWnd;
 			cf.Flags = CF_SCREENFONTS | CF_NOVERTFONTS | CF_INITTOLOGFONTSTRUCT;
 			cf.lpLogFont = &font;
-			if (ChooseFontA(&cf))
+			if (wParam == IDM_VIEW_SELECT_LAST_FONT || ChooseFontA(&cf))
 			{
-				hfont_watchlist = CreateFontIndirectA(&font);
-				SendMessage(watchListView.GetHandle(), WM_SETFONT, (WPARAM)hfont_watchlist, 1);
+				HFONT selected = CreateFontIndirectA(&font);
+				if (selected == nullptr)
+					break;
+				SendMessage(watchListView.GetHandle(), WM_SETFONT, reinterpret_cast<WPARAM>(selected), TRUE);
+				if (hfont_watchlist != nullptr)
+					DeleteObject(hfont_watchlist);
+				hfont_watchlist = selected;
+				if (wParam == IDM_VIEW_SELECT_FONT && !ProgramSettings::StoreFont(font))
+					MessageBoxA(hWnd, "Could not save the selected font to brwatch.ini.", "Font", MB_OK | MB_ICONERROR);
 			}
 		}
 		break;

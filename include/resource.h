@@ -152,6 +152,7 @@
 #define IDM_LOGGER_UNZIPLOGGERFILE      40002
 #define IDM_OPTIONS_SETTINGS            40004
 #define IDM_VIEW_SELECT_FONT            40006
+#define IDM_VIEW_SELECT_LAST_FONT       40007
 #define IDM_VIEW_SETDEFAULTFONT         40008
 #define IDM_QUIT                        40009
 #define ID_LOGGER_OPENLOGGERFILE        40012

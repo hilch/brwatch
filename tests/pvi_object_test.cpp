@@ -2539,6 +2539,59 @@ static void CheckMainViewTab()
 	SetFocus(previousFocus);
 }
 
+static void CheckFontSettings(const char *testDirectory)
+{
+	char originalSettings[MAX_PATH];
+	strcpy(originalSettings, ProgramSettings::GetFileName());
+	char settingsFile[MAX_PATH];
+	snprintf(settingsFile, sizeof(settingsFile), "%s\\font-settings.ini", testDirectory);
+	strcpy(ProgramSettings::GetFileName(), settingsFile);
+	LOGFONTA font = {};
+	CHECK(!ProgramSettings::LoadFont(font));
+	font.lfHeight = -19;
+	font.lfWidth = 9;
+	font.lfEscapement = 100;
+	font.lfOrientation = 100;
+	font.lfWeight = FW_BOLD;
+	font.lfItalic = TRUE;
+	font.lfUnderline = TRUE;
+	font.lfStrikeOut = TRUE;
+	font.lfCharSet = DEFAULT_CHARSET;
+	font.lfOutPrecision = OUT_TT_PRECIS;
+	font.lfClipPrecision = CLIP_DEFAULT_PRECIS;
+	font.lfQuality = CLEARTYPE_QUALITY;
+	font.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
+	strcpy(font.lfFaceName, "Consolas");
+	CHECK(WritePrivateProfileStringA("General", "WriteAllowed", "1", settingsFile));
+	CHECK(ProgramSettings::StoreFont(font));
+	WritePrivateProfileStringA(nullptr, nullptr, nullptr, settingsFile);
+	LOGFONTA restored = {};
+	CHECK(ProgramSettings::LoadFont(restored));
+	CHECK(memcmp(&restored, &font, sizeof(font)) == 0);
+	CHECK(GetPrivateProfileIntA("General", "WriteAllowed", 0, settingsFile) == 1);
+	font.lfHeight = -25;
+	font.lfItalic = FALSE;
+	CHECK(ProgramSettings::StoreFont(font));
+	CHECK(ProgramSettings::LoadFont(restored));
+	CHECK(memcmp(&restored, &font, sizeof(font)) == 0);
+	CHECK(WritePrivateProfileStringA("Font", "LastFont", "invalid", settingsFile));
+	CHECK(!ProgramSettings::LoadFont(restored));
+	CHECK(memcmp(&restored, &font, sizeof(font)) == 0);
+	CHECK(DeleteFileA(settingsFile));
+	snprintf(ProgramSettings::GetFileName(), MAX_PATH, "%s\\missing\\font.ini", testDirectory);
+	CHECK(!ProgramSettings::StoreFont(font));
+	strcpy(ProgramSettings::GetFileName(), originalSettings);
+	HMENU menu = LoadMenuA(GetModuleHandleA(nullptr), MAKEINTRESOURCEA(IDR_MNU_MAIN));
+	CHECK(menu != nullptr);
+	HMENU fonts = GetSubMenu(GetSubMenu(menu, 4), 0);
+	CHECK(fonts != nullptr && GetMenuItemCount(fonts) == 3);
+	CHECK(GetMenuItemID(fonts, 1) == IDM_VIEW_SELECT_LAST_FONT);
+	char label[80];
+	CHECK(GetMenuStringA(fonts, IDM_VIEW_SELECT_LAST_FONT, label, sizeof(label), MF_BYCOMMAND));
+	CHECK(strcmp(label, "Select &Last Font") == 0);
+	CHECK(DestroyMenu(menu));
+}
+
 int main(int argc, char **argv)
 {
 	CheckMainViewTab();
@@ -2568,6 +2621,17 @@ int main(int argc, char **argv)
 	CHECK(PviObject::Start() == 0);
 	CHECK(PviObject::Count() == 0);
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
+	CheckFontSettings(testDirectory);
+	if (argc == 2 && strcmp(argv[1], "--font-settings-test") == 0)
+	{
+		CHECK(PviObject::Stop() == 0);
+		char logFile[MAX_PATH];
+		snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
+		DeleteFileA(logFile);
+		CHECK(RemoveDirectoryA(testDirectory));
+		puts("PASS: font INI persistence, replacement, invalid data, write failure and menu registration");
+		return 0;
+	}
 	if (argc == 2 && strcmp(argv[1], "--watch-list-test") == 0)
 	{
 		CheckWatchListView(testDirectory);

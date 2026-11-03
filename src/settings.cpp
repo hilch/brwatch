@@ -42,6 +42,22 @@ char *ProgramSettings::GetFileName()
 	return inifile;
 }
 
+BOOL ProgramSettings::StoreFont(const LOGFONTA &font)
+{
+	LOGFONTA saved = font;
+	return WritePrivateProfileStructA("Font", "LastFont", &saved, sizeof(saved), inifile);
+}
+
+BOOL ProgramSettings::LoadFont(LOGFONTA &font)
+{
+	LOGFONTA saved = {};
+	if (!GetPrivateProfileStructA("Font", "LastFont", &saved, sizeof(saved), inifile) ||
+		memchr(saved.lfFaceName, '\0', sizeof(saved.lfFaceName)) == nullptr || saved.lfFaceName[0] == '\0')
+		return FALSE;
+	font = saved;
+	return TRUE;
+}
+
 // Returns the first matching CPU section number, or 0 when the descriptor is not stored.
 unsigned ProgramSettings::FindCpuSection(const char *descriptor)
 {

@@ -29,6 +29,8 @@ class ProgramSettings
 public:
 	// Returns the shared, mutable settings filename buffer; callers must not free it.
 	static char *GetFileName();
+	static BOOL StoreFont(const LOGFONTA &font);
+	static BOOL LoadFont(LOGFONTA &font);
 
 	// Selects APPDATA\brwatch\brwatch.ini (or the application folder) and creates missing settings from defaults.
 	static void Initialize();

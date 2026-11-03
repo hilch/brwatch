@@ -323,6 +323,7 @@ BEGIN
         POPUP "&Font"
         BEGIN
             MENUITEM "Select &New Font",        IDM_VIEW_SELECT_FONT
+            MENUITEM "Select &Last Font",       IDM_VIEW_SELECT_LAST_FONT, GRAYED
             MENUITEM "Set &Default Font",       IDM_VIEW_SETDEFAULTFONT
         END
     END
