@@ -402,6 +402,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			watchListView.RemoveSelected();
 			break;
 
+		case IDM_WATCH_ADJUST_COLUMNS:
+			watchListView.AdjustColumns();
+			break;
+
 		case IDM_CPU_SCAN:
 			objectTreeView.ScanSelectedDevice();
 			break;

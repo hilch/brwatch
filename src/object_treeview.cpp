@@ -389,7 +389,11 @@ LRESULT ObjectTreeView::HandleMessages(UINT wMsg, WPARAM, LPARAM lParam)
 
 		switch (pnmtv->hdr.code)
 		{
+		case TVN_KEYDOWN:
 		case NM_DBLCLK: // double click
+			if (pnmtv->hdr.code == TVN_KEYDOWN &&
+				reinterpret_cast<LPNMTVKEYDOWN>(lParam)->wVKey != VK_RETURN)
+				return 1;
 			hti = TreeView_GetSelection(window);
 			if (hti != nullptr)
 			{

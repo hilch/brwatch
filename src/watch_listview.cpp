@@ -164,6 +164,21 @@ bool WatchListView::CanEdit(const PviObject *object) const
 		GetPrivateProfileIntA("General", "WriteAllowed", 0, ProgramSettings::GetFileName()) != 0;
 }
 
+void WatchListView::AdjustColumns()
+{
+	if (window == nullptr || !IsWindow(window))
+		return;
+	int columns = Header_GetItemCount(ListView_GetHeader(window));
+	for (int column = 0; column < columns; ++column)
+	{
+		ListView_SetColumnWidth(window, column, LVSCW_AUTOSIZE);
+		int contentWidth = ListView_GetColumnWidth(window, column);
+		ListView_SetColumnWidth(window, column, LVSCW_AUTOSIZE_USEHEADER);
+		int headerWidth = ListView_GetColumnWidth(window, column);
+		ListView_SetColumnWidth(window, column, contentWidth > headerWidth ? contentWidth : headerWidth);
+	}
+}
+
 static void UpdateDisplayMenu(HMENU menu, const PviObject *object, bool enabled)
 {
 	bool integer = false;

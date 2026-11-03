@@ -862,8 +862,19 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	NMHDR doubleClick = {};
 	doubleClick.hwndFrom = first.GetHandle();
 	doubleClick.code = NM_DBLCLK;
+	NMTVKEYDOWN enterKey = {};
+	enterKey.hdr.hwndFrom = first.GetHandle();
+	enterKey.hdr.code = TVN_KEYDOWN;
+	enterKey.wVKey = VK_RETURN;
+	CHECK(second.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 1);
+	CHECK(TreeView_SelectItem(first.GetHandle(), nullptr) != 0);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 0);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
 	CHECK(TreeView_SelectItem(first.GetHandle(), root) != 0);
 	unsigned previousCreates = createRequests;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 0);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
+	CHECK(array->watchsort == -1 && createRequests == previousCreates);
 	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
 	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
 	CHECK(array->watchsort == -1 && createRequests == previousCreates);
@@ -872,9 +883,17 @@ static void CheckObjectTreeView(PviObject *cpu, PviObject *task, const char *tes
 	PviObject *element = PviObject::FindByName("@Pvi/Tree/Values[0]");
 	CHECK(element != nullptr);
 	CHECK(TreeView_SelectItem(first.GetHandle(), childItem) != 0);
-	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
+	enterKey.wVKey = VK_RIGHT;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 1);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 0);
+	enterKey.wVKey = VK_RETURN;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 0);
 	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 1);
 	CHECK(element->watchsort == 0 && element->ex.pv.pvalue != nullptr);
+	previousCreates = createRequests;
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&enterKey)) == 0);
+	CHECK(first.HandleMessages(WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&doubleClick)) == 0);
+	CHECK(ListView_GetItemCount(watchListView.GetHandle()) == 1 && createRequests == previousCreates);
 	LVITEMA listItem = {};
 	listItem.mask = LVIF_PARAM;
 	CHECK(ListView_GetItem(watchListView.GetHandle(), &listItem) != 0);
@@ -985,6 +1004,20 @@ static void CheckWatchListView(const char *testDirectory)
 	CHECK(SendMessageA(first.GetHandle(), LVM_GETITEMTEXTA, 0, reinterpret_cast<LPARAM>(&item)) != 0);
 	CHECK(strstr(text, "16#0000002A") != nullptr);
 	CHECK(strstr(text, "2#0000_0000_0000_0000_0000_0000_0010_1010") != nullptr);
+	int contentWidths[4];
+	for (int column = 0; column < 4; ++column)
+	{
+		ListView_SetColumnWidth(first.GetHandle(), column, LVSCW_AUTOSIZE);
+		contentWidths[column] = ListView_GetColumnWidth(first.GetHandle(), column);
+		ListView_SetColumnWidth(first.GetHandle(), column, 8);
+	}
+	first.AdjustColumns();
+	for (int column = 0; column < 4; ++column)
+		CHECK(ListView_GetColumnWidth(first.GetHandle(), column) >= contentWidths[column]);
+	CHECK(ListView_GetColumnWidth(first.GetHandle(), 3) > 8);
+	second.AdjustColumns();
+	for (int column = 0; column < 4; ++column)
+		CHECK(ListView_GetColumnWidth(second.GetHandle(), column) > 8);
 
 	const WCHAR wideText[] = L"Wide \u03a9";
 	PviObject *wide = AddObject("@Pvi/Watch/Wide", "Wide", POBJ_PVAR);
@@ -1055,9 +1088,11 @@ static void CheckWatchListView(const char *testDirectory)
 		if (strcmp(label, "&Watch-List") == 0)
 			watchMenu = GetSubMenu(mainMenu, index);
 	}
-	CHECK(watchMenu != nullptr && GetMenuItemCount(watchMenu) == 8);
+	CHECK(watchMenu != nullptr && GetMenuItemCount(watchMenu) == 10);
 	CHECK(GetMenuItemID(watchMenu, 0) == IDM_WATCH_EDIT);
 	CHECK(GetMenuItemID(watchMenu, 1) == IDM_WATCH_REMOVE);
+	CHECK(GetMenuItemID(watchMenu, 9) == IDM_WATCH_ADJUST_COLUMNS);
+	CHECK((GetMenuState(watchMenu, IDM_WATCH_ADJUST_COLUMNS, MF_BYCOMMAND) & MF_GRAYED) == 0);
 	const UINT displayCommands[] = { IDM_CHANGE_VIEW_DECIMAL, IDM_CHANGE_VIEW_HEX,
 		IDM_CHANGE_VIEW_BINARY, IDM_CHANGE_VIEW_CHAR, IDM_CHANGE_VIEW_OEMCHAR };
 	const char *displayLabels[] = { "Display as Decimal", "Display as Hex",
@@ -2533,6 +2568,17 @@ int main(int argc, char **argv)
 	CHECK(PviObject::Start() == 0);
 	CHECK(PviObject::Count() == 0);
 	CHECK(strcmp(PviObject::GetNext(TRUE)->name, "@Pvi") == 0);
+	if (argc == 2 && strcmp(argv[1], "--watch-list-test") == 0)
+	{
+		CheckWatchListView(testDirectory);
+		CHECK(PviObject::Stop() == 0);
+		char logFile[MAX_PATH];
+		snprintf(logFile, sizeof(logFile), "%s\\pvilog.txt", testDirectory);
+		DeleteFileA(logFile);
+		CHECK(RemoveDirectoryA(testDirectory));
+		puts("PASS: watch-list columns, menus, selection and object lifecycle");
+		return 0;
+	}
 	if (argc == 2 && strcmp(argv[1], "--cpu-scan-test") == 0)
 	{
 		CheckCpuScanTree();

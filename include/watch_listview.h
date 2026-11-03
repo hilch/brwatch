@@ -39,6 +39,7 @@ public:
 	void InsertPVIObjects(PviObject *object);
 	void UpdateValue(PviObject *object);
 	void UpdateMenu(HMENU menu) const;
+	void AdjustColumns();
 	void EditSelected();
 	void RemoveSelected();
 	void RemoveObject(PviObject *object);
