@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<?AutomationStudio WorkingVersion="6.3" FileVersion="4.9"?>
+<?AutomationStudio WorkingVersion="6.7" FileVersion="4.9"?>
 <Hardware xmlns="http://br-automation.co.at/AS/Hardware">
   <Module Name="5LS182.6-2" Type="5LS182.6-2" Version="1.13.0.0">
     <Connection Connector="SL" TargetModule="PC" TargetConnector="SL1" />
@@ -26,5 +26,9 @@
     <Group ID="FileDevice1" />
     <Parameter ID="FileDeviceName1" Value="USER" />
     <Parameter ID="FileDevicePath1" Value="USER_PATH" />
+    <Parameter ID="ActivateWebServer" Value="1" />
+    <Parameter ID="WebServerProtocol" Value="1" />
+    <Parameter ID="ActivateSdm" Value="1" />
+    <Parameter ID="Authentication" Value="0" />
   </Module>
 </Hardware>
