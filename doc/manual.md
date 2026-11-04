@@ -27,6 +27,8 @@ As default brwatch starts PVI with an INA Line. Set Ansl=1 in [General] if you p
 
 A click on the tcpip device starts SNMP discovery and a TCP port scan on port 11169.
 The TCP scan checks addresses .1 through .254 in each Ethernet adapter's local /24, restricted to its configured subnet, excluding the adapter itself and network/broadcast addresses. It uses up to 32 simultaneous connections with a 300 ms timeout per batch.
+
+In the CPU scan range dialog, uncheck Ethernet adapters to exclude them from the TCP scan. All adapters, including localhost, are checked by default whenever the dialog opens. The scan preview and timeout budget include only checked adapters; Scan is disabled when no selected adapter has usable targets. These choices do not restrict the separate SNMP/PVI discovery.
 Hosts accepting a connection are added with their IP address and subnet mask; an open port alone does not verify that the host is a B&R PLC. Additional CPU information comes from SNMP when available.
 CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead.
 

@@ -24,6 +24,7 @@
 #include <windowsx.h>
 #include <commctrl.h>
 #include <memory>
+#include "cpusearch.h"
 
 class PviObject;
 
@@ -49,7 +50,8 @@ private:
 	struct CpuScanTask;
 	static unsigned __stdcall CpuScanThread(void *data);
 	static INT_PTR CALLBACK CpuScanProgressDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam);
-	void StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet);
+	void StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet,
+		const std::vector<stAdapterInfo> &adapters);
 	void FinishCpuScan();
 	void UpdateCpuScanProgress();
 	void SetCpuScanBusy(bool busy);

@@ -75,7 +75,8 @@ CpuPortScanResult SearchCpuViaPortScan(const stAdapterInfo &adapter,
 	stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsigned hosts, bool allowBeyondSubnet = false,
 	CpuScanControl *control = nullptr);
 int SearchEthernetCpus(stEthernetCpuInfo *ethernetCpuInfo, int maxEntries,
-	unsigned hosts = CpuScanDefaultHosts, bool allowBeyondSubnet = false, CpuScanControl *control = nullptr);
+	unsigned hosts = CpuScanDefaultHosts, bool allowBeyondSubnet = false, CpuScanControl *control = nullptr,
+	const std::vector<stAdapterInfo> *selectedAdapters = nullptr);
 int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, CpuScanControl *control = nullptr);
 
 #endif // CPUSEARCH_H

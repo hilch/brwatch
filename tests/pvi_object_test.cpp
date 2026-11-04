@@ -77,6 +77,7 @@ static unsigned scanDialogs;
 static INT_PTR scanDialogResult = IDCANCEL;
 static unsigned scanDialogHosts = CpuScanDefaultHosts;
 static bool scanDialogBeyondSubnet;
+static int scanDialogExcludedAdapter = -1;
 static unsigned startupCalls;
 static unsigned cleanupCalls;
 static unsigned selectCalls;
@@ -187,6 +188,10 @@ static INT_PTR WINAPI TestDialogBoxParamA(HINSTANCE, LPCSTR resource, HWND, DLGP
 		++scanDialogs;
 		auto scan = reinterpret_cast<CpuScanDialogData *>(data);
 		CHECK(!scan->adapters.empty());
+		for (bool enabled : scan->adapterEnabled)
+			CHECK(enabled);
+		if (scanDialogExcludedAdapter >= 0)
+			scan->adapterEnabled[scanDialogExcludedAdapter] = false;
 		scan->hosts = scanDialogHosts;
 		scan->allowBeyondSubnet = scanDialogBeyondSubnet;
 		return scanDialogResult;
@@ -1349,6 +1354,19 @@ static void CheckCpuScanCancellation()
 	CHECK(complete.phase.load() == CpuScanPhase::Tcp && complete.completed.load() == 510 && complete.total.load() == 510);
 	CHECK(complete.errors.empty());
 	ResetSocketTest();
+	std::vector<stAdapterInfo> selectedAdapters = {adapter};
+	CpuScanControl selected;
+	CHECK(SearchEthernetCpus(results, 4, 256, false, &selected, &selectedAdapters) == 0);
+	CHECK(selected.total.load() == 253 && selected.completed.load() == 253);
+	CHECK(scanTargets.size() == 253 && startupCalls == 1);
+	for (auto target : scanTargets)
+		CHECK((target & 0xffffff00u) == 0xc0a80b00u);
+	ResetSocketTest();
+	selectedAdapters.clear();
+	previousCreates = createRequests;
+	CHECK(SearchEthernetCpus(results, 4, 256, false, nullptr, &selectedAdapters) == 0);
+	CHECK(scanTargets.empty() && startupCalls == 0 && createRequests == previousCreates);
+	ResetSocketTest();
 	socketFailure = "socket";
 	CpuScanControl failure;
 	CHECK(SearchEthernetCpus(results, 4, 512, true, &failure) == 0);
@@ -1661,6 +1679,23 @@ static void CheckCpuScanDialog()
 	HWND dialog = CreateHiddenDialog(DLG_CPU_SCAN, CpuScanDlgProc, reinterpret_cast<LPARAM>(&data));
 	CHECK(SendDlgItemMessageA(dialog, IDC_CPU_SCAN_HOSTS, CB_GETCOUNT, 0, 0) == 5);
 	CHECK(IsDlgButtonChecked(dialog, IDC_CPU_SCAN_BEYOND_SUBNET) == BST_UNCHECKED);
+	HWND adapters = GetDlgItem(dialog, IDC_CPU_SCAN_ADAPTERS);
+	CHECK(ListView_GetItemCount(adapters) == 3);
+	for (int i = 0; i < 3; ++i)
+		CHECK(ListView_GetCheckState(adapters, i) && data.adapterEnabled[i]);
+	ListView_SetCheckState(adapters, 1, FALSE);
+	char selectedDetails[2400];
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_DETAILS, selectedDetails, sizeof(selectedDetails));
+	CHECK(!data.adapterEnabled[1] && strstr(selectedDetails, "Small subnet") == nullptr);
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_TIMEOUT, selectedDetails, sizeof(selectedDetails));
+	CHECK(strstr(selectedDetails, "256 targets") != nullptr);
+	ListView_SetCheckState(adapters, 0, FALSE);
+	ListView_SetCheckState(adapters, 2, FALSE);
+	CHECK(!IsWindowEnabled(GetDlgItem(dialog, IDOK)));
+	GetDlgItemTextA(dialog, IDC_CPU_SCAN_TIMEOUT, selectedDetails, sizeof(selectedDetails));
+	CHECK(strstr(selectedDetails, "0 targets") != nullptr);
+	for (int i = 0; i < 3; ++i)
+		ListView_SetCheckState(adapters, i, TRUE);
 	unsigned index = 0;
 	for (unsigned hosts : {256u, 512u, 1024u, 2048u, 16384u})
 	{
@@ -1713,6 +1748,16 @@ static void CheckCpuScanDialog()
 	CHECK(!DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && hosts == 512 && !allowBeyondSubnet);
 	scanDialogResult = IDOK;
 	CHECK(DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet) && hosts == 16384 && allowBeyondSubnet);
+	testAdapters = {{"192.168.10.8", "255.255.255.0", "Selected Ethernet"}};
+	scanDialogExcludedAdapter = 0;
+	std::vector<stAdapterInfo> selectedAdapters;
+	CHECK(DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet, &selectedAdapters));
+	CHECK(selectedAdapters.size() == 1 && strcmp(selectedAdapters[0].ipAddress, "192.168.10.8") == 0);
+	scanDialogResult = IDCANCEL;
+	CHECK(!DlgCpuScanShowDialog(nullptr, hosts, allowBeyondSubnet, &selectedAdapters));
+	CHECK(selectedAdapters.size() == 1 && strcmp(selectedAdapters[0].ipAddress, "192.168.10.8") == 0);
+	scanDialogExcludedAdapter = -1;
+	testAdapters.clear();
 	expectedMessageCaption = "CPU scan";
 	expectedErrorMessages = 1;
 	scanDialogResult = -1;
@@ -1799,7 +1844,11 @@ static void CheckCpuScanProgress()
 		CHECK(CloseHandle(readEntered) && CloseHandle(readRelease));
 		readEntered = readRelease = nullptr;
 	}
-	testAdapters = {{"192.168.10.8", "255.255.255.0", "Progress Ethernet"}};
+	testAdapters = {
+		{"192.168.10.8", "255.255.255.0", "Progress Ethernet"},
+		{"10.0.0.8", "255.255.255.0", "Excluded Ethernet"}
+	};
+	scanDialogExcludedAdapter = 2;
 	selectEntered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
 	selectRelease = CreateEventA(nullptr, TRUE, FALSE, nullptr);
 	CHECK(selectEntered != nullptr && selectRelease != nullptr);
@@ -1820,6 +1869,7 @@ static void CheckCpuScanProgress()
 	CHECK(TreeView_GetChild(tree.GetHandle(), root) == nullptr);
 	CHECK(CloseHandle(selectEntered) && CloseHandle(selectRelease));
 	selectEntered = selectRelease = nullptr;
+	scanDialogExcludedAdapter = -1;
 	testAdapters.clear();
 	ResetSocketTest();
 	socketFailure = "socket";

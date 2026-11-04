@@ -23,6 +23,7 @@
 
 static const unsigned hostChoices[] = {256, 512, 1024, 2048, 16384};
 
+// Format an IPv4 address stored in host byte order as dotted-decimal text.
 static std::string AddressText(std::uint32_t address)
 {
 	char text[20];
@@ -31,13 +32,17 @@ static std::string AddressText(std::uint32_t address)
 	return text;
 }
 
+// Show ranges, warnings, and timeout totals for checked adapters; enable Scan only when targets exist.
 static void UpdateScanPreview(HWND dialog, CpuScanDialogData &data)
 {
 	std::string details;
 	std::uint64_t timeoutMs = 0;
 	unsigned totalTargets = 0;
-	for (const auto &adapter : data.adapters)
+	for (size_t i = 0; i < data.adapters.size(); ++i)
 	{
+		if (!data.adapterEnabled[i])
+			continue;
+		const auto &adapter = data.adapters[i];
 		CpuPortScanPlan plan;
 		int error;
 		char row[400];
@@ -77,6 +82,7 @@ static void UpdateScanPreview(HWND dialog, CpuScanDialogData &data)
 	EnableWindow(GetDlgItem(dialog, IDOK), totalTargets != 0);
 }
 
+// Initialize scan controls, apply adapter and range changes, and handle confirmation or cancellation.
 INT_PTR CALLBACK CpuScanDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	auto data = reinterpret_cast<CpuScanDialogData *>(GetWindowLongPtrA(dialog, DWLP_USER));
@@ -116,9 +122,45 @@ INT_PTR CALLBACK CpuScanDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM
 		data->hosts = hostChoices[selected];
 		SendDlgItemMessageA(dialog, IDC_CPU_SCAN_HOSTS, CB_SETCURSEL, selected, 0);
 		CheckDlgButton(dialog, IDC_CPU_SCAN_BEYOND_SUBNET, data->allowBeyondSubnet ? BST_CHECKED : BST_UNCHECKED);
+		HWND adapters = GetDlgItem(dialog, IDC_CPU_SCAN_ADAPTERS);
+		ListView_SetExtendedListViewStyle(adapters, LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+		RECT bounds;
+		GetClientRect(adapters, &bounds);
+		LVCOLUMNA column = {};
+		column.mask = LVCF_WIDTH;
+		column.cx = bounds.right - GetSystemMetrics(SM_CXVSCROLL) - 4;
+		ListView_InsertColumn(adapters, 0, &column);
+		data->adapterEnabled.assign(data->adapters.size(), true);
+		for (size_t i = 0; i < data->adapters.size(); ++i)
+		{
+			const auto &adapter = data->adapters[i];
+			char text[160];
+			snprintf(text, sizeof(text), "%s (%s / %s)", adapter.description, adapter.ipAddress, adapter.subnetMask);
+			LVITEMA item = {};
+			item.mask = LVIF_TEXT;
+			item.iItem = static_cast<int>(i);
+			item.pszText = text;
+			ListView_InsertItem(adapters, &item);
+			ListView_SetCheckState(adapters, item.iItem, TRUE);
+		}
 		UpdateScanPreview(dialog, *data);
 		return TRUE;
 	}
+	case WM_NOTIFY:
+		if (data != nullptr && reinterpret_cast<NMHDR *>(lParam)->idFrom == IDC_CPU_SCAN_ADAPTERS &&
+			reinterpret_cast<NMHDR *>(lParam)->code == LVN_ITEMCHANGED)
+		{
+			auto change = reinterpret_cast<NMLISTVIEW *>(lParam);
+			if (change->iItem >= 0 && static_cast<size_t>(change->iItem) < data->adapterEnabled.size() &&
+				(change->uChanged & LVIF_STATE) != 0 &&
+				((change->uOldState ^ change->uNewState) & LVIS_STATEIMAGEMASK) != 0)
+			{
+				data->adapterEnabled[change->iItem] = ListView_GetCheckState(change->hdr.hwndFrom, change->iItem) != FALSE;
+				UpdateScanPreview(dialog, *data);
+			}
+			return TRUE;
+		}
+		break;
 	case WM_COMMAND:
 		if (data == nullptr)
 			break;
@@ -148,7 +190,10 @@ INT_PTR CALLBACK CpuScanDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM
 	return FALSE;
 }
 
-bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet)
+// Enumerate adapters and show the modal scan configuration with all adapters initially checked.
+// Return true and update outputs on confirmation; leave outputs unchanged on cancellation or error.
+bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet,
+	std::vector<stAdapterInfo> *selectedAdapters)
 {
 	CpuScanDialogData data;
 	data.hosts = hosts;
@@ -161,6 +206,7 @@ bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet)
 		MessageBoxA(parent, message, "CPU scan", MB_OK | MB_ICONERROR);
 		return false;
 	}
+	data.adapterEnabled.assign(data.adapters.size(), true);
 	INT_PTR result = DialogBoxParamA(GetModuleHandleA(nullptr), MAKEINTRESOURCEA(DLG_CPU_SCAN),
 		parent, CpuScanDlgProc, reinterpret_cast<LPARAM>(&data));
 	if (result == -1)
@@ -172,6 +218,13 @@ bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet)
 	}
 	if (result != IDOK)
 		return false;
+	if (selectedAdapters != nullptr)
+	{
+		selectedAdapters->clear();
+		for (size_t i = 0; i < data.adapters.size(); ++i)
+			if (data.adapterEnabled[i])
+				selectedAdapters->push_back(data.adapters[i]);
+	}
 	hosts = data.hosts;
 	allowBeyondSubnet = data.allowBeyondSubnet;
 	return true;

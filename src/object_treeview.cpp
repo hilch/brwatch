@@ -31,6 +31,7 @@ struct ObjectTreeView::CpuScanTask {
 
 	ObjectTreeView &view;
 	CpuScanControl control;
+	std::vector<stAdapterInfo> adapters;
 	std::vector<stEthernetCpuInfo> cpus = std::vector<stEthernetCpuInfo>(256);
 	std::string parentName;
 	DWORD parentLink = 0;
@@ -96,7 +97,7 @@ unsigned __stdcall ObjectTreeView::CpuScanThread(void *data)
 	try
 	{
 		task->entries = SearchEthernetCpus(task->cpus.data(), static_cast<int>(task->cpus.size()),
-			task->hosts, task->allowBeyondSubnet, &task->control);
+			task->hosts, task->allowBeyondSubnet, &task->control, &task->adapters);
 	}
 	catch (const std::bad_alloc &)
 	{
@@ -106,12 +107,14 @@ unsigned __stdcall ObjectTreeView::CpuScanThread(void *data)
 	return 0;
 }
 
-void ObjectTreeView::StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet)
+void ObjectTreeView::StartCpuScan(HTREEITEM item, PviObject *parent, unsigned hosts, bool allowBeyondSubnet,
+	const std::vector<stAdapterInfo> &adapters)
 {
 	try
 	{
 		scanTask = std::make_unique<CpuScanTask>(*this);
 		scanTask->parentName = parent->name;
+		scanTask->adapters = adapters;
 	}
 	catch (const std::bad_alloc &)
 	{
@@ -575,10 +578,11 @@ void ObjectTreeView::ItemSelected(HTREEITEM hti, LPARAM lParam)
 				}
 				unsigned hosts = CpuScanDefaultHosts;
 				bool allowBeyondSubnet = false;
+				std::vector<stAdapterInfo> adapters;
 				if (parent->type == POBJ_DEVICE)
 				{
 					SetCpuScanBusy(true);
-					if (!DlgCpuScanShowDialog(parentWindow, hosts, allowBeyondSubnet))
+					if (!DlgCpuScanShowDialog(parentWindow, hosts, allowBeyondSubnet, &adapters))
 					{
 						SetCpuScanBusy(false);
 						return;
@@ -587,7 +591,7 @@ void ObjectTreeView::ItemSelected(HTREEITEM hti, LPARAM lParam)
 					strcpy(descriptor, parent->descriptor);
 					if (strstr(_strupr(descriptor), "/IF=TCPIP") != nullptr)
 					{
-						StartCpuScan(hti, parent, hosts, allowBeyondSubnet);
+						StartCpuScan(hti, parent, hosts, allowBeyondSubnet, adapters);
 						return;
 					}
 				}

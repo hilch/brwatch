@@ -87,6 +87,7 @@
 #define IDC_CPU_SCAN_BEYOND_SUBNET      1053
 #define IDC_CPU_SCAN_PROGRESS          1054
 #define IDC_CPU_SCAN_STATUS            1055
+#define IDC_CPU_SCAN_ADAPTERS          1056
 
 #define IDR_MNU_MAIN                    2001
 #define IDR_LVPVIOBJECTS                4001

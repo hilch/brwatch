@@ -504,7 +504,7 @@ static void ReportCpuScanError(const stAdapterInfo &adapter, const CpuPortScanRe
 }
 
 int SearchEthernetCpus(stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsigned hosts, bool allowBeyondSubnet,
-	CpuScanControl *control)
+	CpuScanControl *control, const std::vector<stAdapterInfo> *selectedAdapters)
 {
 	if (ScanCancelled(control))
 		return 0;
@@ -514,7 +514,11 @@ int SearchEthernetCpus(stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsig
 		return -1;
 	}
 	std::vector<stAdapterInfo> adapters;
-	unsigned long error = ListCpuScanAdapters(adapters);
+	unsigned long error = ERROR_SUCCESS;
+	if (selectedAdapters != nullptr)
+		adapters = *selectedAdapters;
+	else
+		error = ListCpuScanAdapters(adapters);
 	if (error != ERROR_SUCCESS)
 	{
 		char message[160];
@@ -522,6 +526,8 @@ int SearchEthernetCpus(stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, unsig
 		ReportDiscoveryError(message, control);
 		return -1;
 	}
+	if (adapters.empty())
+		return 0;
 	CpuPortScanPlan validationPlan;
 	int validationError;
 	if (!GetCpuPortScanPlan(adapters.front(), hosts, validationPlan, validationError, allowBeyondSubnet))

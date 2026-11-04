@@ -26,9 +26,11 @@ struct CpuScanDialogData {
 	unsigned hosts = CpuScanDefaultHosts;
 	bool allowBeyondSubnet = false;
 	std::vector<stAdapterInfo> adapters;
+	std::vector<bool> adapterEnabled;
 };
 
 INT_PTR CALLBACK CpuScanDlgProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam);
-bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet);
+bool DlgCpuScanShowDialog(HWND parent, unsigned &hosts, bool &allowBeyondSubnet,
+	std::vector<stAdapterInfo> *selectedAdapters = nullptr);
 
 #endif
