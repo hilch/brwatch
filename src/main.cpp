@@ -231,8 +231,8 @@ static void PviObjectsValid(void)
 	// if logger was active when program ended it will be started again.
 	if (GetPrivateProfileIntA("Logger", "LoggerActive", 0, ProgramSettings::GetFileName()))
 	{ // was logger active ?
-		strcpy(logger_watch_file, GetApplicationPath());
-		strcat(logger_watch_file, "\\_logger.wtc");
+		if (!Logger::GetLoggerWatchFilePath(logger_watch_file))
+			return;
 		LoadWatchFile(logger_watch_file);
 		Logger::Toggle();
 		SendMessage(MainWindowGetHandle(), NOTIFY_LOGGER_STATUS, 0, 0);
@@ -778,9 +778,8 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT wMsg, WPARAM wParam, LPARAM lPar
 			EnableWindow(watchListView.GetHandle(), FALSE);
 			EnableWindow(objectTreeView.GetHandle(), FALSE);
 			WritePrivateProfileStringA("Logger", "LoggerActive", "1", ProgramSettings::GetFileName());
-			strcpy(logger_watch_file, GetApplicationPath());
-			strcat(logger_watch_file, "\\_logger.wtc");
-			SaveWatchFile(logger_watch_file);
+			if (Logger::GetLoggerWatchFilePath(logger_watch_file))
+				SaveWatchFile(logger_watch_file);
 		}
 		else
 		{

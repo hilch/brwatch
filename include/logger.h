@@ -31,6 +31,7 @@ public:
 	static BOOL Toggle();
 	static BOOL IsRunning();
 	static void DataChanged(PviObject *object);
+	static bool GetLoggerWatchFilePath(char (&filename)[MAX_PATH]);
 
 private:
 	Logger() = delete;

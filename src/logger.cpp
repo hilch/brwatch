@@ -77,6 +77,30 @@ BOOL Logger::IsRunning()
 	return logger_is_running;
 }
 
+bool Logger::GetLoggerWatchFilePath(char (&filename)[MAX_PATH])
+{
+	const char *appData = getenv("APPDATA");
+	if (appData == nullptr || appData[0] == '\0')
+	{
+		MessageBoxA(MainWindowGetHandle(), "APPDATA is not set. Cannot access the logger watch file.", "Logger", MB_OK | MB_ICONERROR);
+		return false;
+	}
+	std::string directory = std::string(appData) + "\\brwatch";
+	std::string path = directory + "\\logger.wtc";
+	if (path.size() >= sizeof(filename))
+	{
+		MessageBoxA(MainWindowGetHandle(), "The logger watch file path is too long.", "Logger", MB_OK | MB_ICONERROR);
+		return false;
+	}
+	if (!CreateDirectoryA(directory.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		MessageBoxA(MainWindowGetHandle(), "Could not create the logger directory in APPDATA.", "Logger", MB_OK | MB_ICONERROR);
+		return false;
+	}
+	strcpy(filename, path.c_str());
+	return true;
+}
+
 /* creates a list with logged objects */
 
 int Logger::CountLoggedObjects()
