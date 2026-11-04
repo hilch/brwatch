@@ -4,7 +4,7 @@
 [![Made For B&R](https://github.com/hilch/BandR-badges/blob/main/Made-For-BrAutomation.svg)](https://www.br-automation.com)
 
 [brwatch](http://hilch.github.io/brwatch) ist a small and portable service tool for [B&amp;R](https://www.br-automation.com) automation controls (PLC).
-It runs on Microsoft Windows and enables you to list, watch and change process variables, start and stop task, search and reboot CPUs, change IP-settings.
+It runs on Microsoft Windows (64 bit) and enables you to list, watch and change process variables, start and stop task, search and reboot CPUs, change IP-settings.
 Additionaly it logs PV values to CSV- Files.
 
 [Download](https://github.com/hilch/brwatch/releases)
@@ -24,7 +24,7 @@ brwatch needs a previously installed [PVI Development Setup](https://www.br-auto
 
 - ### INA/ANSL
 
-since PVI 6.x the obsolete INA2000 protocol was removed so brwatch >= 2.x is not able to handle INA anymore. If you still have CPUs requiring INA2000 use brwatch versions 1.x.
+since PVI 6.x the obsolete INA2000 protocol was removed so brwatch >= 2.x is not able to handle INA anymore. If you still have CPUs requiring INA2000 (or you Windows is a 32 bit version) use brwatch versions 1.x.
 (INA2000 is required for Automation Runtime <= 3.x> and CPUs with serial interfaces only).
 
 - ### PVI License
@@ -42,7 +42,7 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 ## Development
 
 The application is written in C++14 and uses plain Win32 API for UI. Bundled zlib sources remain C.
-Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
+Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases).
 
 The application-wide CSV logger is encapsulated by `Logger` in
 [logger.h](include/logger.h). Its static members `Toggle()`, `IsRunning()` and
@@ -79,7 +79,7 @@ pacman -S --needed mingw-w64-x86_64-gdb
 **Using PowerShell Script:**
 
 ```powershell
-.\build.ps1                 # Standard build
+.\build.ps1                # Standard build
 .\build.ps1 -Clean         # Clean and rebuild
 .\build.ps1 -Verbose       # Show all compiler output
 ```
