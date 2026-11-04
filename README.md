@@ -20,11 +20,12 @@ You can freely copy it but use it at your own risk.
 
 ## PVI
 
-brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run. 
+brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/de-de/downloads/#categories=Software-1344987434933/Automation+NET%2FPVI-1344987435101) to run. You need to select V6.x versions.
 
 - ### INA/ANSL
 
-since PVI 6.x INA2000 protocol becomes obsolete so brwatch >= 2.x is not able to handle INA anymore. If still have CPUs requiring INA2000 use brwatch versions 1.x.
+since PVI 6.x the obsolete INA2000 protocol was removed so brwatch >= 2.x is not able to handle INA anymore. If you still have CPUs requiring INA2000 use brwatch versions 1.x.
+(INA2000 is required for Automation Runtime <= 3.x> and CPUs with serial interfaces only).
 
 - ### PVI License
 
@@ -32,15 +33,15 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 
 ## Usage
 
-1. [download EXE](https://github.com/hilch/brwatch/releases)
-2. [see brief manual](http://hilch.github.io/brwatch/doc/manual.md)
+1. [download EXE](https://github.com/hilch/brwatch/releases) or better: compile it by yourself
+2. [see brief manual](/doc/manual.md)
 
-([for brwatch V1.x see brief manual](http://hilch.github.io/brwatch/doc/V1.x/manual.md))
+([for brwatch V1.x see brief manual](/doc/V1.x/manual.md))
 
 
 ## Development
 
-The application is written in C++14 and uses the Win32 API. Bundled zlib sources remain C.
+The application is written in C++14 and uses plain Win32 API for UI. Bundled zlib sources remain C.
 Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases)
 
 The application-wide CSV logger is encapsulated by `Logger` in

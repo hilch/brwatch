@@ -31,8 +31,6 @@ In the CPU scan range dialog, uncheck Ethernet adapters to exclude them from the
 Hosts accepting a connection are added with their IP address and subnet mask; an open port alone does not verify that the host is a B&R PLC. Additional CPU information comes from SNMP when available.
 CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead (see menu Object-Tree/Add Cpu).
 
-![NetworkScan](/doc/V1.x/network_scan.gif)
-
 ## Searching for PV (process variables)
 
 To scan variables, left-click on each node-entry of the tree view control.
@@ -46,8 +44,6 @@ to remove them from the watch list without deleting their PVI objects.
 Set `object_refresh_time` in the `[General]` section of `brwatch.ini` to configure
 the PVI process-variable refresh time in milliseconds. The default is `50` when
 the setting is absent. Restart BRWATCH after changing this value.
-
-![BrowseForVariables](/doc/V1.x/browse_for_variables.gif)
 
 ## Change number representation
 
@@ -104,7 +100,7 @@ You can load/save the watch configuration via "File" menu.
 
 If the list view contains one or more PV you can write the values into a CSV- File. **Microsoft Excel** or **Libre Office Calc** can open this file type for example (or an ordinary text editor of course).
 
-![logger_configuration](/doc/logger_configuration.pnglogger_cof)
+![logger_configuration](/doc/logger_configuration.png)
 
 The default filename is `logger.csv` in your Windows home folder (usually
 `C:\Users\<username>`). A filename saved in the logger settings overrides this default.
@@ -127,4 +123,4 @@ You can save space on your Window desktop by minimizing the window. BRWATCH will
 
 If you close BRWATCH in this state (e.g. power down your PC) the logger will start in this state again after power up (for long term logging capabilities).
 Beware; the minimized window state is be saved, too.
-So if you don't see the main window after starting the .exe just have a look at the windows taskbar.
+**So if you don't see the main window after starting the .exe just have a look at the windows taskbar.**
