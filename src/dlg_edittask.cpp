@@ -35,10 +35,8 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	case WM_INITDIALOG:
 		if (lParam != 0)
 		{
-			char tempstring[256];
 			object = (PviObject *)lParam;
-			sprintf(tempstring, object->descriptor);
-			SetDlgItemTextA(hDlg, IDC_STATIC_TASK, tempstring);
+			SetDlgItemTextA(hDlg, IDC_STATIC_TASK, object->descriptor);
 			SetDlgItemTextA(hDlg, IDR_STATIC_TASK_STATUS, object->ex.task.status);
 			SetDlgItemTextA(hDlg, IDR_EDIT_NUMBER_OF_CYCLES, "1");
 			return TRUE;
