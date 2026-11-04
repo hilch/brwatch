@@ -15,32 +15,31 @@ BRWATCH reads and saves its settings in **%APPDATA%\brwatch\brwatch.ini** when t
 To edit these settings use an external editor or the built-in one in menu Options/Settings.
 Refer to the comments in this file and the PVI- documentation that comes with the installation package of **PVI development setup**.
 
-![Settings](/doc/Settings.PNG)
+## Main Window
 
-### ANSL
+Select CPUs, Tasks and Variables from the Tree and Drag it to the List on the right to watch or edit their settings / values. See menu 'Watch-List' or right-click context menu.
 
-As default brwatch starts PVI with an INA Line. Set Ansl=1 in [General] if you prefer the Ansl protocol instead.
-
-![SettingsANSL](/doc/ANSL.png)
+![main_window](/doc/main_window.png)
 
 ## Scan for PLCs in network
 
-A click on the tcpip device starts SNMP discovery and a TCP port scan on port 11169.
-The TCP scan checks addresses .1 through .254 in each Ethernet adapter's local /24, restricted to its configured subnet, excluding the adapter itself and network/broadcast addresses. It uses up to 32 simultaneous connections with a 300 ms timeout per batch.
+A click on the tcpip device starts SNMP discovery and a TCP port scan on port 11169 (standard port for ANSL). The number of scanned hosts can be adjusted as well.
+
+![cpu_scan](/doc/cpu_scan.png)
 
 In the CPU scan range dialog, uncheck Ethernet adapters to exclude them from the TCP scan. All adapters, including localhost, are checked by default whenever the dialog opens. The scan preview and timeout budget include only checked adapters; Scan is disabled when no selected adapter has usable targets. These choices do not restrict the separate SNMP/PVI discovery.
 Hosts accepting a connection are added with their IP address and subnet mask; an open port alone does not verify that the host is a B&R PLC. Additional CPU information comes from SNMP when available.
-CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead.
+CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead (see menu Object-Tree/Add Cpu).
 
-![NetworkScan](/doc/network_scan.gif)
+![NetworkScan](/doc/V1.x/network_scan.gif)
 
 ## Searching for PV (process variables)
 
 To scan variables, left-click on each node-entry of the tree view control.
 To watch a selected variable just drag it to the list view control at the right.
 The entries can be freely arranged by drag and drop operations.
-If you drag an entry outside BRWATCH, it will removed from the list view.
 
+If you drag an entry outside BRWATCH, it will removed from the list view.
 Select entries in the watch list and choose **Watch > Remove** (or press Delete)
 to remove them from the watch list without deleting their PVI objects.
 
@@ -48,7 +47,7 @@ Set `object_refresh_time` in the `[General]` section of `brwatch.ini` to configu
 the PVI process-variable refresh time in milliseconds. The default is `50` when
 the setting is absent. Restart BRWATCH after changing this value.
 
-![BrowseForVariables](/doc/browse_for_variables.gif)
+![BrowseForVariables](/doc/V1.x/browse_for_variables.gif)
 
 ## Change number representation
 
@@ -63,24 +62,22 @@ To change a value, double-click the entry in the list view, select it and choose
 in `brwatch.ini`. Watch editing and removal are disabled while logging is running.
 The following dialog window enables to enter a new value.
 
+![edit_value](/doc/edit_value.png)
+
 In **Edit Value**, use **Enter** (OK), **Alt+A** (Apply), and **Esc** (Cancel).
 The buttons show `OK <Enter>` and `Cancel <Esc>`. Tab and Shift+Tab move
 between fields and buttons. Underlined letters show the Alt-key shortcuts.
 For date/time values, **Alt+Y**, **Alt+M**, **Alt+D**, **Alt+H**, **Alt+N**, and
 **Alt+I** focus the enabled year, month, day, hour, minute, and millisecond fields.
 
-### Numbers
-
-![EditNumbers](/doc/EditNumber.PNG)
-
 ### Strings
 
-![EditStrings](/doc/EditString.PNG)
+![edit_string_value](/doc/edit_string_value.png)
 
 ## Edit Tasks
 
 Task can be stopped, restarted and executed for a number of specified cycles (single steps)
-![EditTasks](/doc/EditTask.PNG)
+![edit_task](/doc/edit_task.png)
 
 ## Edit CPUs
 
@@ -92,12 +89,12 @@ You can execute some commands to a CPU:
 - Diagnose
 - Change the IP settings (since V1.2)
 
+![edit_cpu](/doc/edit_cpu.png)
+
 In **Edit CPU**, the button shortcuts are **Alt+C** (CHANGE), **Alt+S** (SERV),
 **Alt+W** (Warmstart), **Alt+O** (Coldstart), **Alt+G** (DIAG), and **Esc** (Hide).
 Use **Alt+D** for the DHCP checkbox; **Alt+I**, **Alt+B**, and **Alt+T** focus the
 IP address, subnet, and gateway fields when enabled. The close button shows `Hide <Esc>`.
-
-![IpSettings](/doc/change_ip_settings.gif)
 
 ## File operations
 
@@ -107,7 +104,7 @@ You can load/save the watch configuration via "File" menu.
 
 If the list view contains one or more PV you can write the values into a CSV- File. **Microsoft Excel** or **Libre Office Calc** can open this file type for example (or an ordinary text editor of course).
 
-![LoggerConfiguration](/doc/LoggerConfiguration.PNG)
+![logger_configuration](/doc/logger_configuration.pnglogger_cof)
 
 The default filename is `logger.csv` in your Windows home folder (usually
 `C:\Users\<username>`). A filename saved in the logger settings overrides this default.
@@ -125,7 +122,9 @@ Pressing **OK** will save these settings in the BRWATCH.ini file.
 Menu Logger enables to start the logger or to stop a started logging. If logging has started, the BRWATCH main window is grey colored to signal this state.
 TODO Screenshot
 You can save space on your Window desktop by minimizing the window. BRWATCH will then be visible only as an icon in the taskbar. Moving the mouse over this icon gives the option to maximize the main window again.
-TODO Screenshot Taskbar
+
+![screenshot_taskbar](/doc/screenshot_taskbar.png)
+
 If you close BRWATCH in this state (e.g. power down your PC) the logger will start in this state again after power up (for long term logging capabilities).
 Beware; the minimized window state is be saved, too.
 So if you don't see the main window after starting the .exe just have a look at the windows taskbar.

@@ -1,4 +1,4 @@
-# [brwatch](http://hilch.github.io/brwatch)
+# [brwatch](http://hilch.github.io/brwatch) 1.X versions
 
 ## Installation
 
@@ -15,13 +15,18 @@ After first start, BRWATCH creates a **BRWATCH.ini** file in the current folder 
 To edit these settings use an external editor or the built-in one in menu Options/Settings.
 Refer to the comments in this file and the PVI- documentation that comes with the installation package of **PVI development setup**.
 
-![Settings](/doc/Settings.PNG)
+![Settings](/doc/V1.x/Settings.PNG)
 
 ### ANSL
 
-As default brwatch starts PVI with an INA Line. Set Ansl=1 in [General] if you prefer the Ansl protocol instead.
+Set Ansl=1 in [General] if you prefer the Ansl protocol. Otherwise INA2000 is used.
 
-![SettingsANSL](/doc/ANSL.png)
+![SettingsANSL](/doc/V1.x/ANSL.png)
+
+## Usage
+
+[how to use](/doc/V1.x/how_to_use.gif)
+
 
 ## Scan for PLCs in network
 
@@ -29,7 +34,7 @@ since V1.1 a click on the tcpip device starts the scanning via SNMP and UDP to f
 If SNMP ist not supported (old PVI version, old AR) there is UDP only.
 CPUs outside your network cannot be found with these methods. The communication settings have to be entered in brwatch.ini instead.
 
-![NetworkScan](/doc/network_scan.gif)
+![NetworkScan](/doc/V1.x/network_scan.gif)
 
 ## Searching for PV (process variables)
 
@@ -38,7 +43,7 @@ To watch a selected variable just drag it to the list view control at the right.
 The entries can be freely arranged by drag and drop operations.
 If you drag an entry outside BRWATCH, it will removed from the list view.
 
-![BrowseForVariables](/doc/browse_for_variables.gif)
+![BrowseForVariables](/doc/V1.x/browse_for_variables.gif)
 
 ## Change number representation
 
@@ -51,18 +56,20 @@ TODO screenshot
 To change a value double click the entry in the list view.
 The following dialog window enables to enter a new value.
 
+![screenshot1](/doc/V1.x/screenshot1.PNG)
+
 ### Numbers
 
-![EditNumbers](/doc/EditNumber.PNG)
+![EditNumbers](/doc/V1.x/EditNumber.PNG)
 
 ### Strings
 
-![EditStrings](/doc/EditString.PNG)
+![EditStrings](/doc/V1.x/EditString.PNG)
 
 ## Edit Tasks
 
 Task can be stopped, restarted and executed for a number of specified cycles (single steps)
-![EditTasks](/doc/EditTask.PNG)
+![EditTasks](/doc/V1.x/EditTask.PNG)
 
 ## Edit CPUs
 
@@ -74,7 +81,7 @@ You can execute some commands to a CPU:
 - Diagnose
 - Change the IP settings (since V1.2)
 
-![IpSettings](/doc/change_ip_settings.gif)
+![IpSettings](/doc/V1.x/change_ip_settings.gif)
 
 ## File operations
 
@@ -84,7 +91,7 @@ You can load/save the watch configuration via "File" menu.
 
 If the list view contains one or more PV you can write the values into a CSV- File. **Microsoft Excel** or **Libre Office Calc** can open this file type for example (or an ordinary text editor of course).
 
-![LoggerConfiguration](/doc/LoggerConfiguration.PNG)
+![LoggerConfiguration](/doc/V1.x/LoggerConfiguration.PNG)
 
 The CSV- file size can be limited. If the entries exceeds this size, the earlier file is renamed (extended with date and time settings) and a new file will be written.
 
@@ -99,7 +106,9 @@ Pressing **OK** will save these settings in the BRWATCH.ini file.
 Menu Logger enables to start the logger or to stop a started logging. If logging has started, the BRWATCH main window is grey colored to signal this state.
 TODO Screenshot
 You can save space on your Window desktop by minimizing the window. BRWATCH will then be visible only as an icon in the taskbar. Moving the mouse over this icon gives the option to maximize the main window again.
-TODO Screenshot Taskbar
+
+![screenshot_taskbar](/doc/V1.x/screenshot_taskbar.png)
+
 If you close BRWATCH in this state (e.g. power down your PC) the logger will start in this state again after power up (for long term logging capabilities).
 Beware; the minimized window state is be saved, too.
 So if you don't see the main window after starting the .exe just have a look at the windows taskbar.

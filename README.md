@@ -11,9 +11,7 @@ Additionaly it logs PV values to CSV- Files.
 
 It makes heavy use of PVI ('process visualisation interface') package from [B&amp;R](https://www.br-automation.com).
 
-![Screenshot 1](/doc/screenshot1.PNG)
-![Screenshot 2](/doc/screenshot2.PNG)
-![Video](/doc/how_to_use.gif)
+![main_window](/doc/main_window.png)
 
 ## Disclaimer
 
@@ -22,11 +20,11 @@ You can freely copy it but use it at your own risk.
 
 ## PVI
 
-brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run.
+brwatch needs a previously installed [PVI Development Setup](https://www.br-automation.com/en/downloads/#categories=Software/Automation+NET%2FPVI) to run. 
 
 - ### INA/ANSL
 
-since PVI 6.x INA2000 protocol becomes obsolete so brwatch >= 2.x is not able to handle INA anymore.
+since PVI 6.x INA2000 protocol becomes obsolete so brwatch >= 2.x is not able to handle INA anymore. If still have CPUs requiring INA2000 use brwatch versions 1.x.
 
 - ### PVI License
 
@@ -37,26 +35,8 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 1. [download EXE](https://github.com/hilch/brwatch/releases)
 2. [see brief manual](http://hilch.github.io/brwatch/doc/manual.md)
 
-([for brwatch V1.x see brief manual](http://hilch.github.io/brwatch/doc/manual-v1x.md))
+([for brwatch V1.x see brief manual](http://hilch.github.io/brwatch/doc/V1.x/manual.md))
 
-Selecting a device without populated children opens the CPU scan dialog. Choose
-an aligned block of 256, 512, 1024, 2048, or 16384 IPv4 addresses per Ethernet
-adapter. Blocks are limited to each adapter's subnet by default, with a warning
-when clipped. Enable **Allow scanning beyond adapter subnet** to probe the full
-selected block using that adapter's source IP; a suitable route/gateway and
-firewall permissions are required. The adapter's subnet network/broadcast and
-own IP are still skipped. Adapter address, routing and permission rejections
-are ignored without a message box; rejected out-of-subnet targets do not
-prevent scanning the remaining targets. Other unexpected scan errors are
-still reported.
-Localhost is probed only at `127.0.0.1`. The dialog updates the maximum TCP
-timeout budget when either option changes. SNMP/PVI discovery and operating-system
-overhead are additional; Cancel leaves the device unexpanded.
-
-Discovery runs in the background with a modeless progress dialog, so the main
-window remains usable. SNMP/PVI discovery shows an activity bar; TCP scanning
-shows the number of addresses processed or skipped. **Cancel** (or closing the
-progress dialog) cancels both stages and discards the unfinished scan's results.
 
 ## Development
 
@@ -125,10 +105,6 @@ When an Ethernet CPU search starts, debug builds print the adapter count and
 each adapter's description (name), IP address, and subnet mask before SNMP
 discovery begins. Release builds omit this output and the console.
 Use the clean build tasks when switching between debug and release builds.
-
-Ethernet CPU searches also probe `127.0.0.1:11169` to discover local controllers,
-including when no Ethernet adapter is available. Only `127.0.0.1` is probed on
-the loopback network.
 
 Every build checks Git metadata and updates the About dialog's commit hash and
 the tag pointing at the current commit. Commits without a tag show `untagged`.
