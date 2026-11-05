@@ -17,6 +17,7 @@ It makes heavy use of PVI ('process visualisation interface') package from [B&am
 
 brwatch comes „as is“, e.g. without support and warranty.
 You can freely copy it but use it at your own risk.
+brwatch is made available free of charge.
 
 ## PVI
 
