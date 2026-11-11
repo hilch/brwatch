@@ -366,6 +366,7 @@ static void WINAPI PviSnmpProc(WPARAM /* wParam */, LPARAM /* lParam */, LPVOID 
 */
 struct SnmpLink {
 	DWORD id = 0;
+	const char *name = nullptr;
 	~SnmpLink()
 	{
 		if (id != 0)
@@ -403,15 +404,21 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, 
 			failed(name, result);
 			return false;
 		}
+		link.name = name;
 		return !ScanCancelled(control);
 	};
-	auto read = [&](DWORD link, DWORD access, void *buffer, LONG size) {
+	auto read = [&](const SnmpLink &link, DWORD access, void *buffer, LONG size) {
 		if (ScanCancelled(control))
 			return false;
-		int result = PviRead(link, access, nullptr, 0, buffer, size);
+		int result = PviRead(link.id, access, nullptr, 0, buffer, size);
 		if (result != 0)
 		{
-			failed("PviRead", result);
+			if (result == 14787)
+			{
+				memset(buffer, 0, size);
+				return !ScanCancelled(control);
+			}
+			failed(link.name != nullptr ? link.name : "PviRead", result);
 			return false;
 		}
 		return !ScanCancelled(control);
@@ -421,7 +428,7 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, 
 		!create(device, "@Pvi/LnSNMP/Device", POBJ_DEVICE, "CD=\"/IF=snmp /RT=3000\""))
 		return entries;
 	std::vector<char> buffer(65536);
-	if (!read(device.id, POBJ_ACC_LIST_EXTERN, buffer.data(), static_cast<LONG>(buffer.size())))
+	if (!read(device, POBJ_ACC_LIST_EXTERN, buffer.data(), static_cast<LONG>(buffer.size())))
 		return entries;
 	buffer.back() = '\0';
 	for (char *entry = buffer.data(); entry != nullptr && *entry != '\0' &&
@@ -458,7 +465,7 @@ int SearchCpuViaSnmp(struct stEthernetCpuInfo *ethernetCpuInfo, int maxEntries, 
 				std::string descriptor = std::string("CD=") + property.value;
 				SnmpLink variable;
 				if (!create(variable, name.c_str(), POBJ_PVAR, descriptor.c_str()) ||
-					!read(variable.id, POBJ_ACC_DATA, property.buffer, property.size))
+					!read(variable, POBJ_ACC_DATA, property.buffer, property.size))
 				{
 					complete = false;
 					break;
