@@ -45,11 +45,6 @@ Without a PVI license **1TG0500.02** (+ TG Guard e.g. 0TG1000.02) PVI will run f
 The application is written in C++14 and uses plain Win32 API for UI. Bundled zlib sources remain C.
 Find compiled EXE in [releases](https://github.com/hilch/brwatch/releases).
 
-The application-wide CSV logger is encapsulated by `Logger` in
-[logger.h](include/logger.h). Its static members `Toggle()`, `IsRunning()` and
-`DataChanged()` control logging; `ConfigDlgProc()` is the Win32 configuration
-dialog callback. Both cyclic and write-on-change logging retain shared state.
-
 ### Build from Source
 
 #### Prerequisites
