@@ -106,3 +106,6 @@ Use the clean build tasks when switching between debug and release builds.
 Every build checks Git metadata and updates the About dialog's commit hash and
 the tag pointing at the current commit. Commits without a tag show `untagged`.
 Builds without Git or repository metadata show `unknown` for the hash.
+The Windows product version is derived from the nearest reachable numeric
+version tag (for example, `V2.0.0`); when no numeric version tag is available,
+it defaults to `2.0.0`.

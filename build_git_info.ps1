@@ -22,8 +22,8 @@ function Get-GitValue {
 $gitHash = Get-GitValue -GitArguments @("rev-parse", "--short=12", "HEAD") -Fallback "unknown"
 $gitTag = Get-GitValue -GitArguments @("describe", "--tags", "--exact-match", "HEAD") -Fallback "untagged"
 $versionTag = Get-GitValue -GitArguments @("describe", "--tags", "--abbrev=0", "HEAD") -Fallback ""
-$versionParts = @(0, 0, 0, 0)
-$versionString = "0.0.0"
+$versionParts = @(2, 0, 0, 0)
+$versionString = "2.0.0"
 if ($versionTag -match '^v?(\d+)\.(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].+)?$') {
     for ($index = 0; $index -lt 4; ++$index) {
         if ($Matches[$index + 1]) {
@@ -36,7 +36,7 @@ if ($versionTag -match '^v?(\d+)\.(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].+)?$') {
     }
 }
 elseif ($versionTag) {
-    Write-Warning "Tag '$versionTag' is not a version tag; using 0.0.0 for the version resource."
+    Write-Warning "Tag '$versionTag' is not a version tag; using 2.0.0 for the version resource."
 }
 $content = @(
     "#pragma once"
